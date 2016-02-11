@@ -1,0 +1,11 @@
+// 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+__kernel void RadixSort(__global uint* array)
+{
+	uint GID = get_global_id(0);
+
+	uint readIdx = GID;
+	uint writeIdx = readIdx;
+
+	array[writeIdx] *= array[readIdx];
+}
