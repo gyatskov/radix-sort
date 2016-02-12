@@ -1,6 +1,8 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-__kernel void RadixSortReadWrite(__global int* array)
+__kernel void RadixSortReadWrite(
+    __global int* array
+    )
 {
 	uint GID = get_global_id(0);
 
@@ -10,7 +12,10 @@ __kernel void RadixSortReadWrite(__global int* array)
 	array[writeIdx] *= array[readIdx];
 }
 
-__kernel void RadixSort(__global int* input, __global int* output)
+__kernel void RadixSort(
+    __global const int* restrict input,
+    __global       int* restrict output
+    )
 {
     uint GID = get_global_id(0);
 
