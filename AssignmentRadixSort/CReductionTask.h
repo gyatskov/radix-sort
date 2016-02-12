@@ -57,7 +57,7 @@ protected:
 	//NOTE: we have two memory address spaces, so we mark pointers with a prefix
 	//to avoid confusions: 'h' - host, 'd' - device
 
-	unsigned int		m_N;
+	size_t		m_N;
 
 	// input data
 	std::vector<DataType> m_hInput;
@@ -69,10 +69,7 @@ protected:
 
 	//OpenCL program and kernels
 	cl_program			m_Program;
-	cl_kernel			m_InterleavedAddressingKernel;
-	cl_kernel			m_SequentialAddressingKernel;
-	cl_kernel			m_DecompKernel;
-	cl_kernel			m_DecompUnrollKernel;
+	cl_kernel			m_BasicKernel;
 
 };
 

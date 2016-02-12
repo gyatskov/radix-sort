@@ -24,7 +24,7 @@ CReductionTask::CReductionTask(size_t ArraySize)
 	m_resultGPU(ArraySize),
 	m_dResultArray(),
 	m_Program(NULL), 
-	m_InterleavedAddressingKernel(NULL)
+	m_BasicKernel(NULL)
 {
 }
 
@@ -60,7 +60,7 @@ bool CReductionTask::InitResources(cl_device_id Device, cl_context Context)
 
 	//create kernels
 	std::string kernelName("RadixSort");
-	m_InterleavedAddressingKernel = clCreateKernel(m_Program, kernelName.c_str(), &clError);
+	m_BasicKernel = clCreateKernel(m_Program, kernelName.c_str(), &clError);
 	V_RETURN_FALSE_CL(clError, "Failed to create kernel: RadixSort.");
 
 	return true;
@@ -71,10 +71,7 @@ void CReductionTask::ReleaseResources()
 	// device resources
 	SAFE_RELEASE_MEMOBJECT(m_dResultArray);
 
-	SAFE_RELEASE_KERNEL(m_InterleavedAddressingKernel);
-	SAFE_RELEASE_KERNEL(m_SequentialAddressingKernel);
-	SAFE_RELEASE_KERNEL(m_DecompKernel);
-	SAFE_RELEASE_KERNEL(m_DecompUnrollKernel);
+	SAFE_RELEASE_KERNEL(m_BasicKernel);
 
 	SAFE_RELEASE_PROGRAM(m_Program);
 }
@@ -83,7 +80,7 @@ void CReductionTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueu
 {
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, 0);
 
-	//TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
+	TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
 }
 
 void CReductionTask::ComputeCPU()
@@ -91,20 +88,19 @@ void CReductionTask::ComputeCPU()
 	CTimer timer;
 	timer.Start();
 
-	m_resultCPU = m_hInput;
-	std::sort(m_resultCPU.begin(), m_resultCPU.end());
-
-	//unsigned int nIterations = 10;
-	//for(unsigned int j = 0; j < nIterations; j++) {
-	//	m_resultCPU = m_hInput[0];
-	//	for(unsigned int i = 1; i < m_N; i++) {
-	//		m_resultCPU += m_hInput[i]; 
-	//	}
-	//}
-	//
+	const unsigned int NUM_ITERATIONS = 10;
+    for (unsigned int j = 0; j < NUM_ITERATIONS; j++) {
+        m_resultCPU = m_hInput;
+        // Use this only for really basic testing of the actually pointless kernel
+        for (auto& val : m_resultCPU) {
+            val *= val;
+        }
+        // Correct result:
+        //std::sort(m_resultCPU.begin(), m_resultCPU.end());
+    }
 	timer.Stop();
 	
-	double ms = 42;// timer.GetElapsedMilliseconds() / double(nIterations);
+    double ms = timer.GetElapsedMilliseconds() / double(NUM_ITERATIONS);
 	cout << "  average time: " << ms << " ms, throughput: " << 1.0e-6 * (double)m_N / ms << " Gelem/s" <<endl;
 }
 
@@ -115,7 +111,7 @@ bool CReductionTask::ValidateResults()
 	for (int implementationAlternativeIndex = 0; implementationAlternativeIndex < 1; implementationAlternativeIndex++)
 	{
 		bool equalData = memcmp(m_resultGPU.data(), m_resultCPU.data(), m_resultGPU.size() * sizeof(DataType)) == 0;
-		if (equalData)
+		if (!equalData)
 		{
 			cout << "Validation of radixsort kernel " << g_kernelNames[implementationAlternativeIndex] << " failed.";
 			success = false;
@@ -128,13 +124,12 @@ bool CReductionTask::ValidateResults()
 void CReductionTask::RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
 {
 	cl_int clErr;
-	size_t globalWorkSize[1];
-	globalWorkSize[0] = m_N;
-	size_t localWorkSize[1];
-	localWorkSize[0] = 1;
+    size_t globalWorkSize[1] = { m_N };
+    size_t localWorkSize[3];
+    memcpy(localWorkSize, LocalWorkSize, 3 * sizeof(size_t));
 
-	clErr  = clSetKernelArg(m_InterleavedAddressingKernel, 0, sizeof(cl_mem), (void*)&m_dResultArray);
-	clErr |= clEnqueueNDRangeKernel(CommandQueue, m_InterleavedAddressingKernel, 1, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
+	clErr  = clSetKernelArg(m_BasicKernel, 0, sizeof(cl_mem), (void*)&m_dResultArray);
+    clErr |= clEnqueueNDRangeKernel(CommandQueue, m_BasicKernel, 1, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
 	clErr |= clFinish(CommandQueue); // kill
 	if (clErr != CL_SUCCESS) {
 		cerr << __LINE__ << ": Kernel execution failure: " << CLUtil::GetCLErrorString(clErr) << endl;
@@ -165,34 +160,34 @@ void CReductionTask::ExecuteTask(cl_context Context, cl_command_queue CommandQue
 
 void CReductionTask::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
 {
-	//cout << "Testing performance of task " << g_kernelNames[Task] << endl;
-	//
-	////write input data to the GPU
-	//V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue, m_dPingArray, CL_FALSE, 0, m_N * sizeof(cl_uint), m_hInput, 0, NULL, NULL), "Error copying data from host to device!");
-	////finish all before we start meassuring the time
-	//V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
-	//
-	//CTimer timer;
-	//timer.Start();
-	//
-	////run the kernel N times
-	//unsigned int nIterations = 100;
-	//for(unsigned int i = 0; i < nIterations; i++) {
-	//	//run selected task
-	//	switch (Task){
-	//		case 0:
-	//			RadixSort(Context, CommandQueue, LocalWorkSize);
-	//			break;
-	//	}
-	//}
-	//
-	////wait until the command queue is empty again
-	//V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
-	//
-	//timer.Stop();
-	//
-	//double ms = timer.GetElapsedMilliseconds() / double(nIterations);
-	//cout << "  average time: " << ms << " ms, throughput: " << 1.0e-6 * (double)m_N / ms << " Gelem/s" <<endl;
+    cout << "Testing performance of task " << g_kernelNames[Task] << endl;
+
+    //write input data to the GPU
+    V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue, m_dResultArray, CL_FALSE, 0, m_N * sizeof(DataType), m_hInput.data(), 0, NULL, NULL), "Error copying data from host to device!");
+    //finish all before we start meassuring the time
+    V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
+
+    CTimer timer;
+    timer.Start();
+
+    //run the kernel N times
+    unsigned int nIterations = 100;
+    for (unsigned int i = 0; i < nIterations; i++) {
+        //run selected task
+        switch (Task){
+        case 0:
+            RadixSort(Context, CommandQueue, LocalWorkSize);
+            break;
+        }
+    }
+
+    //wait until the command queue is empty again
+    V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
+
+    timer.Stop();
+
+    double ms = timer.GetElapsedMilliseconds() / double(nIterations);
+    cout << "  average time: " << ms << " ms, throughput: " << 1.0e-6 * (double)m_N / ms << " Gelem/s" << endl;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
