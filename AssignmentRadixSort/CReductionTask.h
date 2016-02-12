@@ -23,6 +23,7 @@
 #include "../Common/IComputeTask.h"
 
 #include <vector>
+#include <map>
 #include <cstdint>
 
 //! A2/T1: Parallel reduction
@@ -50,7 +51,8 @@ public:
 protected:
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
-
+    void RadixSortReadWrite(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
+    
 	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int task);
 	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int task);
 
@@ -65,12 +67,14 @@ protected:
 	std::vector<DataType> m_resultCPU;
 	std::vector<DataType> m_resultGPU;
 
+    cl_mem              m_dInputArray;
 	cl_mem				m_dResultArray;
+    cl_mem              m_dReadWriteArray;
 
 	//OpenCL program and kernels
 	cl_program			m_Program;
-	cl_kernel			m_BasicKernel;
 
+    std::map<std::string, cl_kernel> m_kernelMap;
 };
 
 #endif // _CREDUCTION_TASK_H
