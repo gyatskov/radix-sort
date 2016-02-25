@@ -88,7 +88,7 @@ bool CScanTask::InitResources(cl_device_id Device, cl_context Context)
 	size_t programSize = 0;
 
 	CLUtil::LoadProgramSourceToMemory("Scan.cl", programCode);
-	m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode);
+	m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, " -cl-opt-disable");
 	if(m_Program == nullptr) return false;
 
 	//create kernels

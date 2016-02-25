@@ -47,7 +47,7 @@ public:
 	static bool LoadProgramSourceToMemory(const std::string& Path, std::string& SourceCode);
 
 	//! Builds a CL program
-	static cl_program BuildCLProgramFromMemory(cl_device_id Device, cl_context Context, const std::string& SourceCode);
+	static cl_program BuildCLProgramFromMemory(cl_device_id Device, cl_context Context, const std::string& SourceCode, const std::string& options = "");
 
 	static void PrintBuildLog(cl_program Program, cl_device_id Device);
 

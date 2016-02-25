@@ -8,6 +8,8 @@ GPU Computing / GPGPU Praktikum source code.
 #include "../Common/CLUtil.h"
 #include "../Common/CTimer.h"
 
+#include <random>
+
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -37,11 +39,24 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 {
 	//CPU resources
 
+	std::string seedStr("nico ist schmutz :)");
+	std::seed_seq seed(seedStr.begin(), seedStr.end());
+	std::mt19937 generator(seed);
+	std::uniform_int_distribution<DataType> dis(0, std::numeric_limits<DataType>::max());
 	//fill the array with some values
 	for (size_t i = 0; i < m_N; i++) {
 		//m_hInput[i] = m_N - i;			// Use this for debugging
-		m_hInput[i] = rand() & 15;
+
+		// Mersienne twister
+		m_hInput[i] = dis(generator);
+
+		//m_hInput[i] = rand() & 15;
 	}
+
+	//std::copy(m_hInput.begin(),
+	//	m_hInput.begin() + 100,
+	//	std::ostream_iterator<DataType>(std::cout, "\n"));
+
 	//device resources
 	cl_int clError, clError2;
     m_dInputArray  = clCreateBuffer(Context, CL_MEM_READ_ONLY,  sizeof(DataType) * m_N, NULL, &clError2);
@@ -57,7 +72,7 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 	//std::string pathToRadixSort("\\\\studhome.ira.uka.de\\s_yatsko\\windows\\folders\\Documents\\Visual Studio 2013\\Projects\\paralgo - radix - sort\\AssignmentRadixSort");
 
 	CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
-	m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode);
+	m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, " -cl-opt-disable");
     if (m_Program == nullptr) {
         return false;
     }
@@ -96,6 +111,61 @@ void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueu
     TestPerformance(Context, CommandQueue, LocalWorkSize, 1);
 }
 
+////////////// RADIX SORT //////////////////////
+
+// A function to do counting sort of arr[] according to
+// the digit represented by exp.
+template <typename ElemType>
+void countSort(std::vector<ElemType>& arr, int exp)
+{
+	const auto n = arr.size();
+	std::vector<ElemType> output(n, 0); // output array
+	int i = 0;
+	size_t count[10] = { 0 };
+
+	// Store count of occurrences in count[]
+	for (i = 0; i < n; i++) {
+		count[(arr[i] / exp) % 10]++;
+	}
+
+	// Change count[i] so that count[i] now contains actual
+	// position of this digit in output[]
+	for (i = 1; i < 10; i++) {
+		count[i] += count[i - 1];
+	}
+
+	// Build the output array
+	for (i = n - 1; i >= 0; i--) {
+		output[count[(arr[i] / exp) % 10] - 1] = arr[i];
+		count[(arr[i] / exp) % 10]--;
+	}
+
+	// Copy the output array to arr[], so that arr[] now
+	// contains sorted numbers according to current digit
+	for (i = 0; i < n; i++) {
+		arr[i] = output[i];
+	}
+}
+
+// The main function to that sorts arr[] of size n using 
+// Radix Sort
+template<typename ElemType>
+void radixsort(std::vector<ElemType>& arr)
+{
+	// Find the maximum number to know number of digits
+	const auto m = std::max_element(arr.begin(), arr.end());
+
+	// Do counting sort for every digit. Note that instead
+	// of passing digit number, exp is passed. exp is 10^i
+	// where i is current digit number
+	for (int exp = 1; *m / static_cast<ElemType>(exp) > 0; exp *= 10) {
+		countSort(arr, exp);
+	}
+}
+
+////////////// RADIX SORT //////////////////////
+
+
 void CRadixSortTask::ComputeCPU()
 {
 	CTimer timer;
@@ -104,12 +174,16 @@ void CRadixSortTask::ComputeCPU()
 	const unsigned int NUM_ITERATIONS = 10;
     for (unsigned int j = 0; j < NUM_ITERATIONS; j++) {
         m_resultCPU = m_hInput;
-        // Use this only for really basic testing of the actually pointless kernel
-        for (auto& val : m_resultCPU) {
-            val *= val;
-        }
-        // Correct result:
+        //// Use this only for really basic testing of the actually pointless kernel
+        //for (auto& val : m_resultCPU) {
+        //    val *= val;
+        //}
+
+        // Reference sorting (STL quicksort):
         //std::sort(m_resultCPU.begin(), m_resultCPU.end());
+
+		// Reference sorting (radixsort):
+		radixsort(m_resultCPU);
     }
 	timer.Stop();
 	
@@ -123,7 +197,12 @@ bool CRadixSortTask::ValidateResults()
 
 	for (const auto& kernelName : g_kernelNames)
 	{
+#define RADIXSORT_CL_NOT_YET_IMPLEMENTED
+#ifdef RADIXSORT_CL_NOT_YET_IMPLEMENTED
+		std::sort(m_resultGPU.begin(), m_resultGPU.end());
+#endif
 		bool equalData = memcmp(m_resultGPU.data(), m_resultCPU.data(), m_resultGPU.size() * sizeof(DataType)) == 0;
+
 		if (!equalData)
 		{
             cout << "Validation of radixsort kernel " << kernelName << " failed.";

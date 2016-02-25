@@ -45,9 +45,8 @@ bool CLUtil::LoadProgramSourceToMemory(const std::string& Path, std::string& Sou
 	return true;
 }
 
-cl_program CLUtil::BuildCLProgramFromMemory(cl_device_id Device, cl_context Context, const std::string& SourceCode)
+cl_program CLUtil::BuildCLProgramFromMemory(cl_device_id Device, cl_context Context, const std::string& SourceCode, const std::string& options)
 {
-
 	cl_program prog;
 
 	// if this macro is defined, we also insert it to all OpenCL kernels
@@ -64,7 +63,7 @@ cl_program CLUtil::BuildCLProgramFromMemory(cl_device_id Device, cl_context Cont
 	}
 
 	// program created, now build it:
-	clError = clBuildProgram(prog, 1, &Device, NULL, NULL, NULL);
+	clError = clBuildProgram(prog, 1, &Device, options.c_str(), NULL, NULL);
 	PrintBuildLog(prog, Device);
 	if(CL_SUCCESS != clError)
 	{
@@ -72,7 +71,6 @@ cl_program CLUtil::BuildCLProgramFromMemory(cl_device_id Device, cl_context Cont
 		SAFE_RELEASE_PROGRAM(prog);
 		return nullptr;
 	}
-
 
 	return prog;
 }

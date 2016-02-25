@@ -9,7 +9,8 @@ __kernel void RadixSortReadWrite(
 	uint readIdx = GID;
 	uint writeIdx = readIdx;
 
-	array[writeIdx] *= array[readIdx];
+	//array[writeIdx] *= array[readIdx];
+	//array[writeIdx] = array[writeIdx];
 }
 
 __kernel void RadixSort(
@@ -23,5 +24,9 @@ __kernel void RadixSort(
     uint writeIdx = readIdx;
 
     int val = input[readIdx];
-    output[writeIdx] = val*val;
+    //output[writeIdx] = val*val;
+
+	val += 17;
+
+	output[writeIdx] = val; 
 }
