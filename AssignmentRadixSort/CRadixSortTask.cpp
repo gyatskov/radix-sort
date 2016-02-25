@@ -24,7 +24,6 @@ CRadixSortTask::CRadixSortTask(size_t ArraySize)
 	: m_N(ArraySize), 
 	m_hInput(ArraySize),
 	m_resultCPU(ArraySize),
-	m_resultGPU(ArraySize),
 	m_dResultArray(),
 	m_Program(NULL)
 {
@@ -72,7 +71,9 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 	//std::string pathToRadixSort("\\\\studhome.ira.uka.de\\s_yatsko\\windows\\folders\\Documents\\Visual Studio 2013\\Projects\\paralgo - radix - sort\\AssignmentRadixSort");
 
 	CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
-	m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, " -cl-opt-disable");
+	std::string options;
+	//options = " -cl-opt-disable";
+	m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, options);
     if (m_Program == nullptr) {
         return false;
     }
@@ -80,6 +81,7 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 	//create kernels
     for (const auto& kernelName : g_kernelNames) {
         m_kernelMap[kernelName] = clCreateKernel(m_Program, kernelName.c_str(), &clError);
+		m_resultGPUMap[kernelName] = std::vector<DataType>(m_N);
         std::string errorMsg("Failed to create kernel: ");
         errorMsg += kernelName;
         V_RETURN_FALSE_CL(clError, errorMsg.c_str());
@@ -104,8 +106,13 @@ void CRadixSortTask::ReleaseResources()
 
 void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
 {
-	ExecuteTask(Context, CommandQueue, LocalWorkSize, 0);
-    ExecuteTask(Context, CommandQueue, LocalWorkSize, 1);
+	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort");
+	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSortReadWrite");
+	//std::copy(m_resultGPU.begin(),
+	//	m_resultGPU.begin() + 100,
+	//	std::ostream_iterator<DataType>(std::cout, "\n"));
+	//
+	//cout << "-----------" << endl;
 
 	TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
     TestPerformance(Context, CommandQueue, LocalWorkSize, 1);
@@ -199,9 +206,9 @@ bool CRadixSortTask::ValidateResults()
 	{
 #define RADIXSORT_CL_NOT_YET_IMPLEMENTED
 #ifdef RADIXSORT_CL_NOT_YET_IMPLEMENTED
-		std::sort(m_resultGPU.begin(), m_resultGPU.end());
+		std::sort(m_resultGPUMap[kernelName].begin(), m_resultGPUMap[kernelName].end());
 #endif
-		bool equalData = memcmp(m_resultGPU.data(), m_resultCPU.data(), m_resultGPU.size() * sizeof(DataType)) == 0;
+		bool equalData = memcmp(m_resultGPUMap[kernelName].data(), m_resultCPU.data(), m_resultGPUMap[kernelName].size() * sizeof(DataType)) == 0;
 
 		if (!equalData)
 		{
@@ -244,7 +251,7 @@ void CRadixSortTask::RadixSortReadWrite(cl_context Context, cl_command_queue Com
 	}
 }
 
-void CRadixSortTask::ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int alternative)
+void CRadixSortTask::ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const string& alternative)
 {
 	//write input data to the GPU
 	bool blocking = CL_FALSE;
@@ -255,26 +262,21 @@ void CRadixSortTask::ExecuteTask(cl_context Context, cl_command_queue CommandQue
     decltype(m_dResultArray) deviceResultArray;
 
 	//run selected task
-	switch (alternative) {
-		case 0:
-			RadixSort(Context, CommandQueue, LocalWorkSize);
-            deviceResultArray = m_dResultArray;
-			break;
-        case 1:
-            V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue, m_dReadWriteArray, blocking, offset, dataSize, m_hInput.data(), 0, NULL, NULL), "Error copying data from host to device!");
-            RadixSortReadWrite(Context, CommandQueue, LocalWorkSize);
-            deviceResultArray = m_dReadWriteArray;
-            break;
-        default:
-            V_RETURN_CL(false, "Invalid task selected");
-            break;
+	if (alternative == "RadixSort") {
+		RadixSort(Context, CommandQueue, LocalWorkSize);
+		deviceResultArray = m_dResultArray;
+	} else if (alternative == "RadixSortReadWrite") {
+		V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue, m_dReadWriteArray, blocking, offset, dataSize, m_hInput.data(), 0, NULL, NULL), "Error copying data from host to device!");
+		RadixSortReadWrite(Context, CommandQueue, LocalWorkSize);
+		deviceResultArray = m_dReadWriteArray;
+	} else {
+		V_RETURN_CL(false, "Invalid task selected");
 	}
 
 	//read back the results synchronously.
-	std::fill(m_resultGPU.begin(), m_resultGPU.end(), 0);
+	std::fill(m_resultGPUMap[alternative].begin(), m_resultGPUMap[alternative].end(), 0);
 	blocking = CL_TRUE;
-	
-    V_RETURN_CL(clEnqueueReadBuffer(CommandQueue, deviceResultArray, blocking, offset, dataSize, m_resultGPU.data(), 0, NULL, NULL), "Error reading data from device!");
+	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue, deviceResultArray, blocking, offset, dataSize, m_resultGPUMap[alternative].data(), 0, NULL, NULL), "Error reading data from device!");
 }
 
 void CRadixSortTask::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)

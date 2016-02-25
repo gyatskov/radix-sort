@@ -53,7 +53,7 @@ protected:
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
     void RadixSortReadWrite(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
     
-	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int task);
+	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& kernel);
 	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int task);
 
 	//NOTE: we have two memory address spaces, so we mark pointers with a prefix
@@ -65,7 +65,6 @@ protected:
 	std::vector<DataType> m_hInput;
 	// results
 	std::vector<DataType> m_resultCPU;
-	std::vector<DataType> m_resultGPU;
 
     cl_mem              m_dInputArray;
 	cl_mem				m_dResultArray;
@@ -75,6 +74,7 @@ protected:
 	cl_program			m_Program;
 
     std::map<std::string, cl_kernel> m_kernelMap;
+	std::map<std::string, std::vector<DataType>> m_resultGPUMap;
 };
 
 #endif // _CREDUCTION_TASK_H
