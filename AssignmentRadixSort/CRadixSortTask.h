@@ -51,6 +51,11 @@ public:
 protected:
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
+    void Histogram(int pass);
+    void ScanHistogram();
+    void Reorder(int pass);
+
+
     void RadixSortReadWrite(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
     
 	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& kernel);
@@ -75,6 +80,32 @@ protected:
 
     std::map<std::string, cl_kernel> m_kernelMap;
 	std::map<std::string, std::vector<DataType>> m_resultGPUMap;
+
+    struct Parameters {
+        ///////////////////////////////////////////////////////
+        // these parameters can be changed
+        static const auto _ITEMS = 64; // number of items in a group
+        static const auto _GROUPS = 16; // the number of virtual processors is _ITEMS * _GROUPS
+        static const auto  _HISTOSPLIT = 512; // number of splits of the histogram
+        static const auto _TOTALBITS = 30;  // number of bits for the integer in the list (max=32)
+        static const auto _BITS = 5;  // number of bits in the radix
+        // max size of the sorted vector
+        // it has to be divisible by  _ITEMS * _GROUPS
+        // (for other sizes, pad the list with big values)
+        //#define _N (_ITEMS * _GROUPS * 16)  
+        static const auto _N = (1 << 20);  // maximal size of the list  
+        static const auto VERBOSE = true;
+        static const auto TRANSPOSE = false; // transpose the initial vector (faster memory access)
+        //#define PERMUT  // store the final permutation
+        ////////////////////////////////////////////////////////
+
+        // the following parameters are computed from the previous
+        static const auto _RADIX = (1 << _BITS); //  radix  = 2^_BITS
+        static const auto _PASS = (_TOTALBITS / _BITS); // number of needed passes to sort the list
+        static const auto _HISTOSIZE = (_ITEMS * _GROUPS * _RADIX); // size of the histogram
+        // maximal value of integers for the sort to be correct
+        static const auto _MAXINT = (1 << (_TOTALBITS - 1));
+    };
 };
 
 #endif // _CREDUCTION_TASK_H

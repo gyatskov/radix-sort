@@ -17,11 +17,18 @@ using namespace std;
 
 string g_kernelNames[] = {
 	"RadixSort",
-    "RadixSortReadWrite"
+  "RadixSortReadWrite",
+
+	"histogram",
+	"scanhistograms",
+	"pastehistograms",
+	"reorder",
+
+	"transpose"
 };
 
 CRadixSortTask::CRadixSortTask(size_t ArraySize)
-	: m_N(ArraySize), 
+	: m_N(ArraySize),
 	m_hInput(ArraySize),
 	m_resultCPU(ArraySize),
 	m_dResultArray(),
@@ -32,6 +39,11 @@ CRadixSortTask::CRadixSortTask(size_t ArraySize)
 CRadixSortTask::~CRadixSortTask()
 {
 	ReleaseResources();
+}
+
+template<typename T>
+void appendToOptions(std::string& dst, const std::string& key, const T& value) {
+    dst += " -D" + key + "=" + to_string(value);
 }
 
 bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
@@ -71,8 +83,40 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 	//std::string pathToRadixSort("\\\\studhome.ira.uka.de\\s_yatsko\\windows\\folders\\Documents\\Visual Studio 2013\\Projects\\paralgo - radix - sort\\AssignmentRadixSort");
 
 	CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
-	std::string options;
-	//options = " -cl-opt-disable";
+    std::string options;
+    //options += " -cl-opt-disable";
+
+    // Compile options string
+    {
+        ///////////////////////////////////////////////////////
+        // these parameters can be changed
+        appendToOptions(options, "_ITEMS",       Parameters::_ITEMS); // number of items in a group
+        appendToOptions(options, "_GROUPS",      Parameters::_GROUPS); // the number of virtual processors is _ITEMS * _GROUPS
+        appendToOptions(options, "_HISTOSPLIT",  Parameters::_HISTOSPLIT); // number of splits of the histogram
+        appendToOptions(options, "_TOTALBITS",   Parameters::_TOTALBITS);  // number of bits for the integer in the list (max=32)
+        appendToOptions(options, "_BITS",        Parameters::_BITS);  // number of bits in the radix
+        // max size of the sorted vector
+        // it has to be divisible by  _ITEMS * _GROUPS
+        // (for other sizes, pad the list with big values)
+        appendToOptions(options, "_N",          Parameters::_N);// maximal size of the list
+
+        if (Parameters::VERBOSE) {
+            appendToOptions(options, "VERBOSE", Parameters::VERBOSE);
+        }
+        if (Parameters::TRANSPOSE) { 
+            appendToOptions(options, "TRANSPOSE", Parameters::TRANSPOSE); // transpose the initial vector (faster memory access)
+        }
+        //#define PERMUT  // store the final permutation
+        ////////////////////////////////////////////////////////
+
+        // the following parameters are computed from the previous
+        appendToOptions(options, "_RADIX",      Parameters::_RADIX);//  radix  = 2^_BITS
+        appendToOptions(options, "_PASS",       Parameters::_PASS); // number of needed passes to sort the list
+        appendToOptions(options, "_HISTOSIZE",  Parameters::_HISTOSIZE);// size of the histogram
+        // maximal value of integers for the sort to be correct
+        appendToOptions(options, "_MAXINT",     Parameters::_MAXINT);
+    }
+
 	m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, options);
     if (m_Program == nullptr) {
         return false;
@@ -154,7 +198,7 @@ void countSort(std::vector<ElemType>& arr, int exp)
 	}
 }
 
-// The main function to that sorts arr[] of size n using 
+// The main function to that sorts arr[] of size n using
 // Radix Sort
 template<typename ElemType>
 void radixsort(std::vector<ElemType>& arr)
@@ -193,7 +237,7 @@ void CRadixSortTask::ComputeCPU()
 		radixsort(m_resultCPU);
     }
 	timer.Stop();
-	
+
     double ms = timer.GetElapsedMilliseconds() / double(NUM_ITERATIONS);
 	cout << "  average time: " << ms << " ms, throughput: " << 1.0e-6 * (double)m_N / ms << " Gelem/s" <<endl;
 }
@@ -220,6 +264,72 @@ bool CRadixSortTask::ValidateResults()
 	return success;
 }
 
+void CRadixSortTask::Histogram(int pass) {
+    cl_int err;
+
+    size_t nblocitems = Parameters::_ITEMS;
+    size_t nbitems = Parameters::_GROUPS * Parameters::_ITEMS;
+
+    assert(Parameters::_RADIX == pow(2, Parameters::_BITS));
+
+    auto kernel = m_kernelMap["histogram"];
+
+    err |= clSetKernelArg(kernel, 0, sizeof(cl_mem), &d_inKeys);
+    err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &d_Histograms);
+    err |= clSetKernelArg(kernel, 2, sizeof(pass), &pass);
+    err |= clSetKernelArg(kernel, 3, sizeof(Parameters::_RADIX) * Parameters::_RADIX * Parameters::_ITEMS, NULL);
+    if (err != CL_SUCCESS) {
+        printf("Shiet");
+        return;
+    }
+
+    assert(nkeys_rounded % (Parameters::_GROUPS * Parameters::_ITEMS) == 0);
+    assert(nkeys_rounded <= Parameters::_N);
+
+    err = clSetKernelArg(kernel, 4, sizeof(int), &nkeys_rounded);
+    assert(err == CL_SUCCESS);
+
+    cl_event eve;
+
+    err = clEnqueueNDRangeKernel(CommandQueue,
+        kernel,
+        1, NULL,
+        &nbitems,
+        &nblocitems,
+        0, NULL, &eve);
+
+    assert(err == CL_SUCCESS);
+
+    clFinish(CommandQueue);
+
+    cl_ulong debut, fin;
+
+    err = clGetEventProfilingInfo(eve,
+        CL_PROFILING_COMMAND_QUEUED,
+        sizeof(cl_ulong),
+        (void*)&debut,
+        NULL);
+    //cout << err<<" , "<<CL_PROFILING_INFO_NOT_AVAILABLE<<endl;
+    assert(err == CL_SUCCESS);
+
+    err = clGetEventProfilingInfo(eve,
+        CL_PROFILING_COMMAND_END,
+        sizeof(cl_ulong),
+        (void*)&fin,
+        NULL);
+    assert(err == CL_SUCCESS);
+
+    histo_time += (float)(fin - debut) / 1e9;
+}
+
+void CRadixSortTask::ScanHistogram() {
+
+}
+
+void CRadixSortTask::Reorder(int pass) {
+
+}
+
 void CRadixSortTask::RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
 {
     cl_int clErr;
@@ -227,12 +337,25 @@ void CRadixSortTask::RadixSort(cl_context Context, cl_command_queue CommandQueue
     size_t localWorkSize[3];
     memcpy(localWorkSize, LocalWorkSize, 3 * sizeof(size_t));
 
-    clErr = clSetKernelArg(m_kernelMap["RadixSort"], 0, sizeof(cl_mem), (void*)&m_dInputArray);
-    clErr = clSetKernelArg(m_kernelMap["RadixSort"], 1, sizeof(cl_mem), (void*)&m_dResultArray);
-    clErr |= clEnqueueNDRangeKernel(CommandQueue, m_kernelMap["RadixSort"], 1, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
-    clErr |= clFinish(CommandQueue); // kill
-    if (clErr != CL_SUCCESS) {
-        cerr << __LINE__ << ": Kernel execution failure: " << CLUtil::GetCLErrorString(clErr) << endl;
+    for (int pass = 0; pass < _PASS; pass++){
+        Histogram(pass);
+        ScanHistogram();
+        Reorder(pass);
+    }
+
+    {
+        clErr = clSetKernelArg(m_kernelMap["RadixSort"], 0, sizeof(cl_mem), (void*)&m_dInputArray);
+        clErr = clSetKernelArg(m_kernelMap["RadixSort"], 1, sizeof(cl_mem), (void*)&m_dResultArray);
+    }
+
+
+
+    {
+        clErr |= clEnqueueNDRangeKernel(CommandQueue, m_kernelMap["RadixSort"], 1, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
+        clErr |= clFinish(CommandQueue); // kill
+        if (clErr != CL_SUCCESS) {
+            cerr << __LINE__ << ": Kernel execution failure: " << CLUtil::GetCLErrorString(clErr) << endl;
+        }
     }
 }
 
