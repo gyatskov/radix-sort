@@ -30,7 +30,7 @@
 class CRadixSortTask : public IComputeTask
 {
 public:
-	using DataType = int32_t;
+	using DataType = uint32_t;
 
 	CRadixSortTask(size_t ArraySize);
 
@@ -49,12 +49,43 @@ public:
 	virtual bool ValidateResults();
 
 protected:
+    struct Parameters {
+        ///////////////////////////////////////////////////////
+        // these parameters can be changed
+        static const auto _NUM_ITEMS_PER_GROUP = 64; // number of items in a group
+        static const auto _NUM_GROUPS = 16; // the number of virtual processors is _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
+        static const auto _NUM_HISTOSPLIT = 512; // number of splits of the histogram
+        static const auto _TOTALBITS = 32;  // number of bits for the integer in the list (max=32)
+        static const auto _NUM_BITS_PER_RADIX = 5;  // number of bits in the radix
+        // max size of the sorted vector
+        // it has to be divisible by  _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
+        // (for other sizes, pad the list with big values)
+        //#define _N (_ITEMS * _GROUPS * 16)  
+        static const auto _NUM_MAX_INPUT_ELEMS = (1 << 20);  // maximal size of the list  
+        static const auto VERBOSE = true;
+        static const auto TRANSPOSE = false; // transpose the initial vector (faster memory access)
+        //#define PERMUT  // store the final permutation
+        ////////////////////////////////////////////////////////
+
+        // the following parameters are computed from the previous
+        static const auto _RADIX = (1 << _NUM_BITS_PER_RADIX); //  radix  = 2^_NUM_BITS_RADIX
+        static const auto _NUM_PASSES = (_TOTALBITS / _NUM_BITS_PER_RADIX); // number of needed passes to sort the list
+        static const auto _HISTOSIZE = (_NUM_ITEMS_PER_GROUP * _NUM_GROUPS * _RADIX); // size of the histogram
+        // maximal value of integers for the sort to be correct
+        static const auto _MAXINT = (1 << (_TOTALBITS - 1));
+    };
+
+    // Helper methods
+    void CheckLocalMemory();
+    void CheckDivisibility();
+    void CopyDataToDevice(cl_command_queue CommandQueue);
+
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
-    void Histogram(int pass);
-    void ScanHistogram();
-    void Reorder(int pass);
-
+    void Histogram(cl_command_queue CommandQueue, int pass);
+    void ScanHistogram(cl_command_queue CommandQueue);
+    void Reorder(cl_command_queue CommandQueue, int pass);
+    void Transpose(int nbrow, int nbcol);
 
     void RadixSortReadWrite(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
     
@@ -63,8 +94,6 @@ protected:
 
 	//NOTE: we have two memory address spaces, so we mark pointers with a prefix
 	//to avoid confusions: 'h' - host, 'd' - device
-
-	size_t		m_N;
 
 	// input data
 	std::vector<DataType> m_hInput;
@@ -75,37 +104,38 @@ protected:
 	cl_mem				m_dResultArray;
     cl_mem              m_dReadWriteArray;
 
-	//OpenCL program and kernels
-	cl_program			m_Program;
+    //OpenCL program and kernels
+    cl_program			m_Program;
 
     std::map<std::string, cl_kernel> m_kernelMap;
-	std::map<std::string, std::vector<DataType>> m_resultGPUMap;
+    std::map<std::string, std::vector<DataType>> m_resultGPUMap;
 
-    struct Parameters {
-        ///////////////////////////////////////////////////////
-        // these parameters can be changed
-        static const auto _ITEMS = 64; // number of items in a group
-        static const auto _GROUPS = 16; // the number of virtual processors is _ITEMS * _GROUPS
-        static const auto  _HISTOSPLIT = 512; // number of splits of the histogram
-        static const auto _TOTALBITS = 30;  // number of bits for the integer in the list (max=32)
-        static const auto _BITS = 5;  // number of bits in the radix
-        // max size of the sorted vector
-        // it has to be divisible by  _ITEMS * _GROUPS
-        // (for other sizes, pad the list with big values)
-        //#define _N (_ITEMS * _GROUPS * 16)  
-        static const auto _N = (1 << 20);  // maximal size of the list  
-        static const auto VERBOSE = true;
-        static const auto TRANSPOSE = false; // transpose the initial vector (faster memory access)
-        //#define PERMUT  // store the final permutation
-        ////////////////////////////////////////////////////////
 
-        // the following parameters are computed from the previous
-        static const auto _RADIX = (1 << _BITS); //  radix  = 2^_BITS
-        static const auto _PASS = (_TOTALBITS / _BITS); // number of needed passes to sort the list
-        static const auto _HISTOSIZE = (_ITEMS * _GROUPS * _RADIX); // size of the histogram
-        // maximal value of integers for the sort to be correct
-        static const auto _MAXINT = (1 << (_TOTALBITS - 1));
-    };
+    uint32_t m_hHistograms[Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP]; // histograms on the cpu
+    cl_mem m_dHistograms;                   // histograms on the GPU
+
+    // sum of the local histograms
+    uint32_t m_hGlobsum[Parameters::_NUM_HISTOSPLIT];
+    cl_mem m_dGlobsum;
+    cl_mem m_dTemp;  // in case where the sum is not needed
+
+    // list of keys
+    uint32_t nkeys; // actual number of keys
+    uint32_t nkeys_rounded; // next multiple of _ITEMS*_GROUPS
+    DataType h_checkKeys[Parameters::_NUM_MAX_INPUT_ELEMS]; // a copy for check
+    DataType h_Keys[Parameters::_NUM_MAX_INPUT_ELEMS];
+    cl_mem m_dInKeys;
+    cl_mem m_dOutKeys;
+
+    // permutation
+    uint32_t h_Permut[Parameters::_NUM_MAX_INPUT_ELEMS];
+    cl_mem d_inPermut;
+    cl_mem d_outPermut;
+
+
+
+
+ 
 };
 
-#endif // _CREDUCTION_TASK_H
+#endif
