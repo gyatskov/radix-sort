@@ -112,15 +112,15 @@ __kernel void reorder(const __global int* d_inKeys,
     __local int* loc_histo,
     const int n){
 
-    int it = get_local_id(0);
-    int ig = get_global_id(0);
+    int it = get_local_id(0);	// 
+    int ig = get_global_id(0);	//
 
-    int gr = get_group_id(0);
-    const int groups = get_num_groups(0);
-    int items = get_local_size(0);
+    int gr = get_group_id(0);				// 
+    const int groups = get_num_groups(0);	// G: group count
+    int items = get_local_size(0);			// group size
 
-    int start = ig *(n / groups / items);
-    int size  = n / groups / items;
+	int start = ig *(n / groups / items);   // eq. 2.1 : index of first elem this work-item processes
+    int size  = n / groups / items;			//			 count of elements this work-item processes
 
     // take the histogram in the cache
     for (int ir = 0; ir < _RADIX; ir++){
@@ -129,17 +129,20 @@ __kernel void reorder(const __global int* d_inKeys,
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
+	int newpos;		// new position of element
+	int key;		// key element
+	int shortkey;	// key element within cache (cache line)
+	int k;			// global position within input elements
+	int newpost;	// new position of element (transposed)
 
-    int newpos, key, shortkey, k, newpost;
-
-    for (int j = 0; j< size; j++){
+    for (int j = 0; j < size; j++) {
 #ifdef TRANSPOSE
         k = groups * items * j + ig;
 #else
         k = j + start;
 #endif
         key = d_inKeys[k];
-        shortkey = ((key >> (pass * _BITS)) & (_RADIX - 1));
+        shortkey = ((key >> (pass * _BITS)) & (_RADIX - 1));	// shift element to relevant bit positions
 
         newpos = loc_histo[shortkey * items + it];
 
@@ -161,7 +164,6 @@ __kernel void reorder(const __global int* d_inKeys,
 
         newpos++;
         loc_histo[shortkey * items + it] = newpos;
-
     }
 }
 

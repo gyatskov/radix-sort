@@ -55,7 +55,7 @@ protected:
 		// it has to be divisible by  _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
 		// (for other sizes, pad the list with big values)
 		//#define _N (_ITEMS * _GROUPS * 16)  
-		static const auto _NUM_MAX_INPUT_ELEMS = (1 << 20);  // maximal size of the list  
+		static const auto _NUM_MAX_INPUT_ELEMS = (1 << 15);  // maximal size of the list  
 		static const auto VERBOSE = true;
 		static const auto TRANSPOSE = false; // transpose the initial vector (faster memory access)
 		//#define PERMUT  // store the final permutation
@@ -74,6 +74,7 @@ protected:
 	void CheckLocalMemory(cl_device_id Device);
 	void CheckDivisibility();
 	void CopyDataToDevice(cl_command_queue CommandQueue);
+	void CopyDataFromDevice(cl_command_queue CommandQueue);
 	void Resize(cl_command_queue CommandQueue, int nn);
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
@@ -97,16 +98,17 @@ protected:
 	cl_program			m_Program;
 
 	std::vector<std::string> kernelNames;
+	std::vector<std::string> alternatives;
 
 	std::map<std::string, cl_kernel> m_kernelMap;
 	std::map<std::string, std::vector<DataType>> m_hResultGPUMap;
 	std::map<std::string, cl_mem> m_dMemoryMap; // NOTE: not used yet
 
-	uint32_t m_hHistograms[Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP]; // histograms on the cpu
-	cl_mem m_dHistograms;                   // histograms on the GPU
+	std::vector<uint32_t> m_hHistograms; // histograms on the CPU
+	cl_mem m_dHistograms;                // histograms on the GPU
 
 	// sum of the local histograms
-	uint32_t m_hGlobsum[Parameters::_NUM_HISTOSPLIT];
+	std::vector<uint32_t> m_hGlobsum;
 	cl_mem m_dGlobsum;
 	cl_mem m_dTemp;  // in case where the sum is not needed
 

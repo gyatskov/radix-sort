@@ -145,7 +145,7 @@ bool CAssignmentBase::RunComputeTask(IComputeTask& Task, size_t LocalWorkSize[3]
 	// Compute the golden result.
 	cout << "Computing CPU reference result...";
 	TODO("Comment back in");
-	//Task.ComputeCPU();
+	Task.ComputeCPU();
 	cout << "DONE" << endl;
 
 	// Running the same task on the GPU.
