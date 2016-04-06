@@ -20,7 +20,7 @@ using namespace std;
 // CScanTask
 
 // only useful for debug info
-const string g_kernelNames[2] = 
+const string kernelNames[2] = 
 {
 	"scanNaive",
 	"scanWorkEfficient"
@@ -170,7 +170,7 @@ bool CScanTask::ValidateResults()
 	for(int i = 0; i < 2; i++)
 		if(!m_bValidationResults[i])
 		{
-			cout<<"Validation of reduction kernel "<<g_kernelNames[i]<<" failed.";
+			cout<<"Validation of reduction kernel "<<kernelNames[i]<<" failed.";
 			success = false;
 		}
 
@@ -220,7 +220,7 @@ void CScanTask::ValidateTask(cl_context Context, cl_command_queue CommandQueue, 
 
 void CScanTask::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
 {
-	cout << "Testing performance of task " << g_kernelNames[Task] << endl;
+	cout << "Testing performance of task " << kernelNames[Task] << endl;
 
 	//write input data to the GPU
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue, m_dPingArray, CL_FALSE, 0, m_N * sizeof(cl_uint), m_hArray, 0, NULL, NULL), "Error copying data from host to device!");

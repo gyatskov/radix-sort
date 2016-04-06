@@ -9,6 +9,8 @@ GPU Computing / GPGPU Praktikum source code.
 #include "../Common/CTimer.h"
 
 #include <random>
+#include <algorithm>
+#include <functional>
 #include <cassert>
 
 using namespace std;
@@ -16,10 +18,7 @@ using namespace std;
 ///////////////////////////////////////////////////////////////////////////////
 // CReductionTask
 
-string g_kernelNames[] = {
-    "RadixSort",
-    "RadixSortReadWrite",
-
+static string kernelNames[] = {
     "histogram",
     "scanhistograms",
     "pastehistograms",
@@ -32,6 +31,7 @@ CRadixSortTask::CRadixSortTask(size_t ArraySize)
 	:
 	m_hKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
 	m_hCheckKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
+	h_Permut(Parameters::_NUM_MAX_INPUT_ELEMS),
 	m_hInput(ArraySize),
 	m_resultCPU(ArraySize),
 	m_dResultArray(),
@@ -51,20 +51,20 @@ void appendToOptions(std::string& dst, const std::string& key, const T& value) {
 
 bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 {
-	//CPU resources
+	// CPU resources
 	std::string seedStr("nico ist schmutz :)");
 	std::seed_seq seed(seedStr.begin(), seedStr.end());
 	std::mt19937 generator(seed);
 	std::uniform_int_distribution<DataType> dis(0, std::numeric_limits<DataType>::max());
-	//fill the array with some values
-	for (size_t i = 0; i < Parameters::_NUM_MAX_INPUT_ELEMS; i++) {
-		//m_hInput[i] = m_N - i;			// Use this for debugging
-
-		// Mersienne twister
-		m_hInput[i] = dis(generator);
-
-		//m_hInput[i] = rand() & 15;
-	}
+	// fill the array with some values
+	std::generate(m_hKeys.begin(), m_hKeys.end(), std::bind(dis, generator));
+	std::copy(m_hKeys.begin(), m_hKeys.end(), m_hCheckKeys.begin());
+	//for (size_t i = 0; i < Parameters::_NUM_MAX_INPUT_ELEMS; i++) {
+	//	//m_hInput[i] = m_N - i;			// Use this for debugging
+	//	// Mersienne twister
+	//	m_hKeys[i] = dis(generator);
+	//	//m_hInput[i] = rand() & 15;
+	//}
 
 	//std::copy(m_hInput.begin(),
 	//	m_hInput.begin() + 100,
@@ -121,7 +121,7 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 
 	cl_int clError;
 	// Create each kernel in global kernel list
-    for (const auto& kernelName : g_kernelNames) {
+    for (const auto& kernelName : kernelNames) {
 		// Input data stays the same for each kernel
         m_kernelMap[kernelName] = clCreateKernel(m_Program, kernelName.c_str(), &clError);
 		m_hResultGPUMap[kernelName] = std::vector<DataType>(Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -247,7 +247,7 @@ bool CRadixSortTask::ValidateResults()
 {
 	bool success = true;
 
-	for (const auto& kernelName : g_kernelNames)
+	for (const auto& kernelName : kernelNames)
 	{
 #define RADIXSORT_CL_NOT_YET_IMPLEMENTED
 #ifdef RADIXSORT_CL_NOT_YET_IMPLEMENTED
@@ -801,7 +801,7 @@ void CRadixSortTask::CopyDataToDevice(cl_command_queue CommandQueue)
         m_dInPermut,
         CL_TRUE, 0,
         sizeof(uint32_t) * Parameters::_NUM_MAX_INPUT_ELEMS,
-        h_Permut,
+        h_Permut.data(),
         0, NULL, NULL);
 
     assert(status == CL_SUCCESS);
@@ -824,7 +824,7 @@ void CRadixSortTask::ExecuteTask(cl_context Context, cl_command_queue CommandQue
 
 void CRadixSortTask::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
 {
-    cout << "Testing performance of task " << g_kernelNames[Task] << endl;
+    cout << "Testing performance of task " << kernelNames[Task] << endl;
 
     //finish all before we start measuring the time
     V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
