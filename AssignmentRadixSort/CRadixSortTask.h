@@ -36,15 +36,10 @@ public:
 	virtual ~CRadixSortTask();
 
 	// IComputeTask
-
 	virtual bool InitResources(cl_device_id Device, cl_context Context);
-	
 	virtual void ReleaseResources();
-
 	virtual void ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
-
 	virtual void ComputeCPU();
-
 	virtual bool ValidateResults();
 
 protected:
@@ -55,7 +50,7 @@ protected:
         static const auto _NUM_GROUPS = 16; // the number of virtual processors is _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
         static const auto _NUM_HISTOSPLIT = 512; // number of splits of the histogram
         static const uint32_t _TOTALBITS = 32;  // number of bits for the integer in the list (max=32)
-        static const auto _NUM_BITS_PER_RADIX = 5;  // number of bits in the radix
+        static const auto _NUM_BITS_PER_RADIX = 4;  // number of bits in the radix
         // max size of the sorted vector
         // it has to be divisible by  _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
         // (for other sizes, pad the list with big values)
@@ -75,7 +70,8 @@ protected:
     };
 
     // Helper methods
-    void CheckLocalMemory();
+	void AllocateDeviceMemory(cl_context Context);
+	void CheckLocalMemory(cl_device_id Device);
     void CheckDivisibility();
     void CopyDataToDevice(cl_command_queue CommandQueue);
 	void Resize(cl_command_queue CommandQueue, int nn);
@@ -107,8 +103,8 @@ protected:
     cl_program			m_Program;
 
     std::map<std::string, cl_kernel> m_kernelMap;
-    std::map<std::string, std::vector<DataType>> m_resultGPUMap;
-
+    std::map<std::string, std::vector<DataType>> m_hResultGPUMap;
+	std::map<std::string, cl_mem> m_dMemoryMap; // NOTE: not used yet
 
     uint32_t m_hHistograms[Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP]; // histograms on the cpu
     cl_mem m_dHistograms;                   // histograms on the GPU
@@ -121,8 +117,8 @@ protected:
     // list of keys
     uint32_t nkeys; // actual number of keys
     uint32_t nkeys_rounded; // next multiple of _ITEMS*_GROUPS
-    DataType h_checkKeys[Parameters::_NUM_MAX_INPUT_ELEMS]; // a copy for check
-    DataType h_Keys[Parameters::_NUM_MAX_INPUT_ELEMS];
+	std::vector<DataType> m_hKeys;
+    std::vector<DataType> m_hCheckKeys; // a copy for check
     cl_mem m_dInKeys;
     cl_mem m_dOutKeys;
 
