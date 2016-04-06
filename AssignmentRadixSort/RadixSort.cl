@@ -173,12 +173,11 @@ __kernel void reorder(const __global int* d_inKeys,
 __kernel void scanhistograms(
     __global int* histo, 
     __local int* temp, 
-    __global int* globsum){
-#if 1
+    __global int* globsum) {
     int it = get_local_id(0);
     int ig = get_global_id(0);
     int decale = 1;
-    int n = get_local_size(0) * 2;
+    int n = get_local_size(0) << 1;
     int gr = get_group_id(0);
 
     // load input into local memory
@@ -228,7 +227,6 @@ __kernel void scanhistograms(
     histo[(ig << 1) + 1]   = temp[(it << 1) + 1];
 
     barrier(CLK_GLOBAL_MEM_FENCE);
-#endif
 }
 
 // use the global sum for updating the local histograms

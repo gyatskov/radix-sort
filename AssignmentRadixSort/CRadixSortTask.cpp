@@ -29,7 +29,12 @@ CRadixSortTask::CRadixSortTask(size_t ArraySize)
 	m_hHistograms(Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP),
 	m_hGlobsum(Parameters::_NUM_HISTOSPLIT),
 	m_resultCPU(Parameters::_NUM_MAX_INPUT_ELEMS),
-	m_Program(NULL)
+	m_Program(NULL),
+
+    histo_time(0),
+    scan_time(0),
+    reorder_time(0),
+    transpose_time(0)
 {
 	kernelNames.emplace_back("histogram");
 	kernelNames.emplace_back("scanhistograms");
@@ -48,6 +53,44 @@ CRadixSortTask::~CRadixSortTask()
 template<typename T>
 void appendToOptions(std::string& dst, const std::string& key, const T& value) {
     dst += " -D" + key + "=" + to_string(value);
+}
+
+std::string CRadixSortTask::buildOptions()
+{
+    std::string options;
+    //options += " -cl-opt-disable";
+    options += " -cl-nv-verbose";
+    // Compile options string
+    {
+        ///////////////////////////////////////////////////////
+        // these parameters can be changed
+        appendToOptions(options, "_ITEMS", Parameters::_NUM_ITEMS_PER_GROUP); // number of items in a group
+        appendToOptions(options, "_GROUPS", Parameters::_NUM_GROUPS); // the number of virtual processors is Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
+        appendToOptions(options, "_HISTOSPLIT", Parameters::_NUM_HISTOSPLIT); // number of splits of the histogram
+        appendToOptions(options, "_TOTALBITS", Parameters::_TOTALBITS);  // number of bits for the integer in the list (max=32)
+        appendToOptions(options, "_BITS", Parameters::_NUM_BITS_PER_RADIX);  // number of bits in the radix
+        // max size of the sorted vector
+        // it has to be divisible by  Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
+        // (for other sizes, pad the list with big values)
+        appendToOptions(options, "_N", Parameters::_NUM_MAX_INPUT_ELEMS);// maximal size of the list
+
+        if (Parameters::VERBOSE) {
+            appendToOptions(options, "VERBOSE", Parameters::VERBOSE);
+        }
+        if (Parameters::TRANSPOSE) {
+            appendToOptions(options, "TRANSPOSE", Parameters::TRANSPOSE); // transpose the initial vector (faster memory access)
+        }
+        //#define PERMUT  // store the final permutation
+        ////////////////////////////////////////////////////////
+
+        // the following parameters are computed from the previous
+        appendToOptions(options, "_RADIX", Parameters::_RADIX);//  radix  = 2^_BITS
+        appendToOptions(options, "_PASS", Parameters::_NUM_PASSES); // number of needed passes to sort the list
+        appendToOptions(options, "_HISTOSIZE", Parameters::_HISTOSIZE);// size of the histogram
+        // maximal value of integers for the sort to be correct
+        appendToOptions(options, "_MAXINT", Parameters::_MAXINT);
+    }
+    return options;
 }
 
 bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
@@ -80,40 +123,7 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 	size_t programSize = 0;
 
 	CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
-    std::string options;
-    //options += " -cl-opt-disable";
-	options += " -cl-nv-verbose";
-    // Compile options string
-    {
-        ///////////////////////////////////////////////////////
-        // these parameters can be changed
-        appendToOptions(options, "_ITEMS",		Parameters::_NUM_ITEMS_PER_GROUP); // number of items in a group
-        appendToOptions(options, "_GROUPS",		Parameters::_NUM_GROUPS); // the number of virtual processors is Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
-        appendToOptions(options, "_HISTOSPLIT", Parameters::_NUM_HISTOSPLIT); // number of splits of the histogram
-        appendToOptions(options, "_TOTALBITS",  Parameters::_TOTALBITS);  // number of bits for the integer in the list (max=32)
-        appendToOptions(options, "_BITS",       Parameters::_NUM_BITS_PER_RADIX);  // number of bits in the radix
-        // max size of the sorted vector
-        // it has to be divisible by  Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
-        // (for other sizes, pad the list with big values)
-        appendToOptions(options, "_N",          Parameters::_NUM_MAX_INPUT_ELEMS);// maximal size of the list
-
-        if (Parameters::VERBOSE) {
-            appendToOptions(options, "VERBOSE", Parameters::VERBOSE);
-        }
-        if (Parameters::TRANSPOSE) { 
-            appendToOptions(options, "TRANSPOSE", Parameters::TRANSPOSE); // transpose the initial vector (faster memory access)
-        }
-        //#define PERMUT  // store the final permutation
-        ////////////////////////////////////////////////////////
-
-        // the following parameters are computed from the previous
-        appendToOptions(options, "_RADIX",      Parameters::_RADIX);//  radix  = 2^_BITS
-        appendToOptions(options, "_PASS",       Parameters::_NUM_PASSES); // number of needed passes to sort the list
-        appendToOptions(options, "_HISTOSIZE",  Parameters::_HISTOSIZE);// size of the histogram
-        // maximal value of integers for the sort to be correct
-        appendToOptions(options, "_MAXINT",     Parameters::_MAXINT);
-    }
-
+    const auto options = buildOptions();
 	m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, options);
     if (m_Program == nullptr) {
         return false;
@@ -153,15 +163,6 @@ void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueu
 {
 	Resize(CommandQueue, nkeys);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
-	//ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSortReadWrite");
-
-
-
-	//std::copy(m_resultGPU.begin(),
-	//	m_resultGPU.begin() + 100,
-	//	std::ostream_iterator<DataType>(std::cout, "\n"));
-	//
-	//cout << "-----------" << endl;
 
 	//TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
     //TestPerformance(Context, CommandQueue, LocalWorkSize, 1);
@@ -174,7 +175,7 @@ void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueu
 template <typename ElemType>
 void countSort(std::vector<ElemType>& arr, int exp)
 {
-	const auto n = arr.size();
+    const auto n = static_cast<int64_t>(arr.size());
 	std::vector<ElemType> output(n, 0); // output array
 	int64_t i = 0;
 	size_t count[10] = { 0 };

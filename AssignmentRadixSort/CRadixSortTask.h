@@ -53,9 +53,8 @@ protected:
 		static const auto _NUM_BITS_PER_RADIX = 4;  // number of bits in the radix
 		// max size of the sorted vector
 		// it has to be divisible by  _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
-		// (for other sizes, pad the list with big values)
-		//#define _N (_ITEMS * _GROUPS * 16)  
-		static const auto _NUM_MAX_INPUT_ELEMS = (1 << 15);  // maximal size of the list  
+		// (for other sizes, pad the list with big values) 
+		static const auto _NUM_MAX_INPUT_ELEMS = (1 << 19);  // maximal size of the list  
 		static const auto VERBOSE = true;
 		static const auto TRANSPOSE = false; // transpose the initial vector (faster memory access)
 		//#define PERMUT  // store the final permutation
@@ -70,6 +69,7 @@ protected:
 	};
 
 	// Helper methods
+    std::string buildOptions();
 	void AllocateDeviceMemory(cl_context Context);
 	void CheckLocalMemory(cl_device_id Device);
 	void CheckDivisibility();
