@@ -1,1 +1,6 @@
 build
+
+#latex stuff
+*.aux
+*.log
+*.out
