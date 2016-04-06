@@ -90,17 +90,13 @@ protected:
 	//NOTE: we have two memory address spaces, so we mark pointers with a prefix
 	//to avoid confusions: 'h' - host, 'd' - device
 
-	// input data
-	std::vector<DataType> m_hInput;
 	// results
 	std::vector<DataType> m_resultCPU;
 
-	cl_mem              m_dInputArray;
-	cl_mem				m_dResultArray;
-	cl_mem              m_dReadWriteArray;
-
 	//OpenCL program and kernels
 	cl_program			m_Program;
+
+	std::vector<std::string> kernelNames;
 
 	std::map<std::string, cl_kernel> m_kernelMap;
 	std::map<std::string, std::vector<DataType>> m_hResultGPUMap;

@@ -18,25 +18,21 @@ using namespace std;
 ///////////////////////////////////////////////////////////////////////////////
 // CReductionTask
 
-static string kernelNames[] = {
-    "histogram",
-    "scanhistograms",
-    "pastehistograms",
-    "reorder",
-
-    "transpose"
-};
-
 CRadixSortTask::CRadixSortTask(size_t ArraySize)
 	:
 	m_hKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
+	nkeys(Parameters::_NUM_MAX_INPUT_ELEMS),
+	nkeys_rounded(Parameters::_NUM_MAX_INPUT_ELEMS),
 	m_hCheckKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
 	h_Permut(Parameters::_NUM_MAX_INPUT_ELEMS),
-	m_hInput(ArraySize),
 	m_resultCPU(ArraySize),
-	m_dResultArray(),
 	m_Program(NULL)
 {
+	kernelNames.emplace_back("histogram");
+	kernelNames.emplace_back("scanhistograms");
+	kernelNames.emplace_back("pastehistograms");
+	kernelNames.emplace_back("reorder");
+	kernelNames.emplace_back("transpose");
 }
 
 CRadixSortTask::~CRadixSortTask()
@@ -76,8 +72,6 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 	//load and compile kernels
 	string programCode;
 	size_t programSize = 0;
-
-	//std::string pathToRadixSort("\\\\studhome.ira.uka.de\\s_yatsko\\windows\\folders\\Documents\\Visual Studio 2013\\Projects\\paralgo - radix - sort\\AssignmentRadixSort");
 
 	CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
     std::string options;
@@ -135,11 +129,12 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 
 void CRadixSortTask::ReleaseResources()
 {
-	// device resources
-    SAFE_RELEASE_MEMOBJECT(m_dInputArray);
-	SAFE_RELEASE_MEMOBJECT(m_dResultArray);
-    SAFE_RELEASE_MEMOBJECT(m_dReadWriteArray);
-
+	// free device resources
+    SAFE_RELEASE_MEMOBJECT(m_dInKeys);
+	SAFE_RELEASE_MEMOBJECT(m_dOutKeys);
+	SAFE_RELEASE_MEMOBJECT(m_dInPermut);
+	SAFE_RELEASE_MEMOBJECT(m_dOutPermut);
+	
     for (auto& kernel : m_kernelMap) {
         SAFE_RELEASE_KERNEL(kernel.second);
     }
@@ -149,6 +144,7 @@ void CRadixSortTask::ReleaseResources()
 
 void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
 {
+	Resize(CommandQueue, nkeys);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort");
 	//ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSortReadWrite");
 
@@ -225,7 +221,7 @@ void CRadixSortTask::ComputeCPU()
 
 	const unsigned int NUM_ITERATIONS = 10;
     for (unsigned int j = 0; j < NUM_ITERATIONS; j++) {
-        m_resultCPU = m_hInput;
+        m_resultCPU = m_hKeys;
         //// Use this only for really basic testing of the actually pointless kernel
         //for (auto& val : m_resultCPU) {
         //    val *= val;
@@ -266,7 +262,7 @@ bool CRadixSortTask::ValidateResults()
 }
 
 void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
-    cl_int err;
+    cl_int err = CL_SUCCESS;
 
     size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
     size_t nbitems = Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP;
@@ -274,15 +270,15 @@ void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
 	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
-	auto kernel = m_kernelMap["histogram"];
+	auto histogramKernel = m_kernelMap["histogram"];
 
 	// Set kernel arguments
 	{
-		err |= clSetKernelArg(kernel, 0, sizeof(cl_mem), &m_dInKeys);
-		err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &m_dHistograms);
-		err |= clSetKernelArg(kernel, 2, sizeof(pass), &pass);
-		err |= clSetKernelArg(kernel, 3, sizeof(Parameters::_RADIX) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP, NULL);
-		err |= clSetKernelArg(kernel, 4, sizeof(int), &nkeys_rounded);
+		err |= clSetKernelArg(histogramKernel, 0, sizeof(cl_mem), &m_dInKeys);
+		err |= clSetKernelArg(histogramKernel, 1, sizeof(cl_mem), &m_dHistograms);
+		err |= clSetKernelArg(histogramKernel, 2, sizeof(pass), &pass);
+		err |= clSetKernelArg(histogramKernel, 3, sizeof(Parameters::_RADIX) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP, NULL);
+		err |= clSetKernelArg(histogramKernel, 4, sizeof(int), &nkeys_rounded);
 	}
 
     assert(err == CL_SUCCESS);
@@ -291,7 +287,7 @@ void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
 
 	// Execute kernel
     err = clEnqueueNDRangeKernel(CommandQueue,
-        kernel,
+		histogramKernel,
         1, NULL,
         &nbitems,
         &nblocitems,
@@ -301,6 +297,7 @@ void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
 
     clFinish(CommandQueue);
 
+#if 0 // got our own profiling >:|
     cl_ulong debut, fin;
 
     err = clGetEventProfilingInfo(eve,
@@ -319,10 +316,11 @@ void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
     assert(err == CL_SUCCESS);
 
     histo_time += (float)(fin - debut) / 1e9f;
+#endif
 }
 
 void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
-    cl_int err;
+    cl_int err = CL_SUCCESS;
 
     // numbers of processors for the local scan
     // = half the size of the local histograms
@@ -335,18 +333,12 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     // scan locally the histogram (the histogram is split into several
     // parts that fit into the local memory)
 
-	auto scanHistogramKernel  = m_kernelMap["scanhistogram"];
-	auto pasteHistogramKernel = m_kernelMap["pastehistogram"];
+	auto scanHistogramKernel  = m_kernelMap["scanhistograms"];
+	auto pasteHistogramKernel = m_kernelMap["pastehistograms"];
 
-	err = clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &m_dHistograms);
-    assert(err == CL_SUCCESS);
-
-	err = clSetKernelArg(scanHistogramKernel, 1,
-        sizeof(uint32_t) * maxmemcache,
-        NULL); // mem cache
-
-	err = clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &m_dGlobsum);
-    assert(err == CL_SUCCESS);
+	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &m_dHistograms), "Could not set histogram argument");
+	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 1, sizeof(uint32_t) * maxmemcache, NULL), "Could not set histogram cache size"); // mem cache
+	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &m_dGlobsum), "Could not set global histogram argument");
 
     cl_event eve;
 
@@ -361,6 +353,7 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     assert(err == CL_SUCCESS);
     clFinish(CommandQueue);
 
+#if 0 // got our own profiling >:|
     cl_ulong debut, fin;
 
     err = clGetEventProfilingInfo(eve,
@@ -378,13 +371,11 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     assert(err == CL_SUCCESS);
 
     scan_time += (float)(fin - debut) / 1e9f;
+#endif
 
     // second scan for the globsum
-	err = clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &m_dGlobsum);
-    assert(err == CL_SUCCESS);
-
-	err = clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &m_dTemp);
-    assert(err == CL_SUCCESS);
+	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &m_dGlobsum), "Could not set global sum parameter");
+	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &m_dTemp), "Could not set temporary parameter");
 
 	nbitems = Parameters::_NUM_HISTOSPLIT / 2;
     nblocitems = nbitems;
@@ -400,6 +391,7 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     assert(err == CL_SUCCESS);
     clFinish(CommandQueue);
 
+#if 0 // got our own profiling >:|
     err = clGetEventProfilingInfo(eve,
         CL_PROFILING_COMMAND_QUEUED,
         sizeof(cl_ulong),
@@ -415,21 +407,26 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     assert(err == CL_SUCCESS);
 
     scan_time += (float)(fin - debut) / 1e9f;
+#endif
 
     // loops again in order to paste together the local histograms
 	nbitems = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
 	nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
 
-    err = clEnqueueNDRangeKernel(CommandQueue,
+	V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, 0, sizeof(cl_mem), &m_dHistograms), "Could not set histograms argument");
+	V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, 1, sizeof(cl_mem), &m_dGlobsum), "Could not set globsum argument");
+
+	// Execute paste histogram kernel
+    V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		pasteHistogramKernel,
         1, NULL,
         &nbitems,
         &nblocitems,
-        0, NULL, &eve);
+        0, NULL, &eve), "Could not execute paste histograms kernel");
 
-    assert(err == CL_SUCCESS);
     clFinish(CommandQueue);
 
+#if 0 // got our own profiling >:|
     err = clGetEventProfilingInfo(eve,
         CL_PROFILING_COMMAND_QUEUED,
         sizeof(cl_ulong),
@@ -445,10 +442,11 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     assert(err == CL_SUCCESS);
 
     scan_time += (float)(fin - debut) / 1e9f;
+#endif
 }
 
 void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
-    cl_int err;
+    cl_int err = CL_SUCCESS;
 
 	size_t nblocitems	= Parameters::_NUM_ITEMS_PER_GROUP;
 	size_t nbitems		= Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP;
@@ -513,16 +511,15 @@ void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
     cl_event eve;
 
 	// Execute kernel
-    err = clEnqueueNDRangeKernel(CommandQueue,
+	V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		reorderKernel,
-        1, NULL,
-        &nbitems,
-        &nblocitems,
-        0, NULL, &eve);
-
-    assert(err == CL_SUCCESS);
+		1, NULL,
+		&nbitems,
+		&nblocitems,
+		0, NULL, &eve), "Could not execute reorder kernel");
     clFinish(CommandQueue);
 
+#if 0 // got our own profiling >:|
     cl_ulong debut, fin;
 
     err = clGetEventProfilingInfo(eve,
@@ -540,6 +537,7 @@ void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
     assert(err == CL_SUCCESS);
 
     reorder_time += (float)(fin - debut) / 1e9f;
+#endif
 
     // swap the old and new vectors of keys
     cl_mem d_temp;
@@ -777,8 +775,17 @@ void CRadixSortTask::AllocateDeviceMemory(cl_context Context) {
 	TODO("Consider using CL_MEM_HOST_whatever");
 	m_dInKeys    = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(DataType) * Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
 	m_dOutKeys   = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(DataType) * Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
-	m_dInPermut  = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t)* Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
-	m_dOutPermut = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t)* Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
+	m_dInPermut  = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t) * Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
+	m_dOutPermut = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t) * Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
+	// allocate the histogram on the GPU
+	m_dHistograms = clCreateBuffer(Context, CL_MEM_READ_WRITE, 
+		sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP, NULL, &clError);
+
+	// allocate the auxiliary histogram on GPU
+	m_dGlobsum = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT, NULL, &clError);
+
+	// temporary vector when the sum is not needed
+	m_dTemp = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT, NULL, &clError);
 
 	V_RETURN_CL(clError, "Error allocating device arrays");
 }
