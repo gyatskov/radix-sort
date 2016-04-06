@@ -82,7 +82,7 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 	CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
     std::string options;
     //options += " -cl-opt-disable";
-
+	options += " -cl-nv-verbose";
     // Compile options string
     {
         ///////////////////////////////////////////////////////
@@ -820,8 +820,6 @@ void CRadixSortTask::CopyDataToDevice(cl_command_queue CommandQueue)
 }
 
 void CRadixSortTask::CopyDataFromDevice(cl_command_queue CommandQueue) {
-	clFinish(CommandQueue);  // wait end of read
-
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
 		m_dInKeys,
 		CL_TRUE, 0,
