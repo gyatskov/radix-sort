@@ -17,8 +17,7 @@
                                 dP                                    d8888P  
 ******************************************************************************/
 
-#ifndef _CREDUCTION_TASK_H
-#define _CREDUCTION_TASK_H
+#pragma once
 
 #include "../Common/IComputeTask.h"
 
@@ -55,7 +54,7 @@ protected:
         static const auto _NUM_ITEMS_PER_GROUP = 64; // number of items in a group
         static const auto _NUM_GROUPS = 16; // the number of virtual processors is _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
         static const auto _NUM_HISTOSPLIT = 512; // number of splits of the histogram
-        static const auto _TOTALBITS = 32;  // number of bits for the integer in the list (max=32)
+        static const uint32_t _TOTALBITS = 32;  // number of bits for the integer in the list (max=32)
         static const auto _NUM_BITS_PER_RADIX = 5;  // number of bits in the radix
         // max size of the sorted vector
         // it has to be divisible by  _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
@@ -72,14 +71,14 @@ protected:
         static const auto _NUM_PASSES = (_TOTALBITS / _NUM_BITS_PER_RADIX); // number of needed passes to sort the list
         static const auto _HISTOSIZE = (_NUM_ITEMS_PER_GROUP * _NUM_GROUPS * _RADIX); // size of the histogram
         // maximal value of integers for the sort to be correct
-        static const auto _MAXINT = (1 << (_TOTALBITS - 1));
+        static const uint32_t _MAXINT = (1 << (_TOTALBITS - 1));
     };
 
     // Helper methods
     void CheckLocalMemory();
     void CheckDivisibility();
     void CopyDataToDevice(cl_command_queue CommandQueue);
-
+	void Resize(cl_command_queue CommandQueue, int nn);
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
     void Histogram(cl_command_queue CommandQueue, int pass);
@@ -129,13 +128,9 @@ protected:
 
     // permutation
     uint32_t h_Permut[Parameters::_NUM_MAX_INPUT_ELEMS];
-    cl_mem d_inPermut;
-    cl_mem d_outPermut;
+    cl_mem m_dInPermut;
+    cl_mem m_dOutPermut;
 
-
-
-
- 
+	// timers
+	float histo_time, scan_time, reorder_time, sort_time, transpose_time;
 };
-
-#endif

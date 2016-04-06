@@ -151,7 +151,7 @@ __kernel void reorder(const __global int* d_inKeys,
     int items = get_local_size(0);
 
     int start = ig *(n / groups / items);
-    int size = n / groups / items;
+    int size  = n / groups / items;
 
     // take the histogram in the cache
     for (int ir = 0; ir < _RADIX; ir++){
