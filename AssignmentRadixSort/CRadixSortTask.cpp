@@ -869,9 +869,6 @@ void CRadixSortTask::ExecuteTask(cl_context Context, cl_command_queue CommandQue
 	} else {
 		V_RETURN_CL(false, "Invalid task selected");
 	}
-
-	//read back the results synchronously.
-	std::fill(m_hResultGPUMap[alternative].begin(), m_hResultGPUMap[alternative].end(), 0);
 }
 
 void CRadixSortTask::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)

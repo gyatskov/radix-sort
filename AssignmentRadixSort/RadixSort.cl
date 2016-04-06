@@ -57,7 +57,6 @@ __kernel void histogram(
   }
 
   barrier(CLK_GLOBAL_MEM_FENCE);
-
 }
 
 // initial transpose of the list for improving
@@ -71,7 +70,6 @@ __kernel void transpose(const __global int* invect,
     __local int* blockmat,
     __local int* blockperm,
     const int tilesize){
-
     int i0 = get_global_id(0)*tilesize;  // first row index
     int j = get_global_id(1);  // column index
 
@@ -99,7 +97,6 @@ __kernel void transpose(const __global int* invect,
         outperm[kt] = blockperm[jloc*tilesize + iloc];
 #endif
     }
-
 }
 
 // each virtual processor reorders its data using the scanned histogram
@@ -165,15 +162,19 @@ __kernel void reorder(const __global int* d_inKeys,
         newpos++;
         loc_histo[shortkey * items + it] = newpos;
     }
+
 }
 
 
 // perform a parallel prefix sum (a scan) on the local histograms
 // (see Blelloch 1990) each workitem worries about two memories
 // see also http://http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
-__kernel void scanhistograms(__global int* histo, __local int* temp, __global int* globsum){
-
-
+// NOTE: currently problematic
+__kernel void scanhistograms(
+    __global int* histo, 
+    __local int* temp, 
+    __global int* globsum){
+#if 1
     int it = get_local_id(0);
     int ig = get_global_id(0);
     int decale = 1;
@@ -182,8 +183,8 @@ __kernel void scanhistograms(__global int* histo, __local int* temp, __global in
 
     // load input into local memory
     // up sweep phase
-    temp[2 * it] = histo[2 * ig];
-    temp[2 * it + 1] = histo[2 * ig + 1];
+    temp[it << 1] = histo[ig << 1];
+    temp[(it << 1) + 1] = histo[(ig << 1) + 1];
 
     // parallel prefix sum (algorithm of Blelloch 1990) 
     for (int d = n >> 1; d > 0; d >>= 1) {
@@ -224,10 +225,10 @@ __kernel void scanhistograms(__global int* histo, __local int* temp, __global in
     // write results to device memory
 
     histo[(ig << 1)]       = temp[it << 1];
-    histo[(ig << 1) + 1]   = temp[it << 1 + 1];
+    histo[(ig << 1) + 1]   = temp[(it << 1) + 1];
 
     barrier(CLK_GLOBAL_MEM_FENCE);
-
+#endif
 }
 
 // use the global sum for updating the local histograms
