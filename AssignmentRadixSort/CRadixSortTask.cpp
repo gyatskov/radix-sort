@@ -211,7 +211,7 @@ void CRadixSortTask::ComputeCPU()
         // Reference sorting (STL quicksort):
         //std::sort(m_resultCPU.begin(), m_resultCPU.end());
 
-		// Reference sorting (radixsort):
+		// Reference sorting implementation on CPU (radixsort):
 		radixsort(hostData.m_resultCPU);
     }
 	timer.Stop();
@@ -273,7 +273,7 @@ void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
 
     clFinish(CommandQueue);
 
-#if 0 // got our own profiling >:|
+#ifdef MORE_PROFILING
     cl_ulong debut, fin;
 
     err = clGetEventProfilingInfo(eve,
@@ -329,7 +329,7 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     assert(err == CL_SUCCESS);
     clFinish(CommandQueue);
 
-#if 0 // got our own profiling >:|
+#ifdef MORE_PROFILING
     cl_ulong debut, fin;
 
     err = clGetEventProfilingInfo(eve,
@@ -367,7 +367,7 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     assert(err == CL_SUCCESS);
     clFinish(CommandQueue);
 
-#if 0 // got our own profiling >:|
+#ifdef MORE_PROFILING
     err = clGetEventProfilingInfo(eve,
         CL_PROFILING_COMMAND_QUEUED,
         sizeof(cl_ulong),
@@ -402,7 +402,7 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
 
     clFinish(CommandQueue);
 
-#if 0 // got our own profiling >:|
+#ifdef MORE_PROFILING
     err = clGetEventProfilingInfo(eve,
         CL_PROFILING_COMMAND_QUEUED,
         sizeof(cl_ulong),
@@ -481,7 +481,7 @@ void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
 		0, NULL, &eve), "Could not execute reorder kernel");
     clFinish(CommandQueue);
 
-#if 0 // got our own profiling >:|
+#ifdef MORE_PROFILING
     cl_ulong debut, fin;
 
     err = clGetEventProfilingInfo(eve,
