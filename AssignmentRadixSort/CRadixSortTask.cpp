@@ -158,7 +158,7 @@ void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueu
 // A function to do counting sort of arr[] according to
 // the digit represented by exp.
 template <typename ElemType>
-void countSort(std::vector<ElemType>& arr, int exp)
+void countSort(std::vector<ElemType>& arr, uint64_t exp)
 {
     const auto n = static_cast<int64_t>(arr.size());
 	std::vector<ElemType> output(n, 0); // output array
@@ -184,9 +184,7 @@ void countSort(std::vector<ElemType>& arr, int exp)
 
 	// Copy the output array to arr[], so that arr[] now
 	// contains sorted numbers according to current digit
-	for (i = 0; i < n; i++) {
-		arr[i] = output[i];
-	}
+    std::copy(output.begin(), output.end(), arr.begin());
 }
 
 // The main function to that sorts arr[] of size n using
@@ -195,12 +193,12 @@ template<typename ElemType>
 void radixsort(std::vector<ElemType>& arr)
 {
 	// Find the maximum number to know number of digits
-	const auto m = std::max_element(arr.begin(), arr.end());
+	const auto m = *std::max_element(arr.begin(), arr.end());
 
 	// Do counting sort for every digit. Note that instead
 	// of passing digit number, exp is passed. exp is 10^i
 	// where i is current digit number
-	for (int exp = 1; *m / static_cast<ElemType>(exp) > 0; exp *= 10) {
+    for (uint64_t exp = 1; static_cast<uint64_t>(m) / exp > 0; exp *= 10) {
 		countSort(arr, exp);
 	}
 }
@@ -214,7 +212,7 @@ void CRadixSortTask::ComputeCPU()
 
 	const unsigned int NUM_ITERATIONS = 10;
     for (auto j = 0; j < NUM_ITERATIONS; j++) {
-        hostData.m_resultCPU = hostData.m_hKeys;
+        std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_resultCPU.begin());
 
         // Reference sorting (STL quicksort):
         //std::sort(m_resultCPU.begin(), m_resultCPU.end());
