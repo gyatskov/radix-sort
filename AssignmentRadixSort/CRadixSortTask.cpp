@@ -11,13 +11,11 @@
 
 using namespace std;
 
-///////////////////////////////////////////////////////////////////////////////
-// CReductionTask
-
+//#define MORE_PROFILING
 
 CRadixSortTask::CRadixSortTask(size_t ArraySize)
 	:
-    nkeys(ArraySize),
+    nkeys(static_cast<decltype(nkeys)>(ArraySize)),
 	nkeys_rounded(Parameters::_NUM_MAX_INPUT_ELEMS),
 
     histo_time(0),
@@ -275,7 +273,7 @@ void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
 
 #ifdef MORE_PROFILING
     cl_ulong debut, fin;
-
+    cl_int err;
     err = clGetEventProfilingInfo(eve,
         CL_PROFILING_COMMAND_QUEUED,
         sizeof(cl_ulong),
