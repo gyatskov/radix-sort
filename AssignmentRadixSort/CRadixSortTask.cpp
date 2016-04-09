@@ -455,38 +455,24 @@ void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
 
 	// set kernel arguments
 	{
-        err = clSetKernelArg(reorderKernel, 0, sizeof(cl_mem), &deviceData.m_dInKeys);
-		assert(err == CL_SUCCESS);
-
-        err = clSetKernelArg(reorderKernel, 1, sizeof(cl_mem), &deviceData.m_dOutKeys);
-		assert(err == CL_SUCCESS);
-
-        err = clSetKernelArg(reorderKernel, 2, sizeof(cl_mem), &deviceData.m_dHistograms);
-		assert(err == CL_SUCCESS);
-
-		err = clSetKernelArg(reorderKernel, 3, sizeof(pass), &pass);
-		assert(err == CL_SUCCESS);
-
-        err = clSetKernelArg(reorderKernel, 4, sizeof(cl_mem), &deviceData.m_dInPermut);
-		assert(err == CL_SUCCESS);
-
-        err = clSetKernelArg(reorderKernel, 5, sizeof(cl_mem), &deviceData.m_dOutPermut);
-		assert(err == CL_SUCCESS);
-
-		err = clSetKernelArg(reorderKernel, 6,
+        V_RETURN_CL(clSetKernelArg(reorderKernel, 0, sizeof(cl_mem), &deviceData.m_dInKeys), "Could not set input keys for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, 1, sizeof(cl_mem), &deviceData.m_dOutKeys), "Could not set output keys for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, 2, sizeof(cl_mem), &deviceData.m_dHistograms), "Could not set histograms for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, 3, sizeof(pass), &pass), "Could not set pass for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, 4, sizeof(cl_mem), &deviceData.m_dInPermut), "Could not set input permutation for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, 5, sizeof(cl_mem), &deviceData.m_dOutPermut), "Could not set output permutation for reorder kernel.");
+		V_RETURN_CL(clSetKernelArg(reorderKernel, 6,
 			sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP,
-			NULL); // mem cache
-		assert(err == CL_SUCCESS);
+            NULL), "Could not set local memory for reorder kernel."); // mem cache
 
-		err = clSetKernelArg(reorderKernel, 7, sizeof(nkeys_rounded), &nkeys_rounded);
-		assert(err == CL_SUCCESS);
+        V_RETURN_CL(clSetKernelArg(reorderKernel, 7, sizeof(nkeys_rounded), &nkeys_rounded), "Could not set number of input keys for reorder kernel.");
 	}
 
 	assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
 
     cl_event eve;
 
-	// Execute kernelwr
+	// Execute kernel
 	V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		reorderKernel,
 		1, NULL,
