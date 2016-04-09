@@ -1,9 +1,12 @@
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifndef DataType
+#define DataType int
+#endif
 
 // compute the histogram for each radix and each virtual processor for the pass
 __kernel void histogram(
-     const __global int* d_Keys,
+            const __global DataType* d_Keys,
 			__global int* d_Histograms,
 			const int pass,
 			__local int* loc_histo,
@@ -27,7 +30,8 @@ __kernel void histogram(
   int sublist_size  = n/groups/items; // size of the sub-list
   int sublist_start = ig * sublist_size; // beginning of the sub-list
 
-  int key,shortkey,k;
+  DataType key;
+  int shortkey, k;
 
   // compute the index
   // the computation depends on the transposition
@@ -100,8 +104,8 @@ __kernel void transpose(const __global int* invect,
 }
 
 // each virtual processor reorders its data using the scanned histogram
-__kernel void reorder(const __global int* d_inKeys,
-    __global int* d_outKeys,
+__kernel void reorder(const __global DataType* d_inKeys,
+    __global DataType* d_outKeys,
     __global int* d_Histograms,
     const int pass,
     __global int* d_inPermut,
@@ -127,7 +131,7 @@ __kernel void reorder(const __global int* d_inKeys,
     barrier(CLK_LOCAL_MEM_FENCE);
 
 	int newpos;		// new position of element
-	int key;		// key element
+	DataType key;	// key element
 	int shortkey;	// key element within cache (cache line)
 	int k;			// global position within input elements
 	int newpost;	// new position of element (transposed)

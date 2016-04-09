@@ -2,11 +2,13 @@
 
 #include "../Common/CLUtil.h"
 #include "../Common/CTimer.h"
+#include "../Common/CLTypeInformation.h"
 
 #include <random>
 #include <algorithm>
 #include <numeric>
 #include <functional>
+#include <type_traits>
 #include <cassert>
 
 using namespace std;
@@ -30,10 +32,16 @@ CRadixSortTask::~CRadixSortTask()
 }
 
 template<typename T>
-void appendToOptions(std::string& dst, const std::string& key, const T& value) {
+typename std::enable_if<std::is_integral<T>::value>::type
+    appendToOptions(std::string& dst, const std::string& key, const T value) {
     dst += " -D" + key + "=" + to_string(value);
 }
 
+template <typename T>
+typename std::enable_if<!std::is_integral<T>::value>::type
+    appendToOptions(std::string& dst, const std::string& key, const T str) {
+    dst += " -D" + key + "=" + string(str);
+}
 
 std::string CRadixSortTask::buildOptions()
 {
@@ -69,44 +77,50 @@ std::string CRadixSortTask::buildOptions()
         appendToOptions(options, "_HISTOSIZE", Parameters::_HISTOSIZE);// size of the histogram
         // maximal value of integers for the sort to be correct
         appendToOptions(options, "_MAXINT", Parameters::_MAXINT);
+        
+        //appendToOptions(options, "DataType", TypeNameString<DataType>::name);
     }
     return options;
 }
 
 bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 {
-	// CPU resources
-	std::string seedStr("nico ist schmutz :)");
-	std::seed_seq seed(seedStr.begin(), seedStr.end());
-	std::mt19937 generator(seed);
-	std::uniform_int_distribution<DataType> dis(0, std::numeric_limits<DataType>::max());
-	// fill the array with some values
+    // CPU resources
+    std::string seedStr("nico ist doppelschmutz :)");
+    std::seed_seq seed(seedStr.begin(), seedStr.end());
+    std::mt19937 generator(seed);
+    std::uniform_int_distribution<DataType> dis(0, std::numeric_limits<DataType>::max());
+    // fill the array with some values
     std::generate(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), std::bind(dis, generator));
-	std::iota(hostData.h_Permut.begin(), hostData.h_Permut.end(), 0);
+    std::iota(hostData.h_Permut.begin(), hostData.h_Permut.end(), 0);
     std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_hCheckKeys.begin());
-	//for (size_t i = 0; i < Parameters::_NUM_MAX_INPUT_ELEMS; i++) {
-	//	//m_hInput[i] = m_N - i;			// Use this for debugging
-	//	// Mersienne twister
-	//	m_hKeys[i] = dis(generator);
-	//	//m_hInput[i] = rand() & 15;
-	//}
+    //for (size_t i = 0; i < Parameters::_NUM_MAX_INPUT_ELEMS; i++) {
+    //	//m_hInput[i] = m_N - i;			// Use this for debugging
+    //	// Mersienne twister
+    //	m_hKeys[i] = dis(generator);
+    //	//m_hInput[i] = rand() & 15;
+    //}
 
-	//std::copy(m_hInput.begin(),
-	//	m_hInput.begin() + 100,
-	//	std::ostream_iterator<DataType>(std::cout, "\n"));
+    //std::copy(m_hInput.begin(),
+    //	m_hInput.begin() + 100,
+    //	std::ostream_iterator<DataType>(std::cout, "\n"));
 
-	CheckLocalMemory(Device);
-	AllocateDeviceMemory(Context);
+    CheckLocalMemory(Device);
+    AllocateDeviceMemory(Context);
 
-	//load and compile kernels
-	string programCode;
-	size_t programSize = 0;
+    //load and compile kernels
+    {
+        string programCode;
+        string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::name);
+        programCode += dataTypeDefine + "\n";
+        size_t programSize = 0;
 
-	CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
-    const auto options = buildOptions();
-	deviceData.m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, options);
-    if (deviceData.m_Program == nullptr) {
-        return false;
+        CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
+        const auto options = buildOptions();
+        deviceData.m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, options);
+        if (deviceData.m_Program == nullptr) {
+            return false;
+        }
     }
 
 	cl_int clError;
