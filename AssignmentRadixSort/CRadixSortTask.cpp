@@ -149,8 +149,7 @@ void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueu
 	Resize(CommandQueue, nkeys);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
 
-	//TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
-    //TestPerformance(Context, CommandQueue, LocalWorkSize, 1);
+	TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
 }
 
 ////////////// RADIX SORT //////////////////////
@@ -844,7 +843,7 @@ void CRadixSortTask::ExecuteTask(cl_context Context, cl_command_queue CommandQue
 
 void CRadixSortTask::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
 {
-    cout << "Testing performance of task " << deviceData.kernelNames[Task] << endl;
+    cout << "Testing performance of GPU task " << deviceData.kernelNames[Task] << endl;
 
     //finish all before we start measuring the time
     V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
@@ -853,12 +852,14 @@ void CRadixSortTask::TestPerformance(cl_context Context, cl_command_queue Comman
     timer.Start();
 
     //run the kernel N times
-    unsigned int nIterations = 100;
-    for (unsigned int i = 0; i < nIterations; i++) {
+    const unsigned int nIterations = 100;
+    for (auto i = 0; i < nIterations; i++) {
         //run selected task
         switch (Task) {
         case 0:
+            CopyDataToDevice(CommandQueue);
             RadixSort(Context, CommandQueue, LocalWorkSize);
+            CopyDataFromDevice(CommandQueue);
             break;
         }
     }
