@@ -21,7 +21,7 @@ bool CAssignment2::DoCompute()
 	cout<<"Running radix sort task..."<<endl<<endl;
 	{
 		size_t LocalWorkSize[3] = {1, 1, 1}; // LocalWorkSize does not mean anything right now
-		CRadixSortTask radixSort(1024); // 1024 does not mean anything, right now
+		CRadixSortTask radixSort(1 << 19);
         RunComputeTask(radixSort, LocalWorkSize);
 	}
 

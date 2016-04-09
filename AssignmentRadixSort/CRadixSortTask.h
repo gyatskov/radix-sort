@@ -1,35 +1,17 @@
-/******************************************************************************
-						 .88888.   888888ba  dP     dP
-						 d8'   `88  88    `8b 88     88
-						 88        a88aaaa8P' 88     88
-						 88   YP88  88        88     88
-						 Y8.   .88  88        Y8.   .8P
-						 `88888'   dP        `Y88888P'
-
-
-						 a88888b.                                         dP   oo
-						 d8'   `88                                         88
-						 88        .d8888b. 88d8b.d8b. 88d888b. dP    dP d8888P dP 88d888b. .d8888b.
-						 88        88'  `88 88'`88'`88 88'  `88 88    88   88   88 88'  `88 88'  `88
-						 Y8.   .88 88.  .88 88  88  88 88.  .88 88.  .88   88   88 88    88 88.  .88
-						 Y88888P' `88888P' dP  dP  dP 88Y888P' `88888P'   dP   dP dP    dP `8888P88
-						 88                                        .88
-						 dP                                    d8888P
-						 ******************************************************************************/
-
 #pragma once
 
 #include "../Common/IComputeTask.h"
+#include "ComputeDeviceData.hpp"
 
 #include <vector>
 #include <map>
 #include <cstdint>
 
-//! A2/T1: Parallel reduction
+/// Parallel radix sort
 class CRadixSortTask : public IComputeTask
 {
 public:
-	using DataType = uint32_t;
+    using DataType = uint32_t;
 
 	CRadixSortTask(size_t ArraySize);
 
@@ -49,7 +31,8 @@ protected:
 		static const auto _NUM_ITEMS_PER_GROUP = 64; // number of items in a group
 		static const auto _NUM_GROUPS = 16; // the number of virtual processors is _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
 		static const auto _NUM_HISTOSPLIT = 512; // number of splits of the histogram
-		static const uint32_t _TOTALBITS = 32;  // number of bits for the integer in the list (max=32)
+		//static const uint32_t _TOTALBITS = 32;  // number of bits for the integer in the list (max=32)
+        static const uint32_t _TOTALBITS = sizeof(DataType) << 3;  // number of bits for the integer in
 		static const auto _NUM_BITS_PER_RADIX = 4;  // number of bits in the radix
 		// max size of the sorted vector
 		// it has to be divisible by  _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
@@ -91,39 +74,33 @@ protected:
 	//NOTE: we have two memory address spaces, so we mark pointers with a prefix
 	//to avoid confusions: 'h' - host, 'd' - device
 
-	// results
-	std::vector<DataType> m_resultCPU;
+    // list of keys
+    uint32_t nkeys; // actual number of keys
+    uint32_t nkeys_rounded; // next multiple of _ITEMS*_GROUPS
 
-	//OpenCL program and kernels
-	cl_program			m_Program;
+    struct HostData {
+        HostData() :
+            m_hKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
+            m_hCheckKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
+            h_Permut(Parameters::_NUM_MAX_INPUT_ELEMS),
+            m_hHistograms(Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP),
+            m_hGlobsum(Parameters::_NUM_HISTOSPLIT),
+            m_resultCPU(Parameters::_NUM_MAX_INPUT_ELEMS)
+        {}
 
-	std::vector<std::string> kernelNames;
-	std::vector<std::string> alternatives;
+        // results
+        std::vector<DataType> m_resultCPU;
+        std::vector<DataType> m_hKeys;
+        std::vector<DataType> m_hCheckKeys; // a copy for check
+        std::vector<uint32_t> m_hHistograms; // histograms on the CPU
+        std::map<std::string, std::vector<DataType>> m_hResultGPUMap;
+        // sum of the local histograms
+        std::vector<uint32_t> m_hGlobsum;
+        // permutation
+        std::vector<uint32_t> h_Permut;
+    } hostData;
 
-	std::map<std::string, cl_kernel> m_kernelMap;
-	std::map<std::string, std::vector<DataType>> m_hResultGPUMap;
-	std::map<std::string, cl_mem> m_dMemoryMap; // NOTE: not used yet
-
-	std::vector<uint32_t> m_hHistograms; // histograms on the CPU
-	cl_mem m_dHistograms;                // histograms on the GPU
-
-	// sum of the local histograms
-	std::vector<uint32_t> m_hGlobsum;
-	cl_mem m_dGlobsum;
-	cl_mem m_dTemp;  // in case where the sum is not needed
-
-	// list of keys
-	uint32_t nkeys; // actual number of keys
-	uint32_t nkeys_rounded; // next multiple of _ITEMS*_GROUPS
-	std::vector<DataType> m_hKeys;
-	std::vector<DataType> m_hCheckKeys; // a copy for check
-	cl_mem m_dInKeys;
-	cl_mem m_dOutKeys;
-
-	// permutation
-	std::vector<uint32_t> h_Permut;
-	cl_mem m_dInPermut;
-	cl_mem m_dOutPermut;
+    ComputeDeviceData deviceData;
 
 	// timers
 	float histo_time, scan_time, reorder_time, sort_time, transpose_time;
