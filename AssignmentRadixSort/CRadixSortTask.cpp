@@ -213,12 +213,8 @@ void CRadixSortTask::ComputeCPU()
 	timer.Start();
 
 	const unsigned int NUM_ITERATIONS = 10;
-    for (unsigned int j = 0; j < NUM_ITERATIONS; j++) {
+    for (auto j = 0; j < NUM_ITERATIONS; j++) {
         hostData.m_resultCPU = hostData.m_hKeys;
-        //// Use this only for really basic testing of the actually pointless kernel
-        //for (auto& val : m_resultCPU) {
-        //    val *= val;
-        //}
 
         // Reference sorting (STL quicksort):
         //std::sort(m_resultCPU.begin(), m_resultCPU.end());
@@ -242,7 +238,7 @@ bool CRadixSortTask::ValidateResults()
 #ifdef RADIXSORT_CL_NOT_YET_IMPLEMENTED
 		std::sort(m_hResultGPUMap[kernelName].begin(), m_hResultGPUMap[kernelName].end());
 #endif
-        bool equalData = memcmp(hostData.m_hResultGPUMap[alternative].data(), hostData.m_resultCPU.data(), hostData.m_hResultGPUMap[alternative].size() * sizeof(DataType)) == 0;
+        const bool equalData = memcmp(hostData.m_hResultGPUMap[alternative].data(), hostData.m_resultCPU.data(), sizeof(DataType) * nkeys) == 0;
 
 		if (!equalData)
 		{
@@ -256,7 +252,7 @@ bool CRadixSortTask::ValidateResults()
 
 void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
     size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
-    size_t nbitems = Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP;
+    size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
 
 	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -312,7 +308,7 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
 
     // numbers of processors for the local scan
     // = half the size of the local histograms
-	size_t nbitems = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+	size_t nbitems   = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
 	size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
 
 	const uint32_t maxmemcache = max(Parameters::_NUM_HISTOSPLIT, 
@@ -470,7 +466,7 @@ void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
         V_RETURN_CL(clSetKernelArg(reorderKernel, 0, sizeof(cl_mem), &deviceData.m_dInKeys), "Could not set input keys for reorder kernel.");
         V_RETURN_CL(clSetKernelArg(reorderKernel, 1, sizeof(cl_mem), &deviceData.m_dOutKeys), "Could not set output keys for reorder kernel.");
         V_RETURN_CL(clSetKernelArg(reorderKernel, 2, sizeof(cl_mem), &deviceData.m_dHistograms), "Could not set histograms for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, 3, sizeof(pass), &pass), "Could not set pass for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, 3, sizeof(pass),   &pass), "Could not set pass for reorder kernel.");
         V_RETURN_CL(clSetKernelArg(reorderKernel, 4, sizeof(cl_mem), &deviceData.m_dInPermut), "Could not set input permutation for reorder kernel.");
         V_RETURN_CL(clSetKernelArg(reorderKernel, 5, sizeof(cl_mem), &deviceData.m_dOutPermut), "Could not set output permutation for reorder kernel.");
 		V_RETURN_CL(clSetKernelArg(reorderKernel, 6,
@@ -665,22 +661,25 @@ void CRadixSortTask::Resize(cl_command_queue CommandQueue, int nn) {
     nkeys = nn;
 
     // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
-    int reste = nkeys % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+    int rest = nkeys % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
     nkeys_rounded = nkeys;
 
-    unsigned int pad[Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP];
-    for (int ii = 0; ii < Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP; ii++) {
-        pad[ii] = Parameters::_MAXINT - (unsigned int)1;
-    }
-    if (reste != 0) {
-        nkeys_rounded = nkeys - reste + (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+    std::vector<DataType> pad(Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP, Parameters::_MAXINT - 1);
+
+    if (rest != 0) {
+        nkeys_rounded = nkeys - rest + (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
         // pad the vector with big values
 		assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+
+        const auto blocking = CL_TRUE;
+        const auto offset   = sizeof(DataType) * nkeys;
+        const auto size     = sizeof(DataType) * (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - rest);
 		V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
             deviceData.m_dInKeys,
-			CL_TRUE, sizeof(DataType) * nkeys,
-			sizeof(DataType) *(Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - reste),
-			pad,
+            blocking, 
+            offset,
+			size,
+			pad.data(),
 			0, NULL, NULL),
 			"Could not write input data");
     }

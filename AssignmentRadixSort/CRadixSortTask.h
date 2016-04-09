@@ -48,7 +48,8 @@ protected:
 		static const auto _NUM_PASSES = (_TOTALBITS / _NUM_BITS_PER_RADIX); // number of needed passes to sort the list
 		static const auto _HISTOSIZE = (_NUM_ITEMS_PER_GROUP * _NUM_GROUPS * _RADIX); // size of the histogram
 		// maximal value of integers for the sort to be correct
-		static const uint32_t _MAXINT = (1 << (_TOTALBITS - 1));
+		static const DataType _MAXINT = (1 << (_TOTALBITS - 1));
+        // static const DataType _MAXINT_2 = std::numeric_limits<DataType>::max(); // VS13 does not support constexpr yet ;_;
 	};
 
 	// Helper methods
