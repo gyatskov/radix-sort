@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Common/IComputeTask.h"
-#include "ComputeDeviceData.hpp"
+#include "ComputeDeviceData.h"
 
 #include <vector>
 #include <map>

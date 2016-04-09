@@ -6,7 +6,6 @@ GPU Computing / GPGPU Praktikum source code.
 #include "CAssignment2.h"
 
 #include "CRadixSortTask.h"
-#include "CScanTask.h"
 
 #include <iostream>
 

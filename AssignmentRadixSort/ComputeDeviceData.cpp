@@ -1,4 +1,4 @@
-#include "ComputeDeviceData.hpp"
+#include "ComputeDeviceData.h"
 #include "../Common/CLUtil.h"
 
 ComputeDeviceData::ComputeDeviceData() :
