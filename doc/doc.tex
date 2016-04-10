@@ -63,12 +63,19 @@ TODO
 The algorithm is based on an open source implementation of P. Helluy \cite{ocl-radix-helluy}. It is seperated into three different phases, which are executed consecutively.
 
 %TODO{Können wir wirklich auch negative integer sortieren????}
-Before we come to the detailed explanation of the algorithm, we first need to define several values. $K(j)$ for $j=0 \dots N-1$, represents the non-sorted input values which consist only of integers. Each of these integers $K(j)$ is between $0$ and $2^b - 1$ and will be called a \textit{key} in the further explanation. Furthermore is the Radix represented by $R = 2^r$ where $r$ is the number of bits necessary representing $R$. Normally we can suppose thath $b$ is divisible by $r$ and so the number of passes is denoted by $p = b/r$. If the number of elements in $K$ can't satisfy this assertion, it will be extended with maximum integer values so that is satisfies it. This extension is done with maximum values, so that the sorting is only influenced in the first phase of the algorithm, which will be explained in the next sections.
+Before we come to the detailed explanation of the algorithm, we first need to define several values. $K(j)$ for $j=0 \dots N-1$, represents the non-sorted input values which consist only of integers. Each of these integers $K(j)$ is between $0$ and $2^b - 1$ and will be called a \textit{key} in the further explanation. Furthermore is the Radix represented by $R = 2^r$ where $r$ is the number of bits necessary representing $R$. We suppose thath $b$ is divisible by $r$ and so the number of passes is denoted by $p = b/r$. This assumption can be satisfied by an appropriate definition of $r$, or the extension of the input list by adding keys which represent the biggest possible values. This extension is done with maximum values, so that the sorting is only influenced in the first phase of the algorithm, which will be explained in the next sections.
+
+%If the number of elements in $K$ can't satisfy this assertion, it will be extended with maximum integer values so that is satisfies it. This extension is done with maximum values, so that the sorting is only influenced in the first phase of the algorithm, which will be explained in the next sections.
 
 Each pass $q=0 \dots p-1$ of the algorithm consists in sorting the list according to the $q^{th}$ digit (in base $R$) $K(j)_q$. It is important to say, that each pass sorts the corresponding elements in a stable manner. So the work done in each pass is not corrupted by previous passes and will not corrupt following passes.
 
 \subsection{Histograming}
-This first phase of the algorithm is in charge of calculating the so called \textit{Histograms}.
+This first phase of the algorithm is in charge of calculating the so called \textit{Histograms}. A histogram represents the number of occuring Radix in the given list of elements $K$. To do this fully parallel, the porcessing units are seperated in Groups $G$ with Items $I$, where an Item represents a Processor. So based on a GPU Architecture, the total amount of available Processing Units is $GI$. As said earlier, for the explanation we can suppose, that $N=GI$. If this is (most likely) not the case in a real scenario, the data should be extended by keys which represent the biggest possible values, so that it fits the assertion. 
+
+%TODO Geschickte Groupwahl etc noch einbringen.
+
+
+
 
 \subsection{Scanning}
 

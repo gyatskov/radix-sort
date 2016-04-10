@@ -58,6 +58,7 @@ __kernel void histogram(
   barrier(CLK_LOCAL_MEM_FENCE);
 
   // copy the local histogram to the global one
+  // in this case the global histo is the group histo.
   for(int ir = 0; ir < _RADIX; ir++) {
     d_Histograms[items * (ir * groups + gr) + it] = loc_histo[ir * items + it];
   }
