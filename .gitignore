@@ -4,3 +4,5 @@ build
 *.aux
 *.log
 *.out
+*.bbl
+*.blg

@@ -13,7 +13,7 @@
   baseline=(current bounding box.center)
 }
 
-\newcommand{\doctype}{Parallel Radix Sort}
+\newcommand{\doctype}{Parallel Radix Sort on OpenCL}
 
 \usepackage{hyperref}
 \hypersetup{
@@ -25,7 +25,7 @@
   bookmarksnumbered,
   bookmarksopen,
   pdftitle={\doctype},
-  pdfauthor={Michael Axtmann},
+  pdfauthor={Hennadiy Yatskov, Nico Mürdter},
   pdfsubject={},
   pdfkeywords={},
 }
@@ -36,10 +36,10 @@
 \usepackage{breakurl}
 
 \title{\doctype}
-\author{Hennadiy Yatskov, Nico Mürdter}
+\author{Hennadiy Yatskov\\ Nico Mürdter}
 \institute{
 Karlsruhe Institute of Technology, Karlsruhe, Germany\\
-\email{hennadiy.yatskov@student.kit.edu, nico.muerdter@student.kit.edu}}
+\email{hennadiy.yatskov@student.kit.edu\\ nico.muerdter@student.kit.edu}}
 
 \begin{document}
 
@@ -53,18 +53,32 @@ Karlsruhe Institute of Technology, Karlsruhe, Germany\\
 \maketitle
 
 \begin{abstract}
-Compare ... MCSTL und stdlib.
+TODO
 \end{abstract}
 
 % Final Submit TODO: remove this prior to FINAL submission
 \pagestyle{plain}
 
 \section{Algorithm}
-Explain your algorithm.
+The algorithm is based on an open source implementation of P. Helluy \cite{ocl-radix-helluy}. It is seperated into three different phases, which are executed consecutively.
 
-\section{Inplementation Details}
+%TODO{Können wir wirklich auch negative integer sortieren????}
+Before we come to the detailed explanation of the algorithm, we first need to define several values. $K(j)$ for $j=0 \dots N-1$, represents the non-sorted input values which consist only of integers. Each of these integers $K(j)$ is between $0$ and $2^b - 1$ and will be called a \textit{key} in the further explanation. Furthermore is the Radix represented by $R = 2^r$ where $r$ is the number of bits necessary representing $R$. Normally we can suppose thath $b$ is divisible by $r$ and so the number of passes is denoted by $p = b/r$. If the number of elements in $K$ can't satisfy this assertion, it will be extended with maximum integer values so that is satisfies it. This extension is done with maximum values, so that the sorting is only influenced in the first phase of the algorithm, which will be explained in the next sections.
 
-Details.
+Each pass $q=0 \dots p-1$ of the algorithm consists in sorting the list according to the $q^{th}$ digit (in base $R$) $K(j)_q$. It is important to say, that each pass sorts the corresponding elements in a stable manner. So the work done in each pass is not corrupted by previous passes and will not corrupt following passes.
+
+\subsection{Histograming}
+This first phase of the algorithm is in charge of calculating the so called \textit{Histograms}.
+
+\subsection{Scanning}
+
+\subsection{Reordering}
+
+\section{Implementation Details}
+
+\subsection{Main Routine}
+
+\subsection{Kernel}
 
 \section{Experimental Results}
 
@@ -202,6 +216,6 @@ Interpretation.
 \end{figure}
 
 \bibliographystyle{splncs03}
-\bibliography{/home/axtman/promotion/latex/library}
+\bibliography{sources}
 
 \end{document}
