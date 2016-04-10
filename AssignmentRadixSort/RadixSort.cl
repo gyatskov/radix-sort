@@ -20,7 +20,7 @@ __kernel void histogram(
   int items  = get_local_size(0);
 
   // initialize the local histograms to zero
-  for(int ir=0; ir<_RADIX; ir++) {
+  for(int ir = 0; ir < _RADIX; ir++) {
     loc_histo[ir * items + it] = 0;
   }
 
@@ -62,6 +62,7 @@ __kernel void histogram(
     d_Histograms[items * (ir * groups + gr) + it] = loc_histo[ir * items + it];
   }
 
+  // TODO: Check if this barrier here is really necessary.
   barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
@@ -168,7 +169,6 @@ __kernel void reorder(const __global DataType* d_inKeys,
         newpos++;
         loc_histo[shortkey * items + it] = newpos;
     }
-
 }
 
 
@@ -190,7 +190,8 @@ __kernel void scanhistograms(
     temp[(it << 1)]       = histo[(ig << 1)];
     temp[(it << 1) + 1] = histo[(ig << 1) + 1];
 
-    // parallel prefix sum (algorithm of Blelloch 1990) 
+    // parallel prefix sum (algorithm of Blelloch 1990)
+    // This loop runs log2(n) times
     for (int d = n >> 1; d > 0; d >>= 1) {
         barrier(CLK_LOCAL_MEM_FENCE);
         if (it < d) {
@@ -210,6 +211,7 @@ __kernel void scanhistograms(
     }
 
     // down sweep phase
+    // This loop runs log2(n) times
     for (int d = 1; d < n; d <<= 1){
         decale >>= 1;
         barrier(CLK_LOCAL_MEM_FENCE);
@@ -222,7 +224,6 @@ __kernel void scanhistograms(
             temp[ai] = temp[bi];
             temp[bi] += t;
         }
-
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -230,6 +231,7 @@ __kernel void scanhistograms(
     histo[(ig << 1)]       = temp[(it << 1)];
     histo[(ig << 1) + 1]   = temp[(it << 1) + 1];
 
+    // TODO: Check if this barrier here is really necessary.
     barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
@@ -241,13 +243,12 @@ __kernel void pastehistograms(
     int ig = get_global_id(0);
     int gr = get_group_id(0);
 
-    int s;
-
-    s = globsum[gr];
+    int s = globsum[gr];
 
     // write results to device memory
     histo[(ig << 1)]     += s;
     histo[(ig << 1) + 1] += s;
 
+    // TODO: Check if this barrier here is really necessary.
     barrier(CLK_GLOBAL_MEM_FENCE);
 }
