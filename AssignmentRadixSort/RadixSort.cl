@@ -6,10 +6,10 @@
 
 // compute the histogram for each radix and each virtual processor for the pass
 __kernel void histogram(
-            const __global DataType* d_Keys,
-			__global int* d_Histograms,
+            const __global DataType* restrict d_Keys,
+			      __global int*      restrict d_Histograms,
 			const int pass,
-			__local int* loc_histo,
+			       __local int* loc_histo,
 			const int n) {
   int it = get_local_id(0);  // i local number of the processor
   int ig = get_global_id(0); // global number = i + g I
@@ -107,13 +107,14 @@ __kernel void transpose(const __global int* invect,
 }
 
 // each virtual processor reorders its data using the scanned histogram
-__kernel void reorder(const __global DataType* d_inKeys,
-    __global DataType* d_outKeys,
-    __global int* d_Histograms,
+__kernel void reorder(
+    const __global DataType* restrict d_inKeys,
+          __global DataType* restrict d_outKeys,
+    const __global int* d_Histograms,
     const int pass,
-    __global int* d_inPermut,
-    __global int* d_outPermut,
-    __local int* loc_histo,
+          __global int* d_inPermut,
+          __global int* d_outPermut,
+          __local  int* loc_histo,
     const int n){
 
     int it = get_local_id(0);	// 
@@ -238,8 +239,8 @@ __kernel void scanhistograms(
 // use the global sum for updating the local histograms
 // each work item updates two values
 __kernel void pastehistograms(
-    __global int* histo, 
-    __global int* globsum) {
+          __global int* restrict histo, 
+    const __global int* restrict globsum) {
     int ig = get_global_id(0);
     int gr = get_group_id(0);
 
