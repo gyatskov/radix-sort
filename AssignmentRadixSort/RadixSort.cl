@@ -46,7 +46,9 @@ __kernel void histogram(
 
     // extract the group of _BITS bits of the pass
     // the result is in the range 0.._RADIX-1
-    shortkey=(( key >> (pass * _BITS)) & (_RADIX-1));
+	// _BITS = size of _RADIX in bits. So basically they
+	// represent both the same. 
+    shortkey=(( key >> (pass * _BITS)) & (_RADIX-1)); // _RADIX-1 to get #_BITS "ones"
 
     // increment the local histogram
     loc_histo[shortkey *  items + it ]++;

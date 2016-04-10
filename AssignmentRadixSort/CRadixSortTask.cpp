@@ -86,7 +86,7 @@ std::string CRadixSortTask::buildOptions()
 bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 {
     // CPU resources
-    std::string seedStr("nico ist doppelschmutz :)");
+    std::string seedStr("nico schiebt doppelschmutz in hennadiy's puploch :P");
     std::seed_seq seed(seedStr.begin(), seedStr.end());
     std::mt19937 generator(seed);
     std::uniform_int_distribution<DataType> dis(0, std::numeric_limits<DataType>::max());
