@@ -248,8 +248,8 @@ bool CRadixSortTask::ValidateResults()
 }
 
 void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
+    size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
     size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
-    size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
 
 	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -301,11 +301,11 @@ void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
 }
 
 void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
-    cl_int err = CL_SUCCESS;
-
     // numbers of processors for the local scan
     // = half the size of the local histograms
-	size_t nbitems   = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+    // global work size
+	size_t nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+    // local work size
 	size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
 
 	const uint32_t maxmemcache = max(Parameters::_NUM_HISTOSPLIT, 
@@ -315,26 +315,30 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
     // parts that fit into the local memory)
 
 	auto scanHistogramKernel  = deviceData.m_kernelMap["scanhistograms"];
-	auto pasteHistogramKernel = deviceData.m_kernelMap["pastehistograms"];
-
-	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &deviceData.m_dHistograms), "Could not set histogram argument");
-	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 1, sizeof(uint32_t) * maxmemcache, NULL), "Could not set histogram cache size"); // mem cache
-    V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &deviceData.m_dGlobsum), "Could not set global histogram argument");
-
+    auto pasteHistogramKernel = deviceData.m_kernelMap["pastehistograms"];
+    // Set kernel arguments
+    {
+        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &deviceData.m_dHistograms), "Could not set histogram argument");
+        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 1, sizeof(uint32_t) * maxmemcache, NULL), "Could not set histogram cache size"); // mem cache
+        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &deviceData.m_dGlobsum), "Could not set global histogram argument");
+    }
     cl_event eve;
 
 	// Execute kernel for first scan (local)
-    err = clEnqueueNDRangeKernel(CommandQueue,
+    const cl_uint workDimension = 1;
+    size_t* globalWorkOffset = nullptr;
+    V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		scanHistogramKernel,
-        1, NULL,
+        workDimension,
+        globalWorkOffset,
         &nbitems,
         &nblocitems,
-        0, NULL, &eve);
+        0, NULL, &eve), "Could not execute 1st instance of scanHistogram kernel.");
 
-    assert(err == CL_SUCCESS);
     clFinish(CommandQueue);
 
 #ifdef MORE_PROFILING
+    cl_int err = CL_SUCCESS;
     cl_ulong debut, fin;
 
     err = clGetEventProfilingInfo(eve,
@@ -355,21 +359,26 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
 #endif
 
     // second scan for the globsum
-	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &deviceData.m_dGlobsum), "Could not set global sum parameter");
-	V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &deviceData.m_dTemp), "Could not set temporary parameter");
+    // Set kernel arguments
+    {
+        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &deviceData.m_dGlobsum), "Could not set global sum parameter");
+        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &deviceData.m_dTemp), "Could not set temporary parameter");
+    }
 
-	nbitems = Parameters::_NUM_HISTOSPLIT / 2;
+    // global work size
+	nbitems    = Parameters::_NUM_HISTOSPLIT / 2;
+    // local work size
     nblocitems = nbitems;
 
 	// Execute kernel for second scan (global)
-    err = clEnqueueNDRangeKernel(CommandQueue,
+    V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		scanHistogramKernel,
-        1, NULL,
+        workDimension, 
+        globalWorkOffset,
         &nbitems,
         &nblocitems,
-        0, NULL, &eve);
+        0, NULL, &eve), "Could not execute 2nd instance of scanHistogram kernel.");
 
-    assert(err == CL_SUCCESS);
     clFinish(CommandQueue);
 
 #ifdef MORE_PROFILING
@@ -391,7 +400,9 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
 #endif
 
     // loops again in order to paste together the local histograms
-	nbitems = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+    // global
+	nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+    // local work size
 	nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
 
 	V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, 0, sizeof(cl_mem), &deviceData.m_dHistograms), "Could not set histograms argument");
@@ -400,7 +411,8 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
 	// Execute paste histogram kernel
     V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		pasteHistogramKernel,
-        1, NULL,
+        workDimension, 
+        globalWorkOffset,
         &nbitems,
         &nblocitems,
         0, NULL, &eve), "Could not execute paste histograms kernel");
@@ -427,10 +439,8 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
 }
 
 void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
-    cl_int err = CL_SUCCESS;
-
-	size_t nblocitems	= Parameters::_NUM_ITEMS_PER_GROUP;
-	size_t nbitems		= Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP;
+	size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
+    size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
 
 	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 
@@ -477,16 +487,20 @@ void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
 
     cl_event eve;
 
+    const cl_uint workDimension = 1;
+    const size_t* globalWorkOffset = nullptr;
 	// Execute kernel
 	V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		reorderKernel,
-		1, NULL,
+        workDimension, 
+        globalWorkOffset,
 		&nbitems,
 		&nblocitems,
 		0, NULL, &eve), "Could not execute reorder kernel");
     clFinish(CommandQueue);
 
 #ifdef MORE_PROFILING
+    cl_int err = CL_SUCCESS;
     cl_ulong debut, fin;
 
     err = clGetEventProfilingInfo(eve,
@@ -638,8 +652,8 @@ void CRadixSortTask::CheckLocalMemory(cl_device_id Device) {
     cl_ulong localMem;
 	clGetDeviceInfo(Device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(localMem), &localMem, NULL);
     if (Parameters::VERBOSE) {
-        cout << "Cache size=" << localMem << " Bytes" << endl;
-		cout << "Needed cache=" << sizeof(cl_uint) * Parameters::_RADIX*Parameters::_NUM_ITEMS_PER_GROUP << " Bytes" << endl;
+        cout << "Cache size   = " << localMem << " Bytes." << endl;
+		cout << "Needed cache = " << sizeof(cl_uint) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP << " Bytes." << endl;
     }
 	assert(localMem > sizeof(DataType) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP);
 

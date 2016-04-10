@@ -187,7 +187,7 @@ __kernel void scanhistograms(
 
     // load input into local memory
     // up sweep phase
-    temp[it << 1] = histo[ig << 1];
+    temp[(it << 1)]       = histo[(ig << 1)];
     temp[(it << 1) + 1] = histo[(ig << 1) + 1];
 
     // parallel prefix sum (algorithm of Blelloch 1990) 
@@ -210,7 +210,7 @@ __kernel void scanhistograms(
     }
 
     // down sweep phase
-    for (int d = 1; d < n; d *= 2){
+    for (int d = 1; d < n; d <<= 1){
         decale >>= 1;
         barrier(CLK_LOCAL_MEM_FENCE);
 
