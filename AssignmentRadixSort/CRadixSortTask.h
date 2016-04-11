@@ -11,7 +11,7 @@
 class CRadixSortTask : public IComputeTask
 {
 public:
-    using DataType = uint32_t;
+    using DataType = uint64_t;
 
 	CRadixSortTask(size_t ArraySize);
 
@@ -37,7 +37,7 @@ protected:
 		// max size of the sorted vector
 		// it has to be divisible by  _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
 		// (for other sizes, pad the list with big values) 
-		static const auto _NUM_MAX_INPUT_ELEMS = (1 << 23);  // maximal size of the list  
+		static const auto _NUM_MAX_INPUT_ELEMS = (1U << 16U);  // maximal size of the list  
 		static const auto VERBOSE   = false;
 		static const auto TRANSPOSE = false; // transpose the initial vector (faster memory access)
 		//#define PERMUT  // store the final permutation
@@ -48,7 +48,7 @@ protected:
 		static const auto _NUM_PASSES = (_TOTALBITS / _NUM_BITS_PER_RADIX); // number of needed passes to sort the list
 		static const auto _HISTOSIZE = (_NUM_ITEMS_PER_GROUP * _NUM_GROUPS * _RADIX); // size of the histogram
 		// maximal value of integers for the sort to be correct
-		static const DataType _MAXINT = (1 << (_TOTALBITS - 1));
+		static const DataType _MAXINT = (1ULL << (_TOTALBITS - 1ULL));
         // static const DataType _MAXINT_2 = std::numeric_limits<DataType>::max(); // VS13 does not support constexpr yet ;_;
 	};
 
@@ -86,11 +86,13 @@ protected:
             h_Permut(Parameters::_NUM_MAX_INPUT_ELEMS),
             m_hHistograms(Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP),
             m_hGlobsum(Parameters::_NUM_HISTOSPLIT),
-            m_resultCPU(Parameters::_NUM_MAX_INPUT_ELEMS)
+			m_resultSTLCPU(Parameters::_NUM_MAX_INPUT_ELEMS),
+			m_resultRadixSortCPU(Parameters::_NUM_MAX_INPUT_ELEMS)
         {}
 
         // results
-        std::vector<DataType> m_resultCPU;
+		std::vector<DataType> m_resultSTLCPU;
+        std::vector<DataType> m_resultRadixSortCPU;
         std::vector<DataType> m_hKeys;
         std::vector<DataType> m_hCheckKeys; // a copy for check
         std::vector<uint32_t> m_hHistograms; // histograms on the CPU
