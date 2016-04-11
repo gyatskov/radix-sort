@@ -31,7 +31,8 @@ __kernel void histogram(
   int sublist_start = ig * sublist_size; // beginning of the sub-list
 
   DataType key;
-  int shortkey, k;
+  DataType shortkey;
+  int k;
 
   // compute the index
   // the computation depends on the transposition
@@ -189,7 +190,7 @@ __kernel void scanhistograms(
 
     // load input into local memory
     // up sweep phase
-    temp[(it << 1)]       = histo[(ig << 1)];
+    temp[(it << 1)]     = histo[(ig << 1)];
     temp[(it << 1) + 1] = histo[(ig << 1) + 1];
 
     // parallel prefix sum (algorithm of Blelloch 1990)

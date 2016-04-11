@@ -1,13 +1,15 @@
 #pragma once
 
 #include "../Common/IComputeTask.h"
-#include "ComputeDeviceData.h"
 #include "HostData.h"
 #include "Parameters.h"
 
 #include <vector>
 #include <map>
+#include <memory>
 #include <cstdint>
+
+struct ComputeDeviceData;
 
 /// Parallel radix sort
 class CRadixSortTask : public IComputeTask
@@ -54,8 +56,8 @@ protected:
     uint32_t nkeys; // actual number of keys
     uint32_t nkeys_rounded; // next multiple of _ITEMS*_GROUPS
 
-    HostData		  hostData;
-    ComputeDeviceData deviceData;
+    HostData						   hostData;
+    std::shared_ptr<ComputeDeviceData> deviceData;
 
 	// timers
 	float histo_time, scan_time, reorder_time, sort_time, transpose_time;

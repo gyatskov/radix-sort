@@ -6,7 +6,7 @@
 #include <string>
 
 struct ComputeDeviceData {
-    ComputeDeviceData();
+    ComputeDeviceData(cl_context Context);
     ~ComputeDeviceData();
 
     //OpenCL program and kernels
