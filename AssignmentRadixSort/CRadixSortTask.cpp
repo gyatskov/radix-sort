@@ -106,11 +106,11 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
     //load and compile kernels
     {
         string programCode;
-        string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::name);
-        programCode += dataTypeDefine + "\n";
-        size_t programSize = 0;
+        string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::name) + std::string("\n");
 
+        size_t programSize = 0;
         CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
+		programCode = dataTypeDefine + programCode;
         const auto options = buildOptions();
         deviceData->m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, options);
         if (deviceData->m_Program == nullptr) {
