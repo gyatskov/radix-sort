@@ -29,7 +29,7 @@ HostData::HostData() :
 	// fill the array with some values
 	std::generate(m_distributedRandom.begin(), m_distributedRandom.end(), std::bind(dis, generator));
 
-	const auto& sequenceToBeSorted = m_invertedRange;
+	const auto& sequenceToBeSorted = m_distributedRandom;
 
 	std::copy(sequenceToBeSorted.begin(), sequenceToBeSorted.end(), m_hKeys.begin());
 	std::copy(m_hKeys.begin(), m_hKeys.end(), m_hCheckKeys.begin());

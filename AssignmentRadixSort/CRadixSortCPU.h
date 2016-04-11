@@ -56,12 +56,17 @@ public:
 	static void sort(std::vector<ElemType>& arr)
 	{
 		// Find the maximum number to know number of digits
+		// in O(nkeys)
 		const auto m = *std::max_element(arr.begin(), arr.end());
 
 		// Do counting sort for every digit. Note that instead
 		// of passing digit number, exp is passed. exp is 10^i
 		// where i is current digit number
-		const auto numDigits = static_cast<uint64_t>(std::ceil(std::log(m) / std::log(Radix)));
+		auto numDigits = static_cast<uint64_t>(std::ceil(std::log(m) / std::log(Radix)));
+		// TODO: Adapt for signed integers
+		if (m == 0) {
+			numDigits = 1;
+		}
 		//for (uint64_t exp = 1ULL; std::abs(m) > exp; exp *= Radix) {
 		for (uint64_t exp = 0ULL; exp < numDigits; exp++) {
 			countSort(arr, static_cast<uint64_t>(std::pow(Radix, exp)));
