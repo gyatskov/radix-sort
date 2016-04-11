@@ -135,11 +135,11 @@ __kernel void reorder(
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
-	int newpos;		// new position of element
-	DataType key;	// key element
-	int shortkey;	// key element within cache (cache line)
-	int k;			// global position within input elements
-	int newpost;	// new position of element (transposed)
+	int newpos;			// new position of element
+	DataType key;		// key element
+	DataType shortkey;	// key element within cache (cache line)
+	int k;				// global position within input elements
+	int newpost;		// new position of element (transposed)
 
     for (int j = 0; j < size; j++) {
 #ifdef TRANSPOSE

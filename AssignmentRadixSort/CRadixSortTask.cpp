@@ -5,7 +5,6 @@
 #include "../Common/CTimer.h"
 #include "../Common/CLTypeInformation.h"
 
-#include <random>
 #include <algorithm>
 #include <numeric>
 #include <functional>
@@ -87,14 +86,7 @@ std::string CRadixSortTask::buildOptions()
 bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 {
     // CPU resources
-    std::string seedStr("nico schiebt doppelschmutz in hennadiy's puploch :P");
-    std::seed_seq seed(seedStr.begin(), seedStr.end());
-    std::mt19937 generator(seed);
-    std::uniform_int_distribution<DataType> dis(0, std::numeric_limits<DataType>::max());
-    // fill the array with some values
-    std::generate(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), std::bind(dis, generator));
-    std::iota(hostData.h_Permut.begin(), hostData.h_Permut.end(), 0);
-    std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_hCheckKeys.begin());
+
     //for (size_t i = 0; i < Parameters::_NUM_MAX_INPUT_ELEMS; i++) {
     //	//m_hInput[i] = m_N - i;			// Use this for debugging
     //	// Mersienne twister
