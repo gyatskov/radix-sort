@@ -32,11 +32,11 @@ public:
 		std::vector<size_t> count(NUM_BINS, 0);
 
 		/// If operating on signed integers, the minimum value (which is negative) will be added
-		std::make_unsigned<ElemType>::type summand = - (std::is_signed<ElemType>::value ? std::numeric_limits<ElemType>::min() : 0);
+		ElemType summand = - (std::is_signed<ElemType>::value ? std::numeric_limits<ElemType>::min() : 0);
 
 		// Store count of occurrences in count[]
 		for (i = 0; i < n; i++) {
-			const auto elem_value = (static_cast<std::make_unsigned<ElemType>::type>(arr[i]) + summand);
+			const auto elem_value = static_cast<std::make_unsigned<ElemType>::type>(arr[i] + summand);
 			count[(elem_value / exp) % NUM_BINS]++;
 		}
 
@@ -48,7 +48,7 @@ public:
 
 		// Build the output array
 		for (i = n - 1; i >= 0; i--) {
-			const auto elem_value = (static_cast<std::make_unsigned<ElemType>::type>(arr[i]) + summand);
+			const auto elem_value = static_cast<std::make_unsigned<ElemType>::type>(arr[i] + summand);
 			output[count[( elem_value / exp) % NUM_BINS] - 1] = arr[i];
 			count[(elem_value / exp) % NUM_BINS]--;
 		}
