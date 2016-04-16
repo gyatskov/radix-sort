@@ -62,6 +62,11 @@ public:
 		std::copy(output.begin(), output.end(), arr.begin());
 	}
 
+	template <typename ElemType>
+	static typename std::make_unsigned<ElemType>::type customAbs(ElemType val) {
+		return (val < 0) ? (-val) : (val);
+	}
+
 	//
 	//░░░░░▄▄▄▄▀▀▀▀▀▀▀▀▄▄▄▄▄▄░░░░░░░
 	//░░░░░█░░░░▒▒▒▒▒▒▒▒▒▒▒▒░░▀▀▄░░░░
@@ -90,8 +95,8 @@ public:
 		// Do counting sort for every digit. Note that instead
 		// of passing digit number, exp is passed. exp is 10^i
 		// where i is current digit number
-		auto numDigits = static_cast<uint64_t>(std::ceil(std::log(max_elem) / std::log(NUM_BINS)));
-		// TODO: Adapt for signed integers
+		auto numDigits = static_cast<uint64_t>(std::ceil(std::log(customAbs(max_elem)) / std::log(NUM_BINS)));
+		// TODO: Adapt for signed integers, otherwise log(max_elem) is (minus) infinite
 		if (max_elem == 0) {
 			numDigits = 1;
 		}

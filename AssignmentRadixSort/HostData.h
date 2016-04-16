@@ -5,10 +5,10 @@
 #include <string>
 #include <functional>
 #include <cstdint>
-#include <random>
 #include <algorithm>
-#include <numeric>
+#include <memory>
 
+#include "Dataset.h"
 #include "Parameters.h"
 
 template <typename _DataType>
@@ -16,15 +16,17 @@ struct HostData {
 	using DataType = _DataType;
 	using Parameters = Parameters < DataType > ;
 
-	HostData();
+	HostData(std::shared_ptr<Dataset<DataType>> selectedDataset);
 
 	// results
 	std::vector<DataType> m_resultSTLCPU;
 	std::vector<DataType> m_resultRadixSortCPU;
 
-	std::vector<DataType> m_distributedRandom;
-	std::vector<DataType> m_zeros;
-	std::vector<DataType> m_invertedRange;
+	// data sets
+	std::shared_ptr<Dataset<DataType>> m_selectedDataset;
+
+	// collector of data sets
+	//std::map<std::string, std::vector<DataType>> m_dataSets;
 
 	std::vector<DataType> m_hKeys;
 	std::vector<DataType> m_hCheckKeys; // a copy for check

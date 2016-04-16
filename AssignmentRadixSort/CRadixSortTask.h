@@ -20,7 +20,7 @@ public:
 	using DataType = _DataType;
 	using Parameters = Parameters < DataType > ;
 
-	CRadixSortTask(size_t ArraySize);
+	CRadixSortTask(size_t ArraySize, std::shared_ptr<Dataset<DataType>> dataset);
 
 	virtual ~CRadixSortTask();
 

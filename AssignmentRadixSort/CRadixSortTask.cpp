@@ -17,10 +17,11 @@ using namespace std;
 
 //#define MORE_PROFILING
 template <typename DataType>
-CRadixSortTask<DataType>::CRadixSortTask(size_t ArraySize)
+CRadixSortTask<DataType>::CRadixSortTask(size_t ArraySize, std::shared_ptr<Dataset<DataType>> dataset)
 	:
     nkeys(static_cast<decltype(nkeys)>(ArraySize)),
 	nkeys_rounded(Parameters::_NUM_MAX_INPUT_ELEMS),
+	hostData(dataset),
 
     histo_time(0),
     scan_time(0),
@@ -194,6 +195,7 @@ bool CRadixSortTask<DataType>::ValidateResults()
 
 		const std::string hasPassedCPU = validCPURadixSort ? "passed :)" : "FAILED >:O";
 		const std::string hasPassedGPU = validGPURadixSort ? "passed :)" : "FAILED >:O";
+		cout << "Data set: " << hostData.m_selectedDataset->getName() << std::endl;
 		cout << "Data type: " << TypeNameString<DataType>::stdint_name << std::endl;
 		cout << "Validation of CPU RadixSort has " + hasPassedCPU << std::endl;
 		cout << "Validation of GPU RadixSort has " + hasPassedGPU << std::endl;
