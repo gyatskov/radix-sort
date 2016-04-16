@@ -4,8 +4,8 @@
 #define DataType int
 #endif
 
-#ifndef SUMMAND
-#define SUMMAND (0)
+#ifndef OFFSET
+#define OFFSET (0)
 #endif
 
 #ifndef UnsignedDataType
@@ -51,7 +51,7 @@ __kernel void histogram(
     k = j + sublist_start;
 #endif
 
-    key = d_Keys[k] + SUMMAND;
+    key = d_Keys[k] + OFFSET;
 
     // extract the group of _BITS bits of the pass
     // the result is in the range 0.._RADIX-1
@@ -156,7 +156,7 @@ __kernel void reorder(
 #else
         k = j + start;
 #endif
-        key = d_inKeys[k] + SUMMAND;
+        key = d_inKeys[k] + OFFSET;
         shortkey = ((key >> (pass * _BITS)) & (_RADIX - 1));	// shift element to relevant bit positions
 
         newpos = loc_histo[shortkey * items + it];
@@ -171,7 +171,7 @@ __kernel void reorder(
         newpost = newpos;
 #endif
 
-        d_outKeys[newpost] = key;  // killing line !!!
+        d_outKeys[newpost] = key - OFFSET;
 
 #ifdef PERMUT 
         d_outPermut[newpost] = d_inPermut[k];

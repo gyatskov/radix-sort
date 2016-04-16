@@ -111,8 +111,8 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
         string programCode;
         string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::open_cl_name) + std::string("\n");
 		string unsignedDataTypeDefine = "#define UnsignedDataType " + std::string(TypeNameString< std::make_unsigned<DataType>::type >::open_cl_name) + std::string("\n");
-		const auto SUMMAND = std::is_signed<DataType>::value ? std::numeric_limits<DataType>::max() : 0;
-		string summandDefine = "#define SUMMAND " + std::to_string(SUMMAND) + std::string("\n");
+		const auto OFFSET = -(std::is_signed<DataType>::value ? std::numeric_limits<DataType>::min() : 0);
+		string summandDefine = "#define OFFSET " + std::to_string(OFFSET) + std::string("\n");
         size_t programSize = 0;
         CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
 		programCode = dataTypeDefine + unsignedDataTypeDefine + summandDefine + programCode;

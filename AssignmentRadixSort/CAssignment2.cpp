@@ -19,7 +19,7 @@ bool CAssignment2::DoCompute()
 	cout<<"########################################"<<endl;
 	cout<<"Running radix sort task..."<<endl<<endl;
 	size_t LocalWorkSize[3] = { 1, 1, 1 }; // LocalWorkSize does not mean anything right now
-	const auto problemSize = 1 << 15;
+	const auto problemSize = 1 << 10;
 	{
 		using DataType = uint32_t;
 		CRadixSortTask<DataType> radixSort(problemSize);
