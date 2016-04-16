@@ -25,9 +25,13 @@ HostData::HostData() :
 	std::mt19937 generator(seed);
 
 	/// TODO("Adapt to signed integers, later on.");
-	std::uniform_int_distribution<DataType> dis(0, std::numeric_limits<DataType>::max());
+	std::uniform_int_distribution<DataType> dis(std::numeric_limits<DataType>::min(), std::numeric_limits<DataType>::max());
 	// fill the array with some values
 	std::generate(m_distributedRandom.begin(), m_distributedRandom.end(), std::bind(dis, generator));
+
+	// Ensure that min and max are in the input array
+	*m_distributedRandom.begin()   = std::numeric_limits<DataType>::max();
+	*(m_distributedRandom.end()-1) = std::numeric_limits<DataType>::min();
 
 	const auto& sequenceToBeSorted = m_distributedRandom;
 

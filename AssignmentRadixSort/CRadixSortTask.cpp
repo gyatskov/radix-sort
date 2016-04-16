@@ -183,8 +183,8 @@ bool CRadixSortTask::ValidateResults()
 		const bool validCPURadixSort = memcmp(hostData.m_resultRadixSortCPU.data(), hostData.m_resultSTLCPU.data(), sizeof(DataType) * nkeys) == 0;
 		const bool validGPURadixSort = memcmp(hostData.m_hResultGPUMap[alternative].data(), hostData.m_resultSTLCPU.data(), sizeof(DataType) * nkeys) == 0;
 
-		std::string hasPassedCPU = validCPURadixSort ? "passed :)" : "FAILED >:()";
-		std::string hasPassedGPU = validGPURadixSort ? "passed :)" : "FAILED >:()";
+		const std::string hasPassedCPU = validCPURadixSort ? "passed :)" : "FAILED >:O";
+		const std::string hasPassedGPU = validGPURadixSort ? "passed :)" : "FAILED >:O";
 		cout << "Validation of CPU RadixSort has " + hasPassedCPU << std::endl;
 		cout << "Validation of GPU RadixSort has " + hasPassedGPU << std::endl;
 

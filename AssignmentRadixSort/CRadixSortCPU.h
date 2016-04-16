@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -30,9 +30,13 @@ public:
 		int64_t i = 0;
 		std::vector<size_t> count(NUM_BINS, 0);
 
+		/// If operating on signed integers, the minimum value (which is negative) will be added
+		std::make_unsigned<ElemType>::type summand = - (std::is_signed<ElemType>::value ? std::numeric_limits<ElemType>::min() : 0);
+
 		// Store count of occurrences in count[]
 		for (i = 0; i < n; i++) {
-			count[(arr[i] / exp) % NUM_BINS]++;
+			const auto elem_value = (static_cast<std::make_unsigned<ElemType>::type>(arr[i]) + summand);
+			count[(elem_value / exp) % NUM_BINS]++;
 		}
 
 		// Change count[i] so that count[i] now contains actual
@@ -43,8 +47,9 @@ public:
 
 		// Build the output array
 		for (i = n - 1; i >= 0; i--) {
-			output[count[(arr[i] / exp) % NUM_BINS] - 1] = arr[i];
-			count[(arr[i] / exp) % NUM_BINS]--;
+			const auto elem_value = (static_cast<std::make_unsigned<ElemType>::type>(arr[i]) + summand);
+			output[count[( elem_value / exp) % NUM_BINS] - 1] = arr[i];
+			count[(elem_value / exp) % NUM_BINS]--;
 		}
 
 		// Copy the output array to arr[], so that arr[] now
@@ -52,6 +57,22 @@ public:
 		std::copy(output.begin(), output.end(), arr.begin());
 	}
 
+	//
+	//░░░░░▄▄▄▄▀▀▀▀▀▀▀▀▄▄▄▄▄▄░░░░░░░
+	//░░░░░█░░░░▒▒▒▒▒▒▒▒▒▒▒▒░░▀▀▄░░░░
+	//░░░░█░░░▒▒▒▒▒▒░░░░░░░░▒▒▒░░█░░░
+	//░░░█░░░░░░▄██▀▄▄░░░░░▄▄▄░░░░█░░
+	//░▄▀▒▄▄▄▒░█▀▀▀▀▄▄█░░░██▄▄█░░░░█░
+	//█░▒█▒▄░▀▄▄▄▀░░░░░░░░█░░░▒▒▒▒▒░█
+	//█░▒█░█▀▄▄░░░░░█▀░░░░▀▄░░▄▀▀▀▄▒█
+	//░█░▀▄░█▄░█▀▄▄░▀░▀▀░▄▄▀░░░░█░░█░
+	//░░█░░░▀▄▀█▄▄░█▀▀▀▄▄▄▄▀▀█▀██░█░░
+	//░░░█░░░░██░░▀█▄▄▄█▄▄█▄████░█░░░
+	//░░░░█░░░░▀▀▄░█░░░█░█▀██████░█░░
+	//░░░░░▀▄░░░░░▀▀▄▄▄█▄█▄█▄█▄▀░░█░░
+	//░░░░░░░▀▄▄░▒▒▒▒░░░░░░░░░░▒░░░█░
+	//░░░░░░░░░░▀▀▄▄░▒▒▒▒▒▒▒▒▒▒░░░░█░
+	//░░░░░░░░░░░░░░▀▄▄▄▄▄░░░░░░░░█░░
 	// The main function to that sorts arr[] of size n using
 	// Radix Sort
 	template<typename ElemType>
@@ -59,14 +80,14 @@ public:
 	{
 		// Find the maximum number to know number of digits
 		// in O(nkeys)
-		const auto m = *std::max_element(arr.begin(), arr.end());
+		const auto max_elem = *std::max_element(arr.begin(), arr.end());
 
 		// Do counting sort for every digit. Note that instead
 		// of passing digit number, exp is passed. exp is 10^i
 		// where i is current digit number
-		auto numDigits = static_cast<uint64_t>(std::ceil(std::log(m) / std::log(NUM_BINS)));
+		auto numDigits = static_cast<uint64_t>(std::ceil(std::log(max_elem) / std::log(NUM_BINS)));
 		// TODO: Adapt for signed integers
-		if (m == 0) {
+		if (max_elem == 0) {
 			numDigits = 1;
 		}
 		//for (uint64_t exp = 1ULL; std::abs(m) > exp; exp *= Radix) {
