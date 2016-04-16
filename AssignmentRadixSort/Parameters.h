@@ -16,7 +16,7 @@ struct Parameters {
 	// max size of the sorted vector
 	// it has to be divisible by  _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
 	// (for other sizes, pad the list with big values) 
-	static const auto _NUM_MAX_INPUT_ELEMS = (1U << 15U);  // maximal size of the list  
+	static const auto _NUM_MAX_INPUT_ELEMS = (1U << 20U);  // maximal size of the list  
 	static const auto VERBOSE   = false;
 	static const auto TRANSPOSE = false; // transpose the initial vector (faster memory access)
 	//#define PERMUT  // store the final permutation

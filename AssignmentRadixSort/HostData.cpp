@@ -41,7 +41,7 @@ HostData<DataType>::HostData() :
 	std::copy(m_hKeys.begin(), m_hKeys.end(), m_hCheckKeys.begin());
 }
 
-template class HostData < int32_t > ;
-template class HostData < int64_t > ;
-template class HostData < uint32_t > ;
-template class HostData < uint64_t > ;
+template struct HostData < int32_t > ;
+template struct HostData < int64_t > ;
+template struct HostData < uint32_t > ;
+template struct HostData < uint64_t > ;
