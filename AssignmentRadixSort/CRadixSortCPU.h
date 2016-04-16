@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>
+#include <cstdlib>
+
 
 template <typename DataType>
 class RadixSortCPU {
@@ -26,17 +28,19 @@ public:
 	template <typename ElemType>
 	static void countSort(std::vector<ElemType>& arr, uint64_t exp)
 	{
+		using UnsignedElemType = std::make_unsigned<ElemType>::type;
+
 		const auto n = static_cast<int64_t>(arr.size());
 		std::vector<ElemType> output(n, 0); // output array
 		int64_t i = 0;
 		std::vector<size_t> count(NUM_BINS, 0);
 
 		/// If operating on signed integers, the minimum value (which is negative) will be added
-		ElemType summand = - (std::is_signed<ElemType>::value ? std::numeric_limits<ElemType>::min() : 0);
+		UnsignedElemType offset = -std::numeric_limits<ElemType>::min();
 
 		// Store count of occurrences in count[]
 		for (i = 0; i < n; i++) {
-			const auto elem_value = static_cast<std::make_unsigned<ElemType>::type>(arr[i] + summand);
+			const auto elem_value = static_cast<std::make_unsigned<ElemType>::type>(arr[i] + offset);
 			count[(elem_value / exp) % NUM_BINS]++;
 		}
 
@@ -48,7 +52,7 @@ public:
 
 		// Build the output array
 		for (i = n - 1; i >= 0; i--) {
-			const auto elem_value = static_cast<std::make_unsigned<ElemType>::type>(arr[i] + summand);
+			const auto elem_value = static_cast<std::make_unsigned<ElemType>::type>(arr[i] + offset);
 			output[count[( elem_value / exp) % NUM_BINS] - 1] = arr[i];
 			count[(elem_value / exp) % NUM_BINS]--;
 		}
