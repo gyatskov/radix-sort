@@ -11,8 +11,10 @@
 
 #include "Parameters.h"
 
+template <typename _DataType>
 struct HostData {
-	using DataType = Parameters::DataType;
+	using DataType = _DataType;
+	using Parameters = Parameters < DataType > ;
 
 	HostData();
 

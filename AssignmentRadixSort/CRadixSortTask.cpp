@@ -16,8 +16,8 @@
 using namespace std;
 
 //#define MORE_PROFILING
-
-CRadixSortTask::CRadixSortTask(size_t ArraySize)
+template <typename DataType>
+CRadixSortTask<DataType>::CRadixSortTask(size_t ArraySize)
 	:
     nkeys(static_cast<decltype(nkeys)>(ArraySize)),
 	nkeys_rounded(Parameters::_NUM_MAX_INPUT_ELEMS),
@@ -28,7 +28,8 @@ CRadixSortTask::CRadixSortTask(size_t ArraySize)
     transpose_time(0)
 {}
 
-CRadixSortTask::~CRadixSortTask()
+template <typename DataType>
+CRadixSortTask<DataType>::~CRadixSortTask()
 {
 	ReleaseResources();
 }
@@ -45,7 +46,8 @@ typename std::enable_if<!std::is_integral<T>::value>::type
     dst += " -D" + key + "=" + string(str);
 }
 
-std::string CRadixSortTask::buildOptions()
+template <typename DataType>
+std::string CRadixSortTask<DataType>::buildOptions()
 {
     std::string options;
     //options += " -cl-opt-disable";
@@ -80,12 +82,13 @@ std::string CRadixSortTask::buildOptions()
         // maximal value of integers for the sort to be correct
         appendToOptions(options, "_MAXINT", Parameters::_MAXINT);
         
-        //appendToOptions(options, "DataType", TypeNameString<DataType>::name);
+        //appendToOptions(options, "DataType", TypeNameString<DataType>::open_cl_name);
     }
     return options;
 }
 
-bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
+template <typename DataType>
+bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Context)
 {
     // CPU resources
 
@@ -106,7 +109,7 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
     //load and compile kernels
     {
         string programCode;
-        string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::name) + std::string("\n");
+        string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::open_cl_name) + std::string("\n");
 
         size_t programSize = 0;
         CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
@@ -133,13 +136,15 @@ bool CRadixSortTask::InitResources(cl_device_id Device, cl_context Context)
 	return true;
 }
 
-void CRadixSortTask::ReleaseResources()
+template <typename DataType>
+void CRadixSortTask<DataType>::ReleaseResources()
 {
 	// free device resources
     // implicitly done by destructor of ComputeDeviceData
 }
 
-void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
+template <typename DataType>
+void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
 {
 	Resize(CommandQueue, nkeys);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
@@ -147,7 +152,8 @@ void CRadixSortTask::ComputeGPU(cl_context Context, cl_command_queue CommandQueu
 	TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
 }
 
-void CRadixSortTask::ComputeCPU()
+template <typename DataType>
+void CRadixSortTask<DataType>::ComputeCPU()
 {
 	std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_resultSTLCPU.begin());
 
@@ -162,7 +168,7 @@ void CRadixSortTask::ComputeCPU()
 		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_resultRadixSortCPU.begin());
 
 		// Reference sorting implementation on CPU (radixsort):
-		RadixSortCPU::sort(hostData.m_resultRadixSortCPU);
+		RadixSortCPU<DataType>::sort(hostData.m_resultRadixSortCPU);
     }
 	timer.Stop();
 
@@ -170,7 +176,8 @@ void CRadixSortTask::ComputeCPU()
 	cout << "  average time: " << ms << " ms, throughput: " << 1.0e-6 * (double) Parameters::_NUM_MAX_INPUT_ELEMS / ms << " Gelem/s" <<endl;
 }
 
-bool CRadixSortTask::ValidateResults()
+template <typename DataType>
+bool CRadixSortTask<DataType>::ValidateResults()
 {
 	bool success = true;
 
@@ -185,6 +192,7 @@ bool CRadixSortTask::ValidateResults()
 
 		const std::string hasPassedCPU = validCPURadixSort ? "passed :)" : "FAILED >:O";
 		const std::string hasPassedGPU = validGPURadixSort ? "passed :)" : "FAILED >:O";
+		cout << "Data type: " << TypeNameString<DataType>::stdint_name << std::endl;
 		cout << "Validation of CPU RadixSort has " + hasPassedCPU << std::endl;
 		cout << "Validation of GPU RadixSort has " + hasPassedGPU << std::endl;
 
@@ -194,7 +202,8 @@ bool CRadixSortTask::ValidateResults()
 	return success;
 }
 
-void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
+template <typename DataType>
+void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass) {
     size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
     size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
 
@@ -247,7 +256,8 @@ void CRadixSortTask::Histogram(cl_command_queue CommandQueue, int pass) {
 #endif
 }
 
-void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
+template <typename DataType>
+void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue) {
     // numbers of processors for the local scan
     // = half the size of the local histograms
     // global work size
@@ -385,7 +395,8 @@ void CRadixSortTask::ScanHistogram(cl_command_queue CommandQueue) {
 #endif
 }
 
-void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
+template <typename DataType>
+void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) {
 	size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
     size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
 
@@ -479,9 +490,10 @@ void CRadixSortTask::Reorder(cl_command_queue CommandQueue, int pass) {
     deviceData->m_dOutPermut = d_temp;
 }
 
-// transpose the list for faster memory access
-
-void CRadixSortTask::Transpose(int nbrow, int nbcol) {
+/// transpose the list for faster memory access
+/// >:D >:D >:D
+template <typename DataType>
+void CRadixSortTask<DataType>::Transpose(int nbrow, int nbcol) {
 #if 0 // not yet needed
     const int _TRANSBLOCK = 32; // size of the matrix block loaded into local memory
     int tilesize = _TRANSBLOCK;
@@ -584,8 +596,8 @@ void CRadixSortTask::Transpose(int nbrow, int nbcol) {
 }
 
 /// Check divisibility of works to assign correct amounts of work to groups/work-items.
-
-void CRadixSortTask::CheckDivisibility() {
+template <typename DataType>
+void CRadixSortTask<DataType>::CheckDivisibility() {
     assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
     assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
     assert(Parameters::_NUM_MAX_INPUT_ELEMS % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
@@ -594,7 +606,8 @@ void CRadixSortTask::CheckDivisibility() {
     assert(pow(2, (int)log2(Parameters::_NUM_ITEMS_PER_GROUP)) == Parameters::_NUM_ITEMS_PER_GROUP);
 }
 
-void CRadixSortTask::CheckLocalMemory(cl_device_id Device) {
+template <typename DataType>
+void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device) {
     // check that the local mem is sufficient (suggestion of Jose Luis Cercós Pita)
     cl_ulong localMem;
 	clGetDeviceInfo(Device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(localMem), &localMem, NULL);
@@ -609,8 +622,9 @@ void CRadixSortTask::CheckLocalMemory(cl_device_id Device) {
 	assert(localMem > sizeof(DataType)*maxmemcache);
 }
 
-// resize the sorted vector
-void CRadixSortTask::Resize(cl_command_queue CommandQueue, int nn) {
+/// resize the sorted vector
+template <typename DataType>
+void CRadixSortTask<DataType>::Resize(cl_command_queue CommandQueue, int nn) {
 	assert(nn <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
     if (Parameters::VERBOSE){
@@ -643,7 +657,8 @@ void CRadixSortTask::Resize(cl_command_queue CommandQueue, int nn) {
     }
 }
 
-void CRadixSortTask::RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
+template <typename DataType>
+void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
 {
     CheckDivisibility();
 
@@ -701,12 +716,14 @@ void CRadixSortTask::RadixSort(cl_context Context, cl_command_queue CommandQueue
     }
 }
 
-void CRadixSortTask::AllocateDeviceMemory(cl_context Context) {
+template <typename DataType>
+void CRadixSortTask<DataType>::AllocateDeviceMemory(cl_context Context) {
 	// Done in constructor of ComputeDeviceData :)
-	deviceData = std::make_shared<ComputeDeviceData>(Context);
+	deviceData = std::make_shared<ComputeDeviceData<DataType>>(Context);
 }
 
-void CRadixSortTask::CopyDataToDevice(cl_command_queue CommandQueue)
+template <typename DataType>
+void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 {
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
         deviceData->m_dInKeys,
@@ -729,7 +746,8 @@ void CRadixSortTask::CopyDataToDevice(cl_command_queue CommandQueue)
     clFinish(CommandQueue);  // wait end of read
 }
 
-void CRadixSortTask::CopyDataFromDevice(cl_command_queue CommandQueue) {
+template <typename DataType>
+void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue) {
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dInKeys,
 		CL_TRUE, 0,
@@ -769,7 +787,8 @@ void CRadixSortTask::CopyDataFromDevice(cl_command_queue CommandQueue) {
 	clFinish(CommandQueue);  // wait end of read
 }
 
-void CRadixSortTask::ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const string& alternative)
+template <typename DataType>
+void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const string& alternative)
 {
 	//run selected task
 	if (alternative == "RadixSort_01") {
@@ -781,7 +800,8 @@ void CRadixSortTask::ExecuteTask(cl_context Context, cl_command_queue CommandQue
 	}
 }
 
-void CRadixSortTask::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
+template <typename DataType>
+void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
 {
     cout << "Testing performance of GPU task " << deviceData->kernelNames[Task] << endl;
 
@@ -812,5 +832,13 @@ void CRadixSortTask::TestPerformance(cl_context Context, cl_command_queue Comman
     double ms = timer.GetElapsedMilliseconds() / double(nIterations);
     cout << "  average time: " << ms << " ms, throughput: " << 1.0e-6 * (double)Parameters::_NUM_MAX_INPUT_ELEMS / ms << " Gelem/s" << endl;
 }
+
+/// Template specializations
+/// ONLY these types will be permitted.
+
+template class CRadixSortTask < int32_t >;
+template class CRadixSortTask < int64_t >;
+template class CRadixSortTask < uint32_t >;
+template class CRadixSortTask < uint64_t >;
 
 ///////////////////////////////////////////////////////////////////////////////

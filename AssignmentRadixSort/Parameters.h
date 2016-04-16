@@ -2,9 +2,9 @@
 
 #include <cstdint>
 
+template <typename _DataType>
 struct Parameters {
-	using DataType = uint64_t;
-
+	using DataType = _DataType;
 	///////////////////////////////////////////////////////
 	// these parameters can be changed
 	static const auto _NUM_ITEMS_PER_GROUP = 64; // number of items in a group

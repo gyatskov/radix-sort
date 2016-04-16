@@ -1,7 +1,9 @@
 #include "HostData.h"
 
+#include <cstdint>
 
-HostData::HostData() :
+template <typename DataType>
+HostData<DataType>::HostData() :
 	m_hKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
 	m_hCheckKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
 	h_Permut(Parameters::_NUM_MAX_INPUT_ELEMS),
@@ -38,3 +40,8 @@ HostData::HostData() :
 	std::copy(sequenceToBeSorted.begin(), sequenceToBeSorted.end(), m_hKeys.begin());
 	std::copy(m_hKeys.begin(), m_hKeys.end(), m_hCheckKeys.begin());
 }
+
+template class HostData < int32_t > ;
+template class HostData < int64_t > ;
+template class HostData < uint32_t > ;
+template class HostData < uint64_t > ;

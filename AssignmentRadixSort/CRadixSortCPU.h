@@ -4,10 +4,11 @@
 #include <vector>
 #include <algorithm>
 
-#include "Parameters.h"
-
+template <typename DataType>
 class RadixSortCPU {
 public:
+	using Parameters = Parameters < DataType > ;
+
 	struct uint128_t {
 		uint64_t low;
 		uint64_t high;

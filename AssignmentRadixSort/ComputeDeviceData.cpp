@@ -1,13 +1,11 @@
 #include "ComputeDeviceData.h"
 #include "../Common/CLUtil.h"
 
+#include <cstdint>
 #include <iostream>
 
-#include "Parameters.h"
-
-using DataType = Parameters::DataType;
-
-ComputeDeviceData::ComputeDeviceData(cl_context Context) :
+template <typename DataType>
+ComputeDeviceData<DataType>::ComputeDeviceData(cl_context Context) :
     m_Program(NULL)
 {
     kernelNames.emplace_back("histogram");
@@ -43,7 +41,8 @@ ComputeDeviceData::ComputeDeviceData(cl_context Context) :
 	V_RETURN_CL(clError, "Error allocating device array");
 }
 
-ComputeDeviceData::~ComputeDeviceData() {
+template <typename DataType>
+ComputeDeviceData<DataType>::~ComputeDeviceData() {
     SAFE_RELEASE_MEMOBJECT(m_dInKeys);
     SAFE_RELEASE_MEMOBJECT(m_dOutKeys);
     SAFE_RELEASE_MEMOBJECT(m_dInPermut);
@@ -55,3 +54,8 @@ ComputeDeviceData::~ComputeDeviceData() {
 
     SAFE_RELEASE_PROGRAM(m_Program);
 }
+
+template struct ComputeDeviceData < int32_t >;
+template struct ComputeDeviceData < int64_t >;
+template struct ComputeDeviceData < uint32_t >;
+template struct ComputeDeviceData < uint64_t >;

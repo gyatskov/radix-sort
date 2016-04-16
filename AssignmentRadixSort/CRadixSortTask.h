@@ -9,13 +9,16 @@
 #include <memory>
 #include <cstdint>
 
+template <typename DataType>
 struct ComputeDeviceData;
 
 /// Parallel radix sort
+template <typename _DataType>
 class CRadixSortTask : public IComputeTask
 {
 public:
-	using DataType = Parameters::DataType;
+	using DataType = _DataType;
+	using Parameters = Parameters < DataType > ;
 
 	CRadixSortTask(size_t ArraySize);
 
@@ -44,8 +47,6 @@ protected:
 	void Reorder(cl_command_queue CommandQueue, int pass);
 	void Transpose(int nbrow, int nbcol);
 
-	void RadixSortReadWrite(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
-
 	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& kernel);
 	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int task);
 
@@ -56,8 +57,8 @@ protected:
     uint32_t nkeys; // actual number of keys
     uint32_t nkeys_rounded; // next multiple of _ITEMS*_GROUPS
 
-    HostData						   hostData;
-    std::shared_ptr<ComputeDeviceData> deviceData;
+    HostData<DataType>							 hostData;
+    std::shared_ptr<ComputeDeviceData<DataType>> deviceData;
 
 	// timers
 	float histo_time, scan_time, reorder_time, sort_time, transpose_time;
