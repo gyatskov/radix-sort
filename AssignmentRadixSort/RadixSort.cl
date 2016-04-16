@@ -4,6 +4,14 @@
 #define DataType int
 #endif
 
+#ifndef SUMMAND
+#define SUMMAND (0)
+#endif
+
+#ifndef UnsignedDataType
+#define UnsignedDataType unsigned int
+#endif
+
 // compute the histogram for each radix and each virtual processor for the pass
 __kernel void histogram(
             const __global DataType* restrict d_Keys,
@@ -30,8 +38,8 @@ __kernel void histogram(
   int sublist_size  = n/groups/items; // size of the sub-list
   int sublist_start = ig * sublist_size; // beginning of the sub-list
 
-  DataType key;
-  DataType shortkey;
+  UnsignedDataType key;
+  UnsignedDataType shortkey;
   int k;
 
   // compute the index
@@ -43,7 +51,7 @@ __kernel void histogram(
     k = j + sublist_start;
 #endif
 
-    key = d_Keys[k];
+    key = d_Keys[k] + SUMMAND;
 
     // extract the group of _BITS bits of the pass
     // the result is in the range 0.._RADIX-1
@@ -137,8 +145,8 @@ __kernel void reorder(
     barrier(CLK_LOCAL_MEM_FENCE);
 
 	int newpos;			// new position of element
-	DataType key;		// key element
-	DataType shortkey;	// key element within cache (cache line)
+	UnsignedDataType key;		// key element
+	UnsignedDataType shortkey;	// key element within cache (cache line)
 	int k;				// global position within input elements
 	int newpost;		// new position of element (transposed)
 
@@ -148,7 +156,7 @@ __kernel void reorder(
 #else
         k = j + start;
 #endif
-        key = d_inKeys[k];
+        key = d_inKeys[k] + SUMMAND;
         shortkey = ((key >> (pass * _BITS)) & (_RADIX - 1));	// shift element to relevant bit positions
 
         newpos = loc_histo[shortkey * items + it];
