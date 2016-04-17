@@ -12,7 +12,6 @@ ComputeDeviceData<DataType>::ComputeDeviceData(cl_context Context) :
     kernelNames.emplace_back("scanhistograms");
     kernelNames.emplace_back("pastehistograms");
     kernelNames.emplace_back("reorder");
-    kernelNames.emplace_back("transpose");
 
     alternatives.emplace_back("RadixSort_01");
 

@@ -25,8 +25,7 @@ CRadixSortTask<DataType>::CRadixSortTask(size_t ArraySize, std::shared_ptr<Datas
 
     histo_time(0),
     scan_time(0),
-    reorder_time(0),
-    transpose_time(0)
+    reorder_time(0)
 {}
 
 template <typename DataType>
@@ -69,9 +68,6 @@ std::string CRadixSortTask<DataType>::buildOptions()
 
         if (Parameters::VERBOSE) {
             appendToOptions(options, "VERBOSE", Parameters::VERBOSE);
-        }
-        if (Parameters::TRANSPOSE) {
-            appendToOptions(options, "TRANSPOSE", Parameters::TRANSPOSE); // transpose the initial vector (faster memory access)
         }
         //#define PERMUT  // store the final permutation
         ////////////////////////////////////////////////////////
@@ -494,111 +490,6 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) 
     deviceData->m_dOutPermut = d_temp;
 }
 
-/// transpose the list for faster memory access
-/// >:D >:D >:D
-template <typename DataType>
-void CRadixSortTask<DataType>::Transpose(int nbrow, int nbcol) {
-#if 0 // not yet needed
-    const int _TRANSBLOCK = 32; // size of the matrix block loaded into local memory
-    int tilesize = _TRANSBLOCK;
-
-    // if the matrix is too small, avoid using local memory
-    if (nbrow%tilesize != 0) tilesize = 1;
-    if (nbcol%tilesize != 0) tilesize = 1;
-
-    if (tilesize == 1) {
-        cout << "Warning, small list, avoiding cache..." << endl;
-    }
-
-    cl_int err;
-    auto kernel = m_kernelMap["transpose"];
-    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &deviceData->m_dInKeys);
-    assert(err == CL_SUCCESS);
-
-    err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &deviceData->m_dOutKeys);
-    assert(err == CL_SUCCESS);
-
-    err = clSetKernelArg(kernel, 2, sizeof(uint32_t), &nbcol);
-    assert(err == CL_SUCCESS);
-
-    err = clSetKernelArg(kernel, 3, sizeof(uint32_t), &nbrow);
-    assert(err == CL_SUCCESS);
-
-    err = clSetKernelArg(kernel, 4, sizeof(cl_mem), &deviceData->d_inPermut);
-    assert(err == CL_SUCCESS);
-
-    err = clSetKernelArg(kernel, 5, sizeof(cl_mem), &deviceData->d_outPermut);
-    assert(err == CL_SUCCESS);
-
-    err = clSetKernelArg(kernel, 6, sizeof(uint)*tilesize*tilesize, NULL);
-    assert(err == CL_SUCCESS);
-
-    err = clSetKernelArg(kernel, 7, sizeof(uint)*tilesize*tilesize, NULL);
-    assert(err == CL_SUCCESS);
-
-    err = clSetKernelArg(kernel, 8, sizeof(uint), &tilesize);
-    assert(err == CL_SUCCESS);
-
-    cl_event eve;
-
-    size_t global_work_size[2];
-    size_t local_work_size[2];
-
-    assert(nbrow%tilesize == 0);
-    assert(nbcol%tilesize == 0);
-
-    global_work_size[0] = nbrow / tilesize;
-    global_work_size[1] = nbcol;
-
-    local_work_size[0] = 1;
-    local_work_size[1] = tilesize;
-
-
-    err = clEnqueueNDRangeKernel(CommandQueue,
-        ckTranspose,
-        2,   // two dimensions: rows and columns
-        NULL,
-        global_work_size,
-        local_work_size,
-        0, NULL, &eve);
-
-    //exchange the pointers
-
-    // swap the old and new vectors of keys
-    cl_mem d_temp;
-    d_temp = d_inKeys;
-    d_inKeys = d_outKeys;
-    d_outKeys = d_temp;
-
-    // swap the old and new permutations
-    d_temp = d_inPermut;
-    d_inPermut = d_outPermut;
-    d_outPermut = d_temp;
-
-
-    // timing
-    clFinish(CommandQueue);
-
-    cl_ulong debut, fin;
-
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_QUEUED,
-        sizeof(cl_ulong),
-        (void*)&debut,
-        NULL);
-    assert(err == CL_SUCCESS);
-
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_END,
-        sizeof(cl_ulong),
-        (void*)&fin,
-        NULL);
-    assert(err == CL_SUCCESS);
-
-    transpose_time += (float)(fin - debut) / 1e9;
-#endif
-}
-
 /// Check divisibility of works to assign correct amounts of work to groups/work-items.
 template <typename DataType>
 void CRadixSortTask<DataType>::CheckDivisibility() {
@@ -706,13 +597,6 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
         if (Parameters::VERBOSE) {
             cout << "-------------------" << endl;
         }
-    }
-    
-    if (Parameters::TRANSPOSE) {
-        if (Parameters::VERBOSE) {
-            cout << "Transposing" << endl;
-        }
-        Transpose(nbcol, nbrow);
     }
     
     //sort_time = histo_time + scan_time + reorder_time + transpose_time;

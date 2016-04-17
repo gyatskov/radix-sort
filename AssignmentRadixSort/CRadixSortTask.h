@@ -45,7 +45,6 @@ protected:
 	void Histogram(cl_command_queue CommandQueue, int pass);
 	void ScanHistogram(cl_command_queue CommandQueue);
 	void Reorder(cl_command_queue CommandQueue, int pass);
-	void Transpose(int nbrow, int nbcol);
 
 	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& kernel);
 	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int task);
@@ -61,5 +60,5 @@ protected:
     std::shared_ptr<ComputeDeviceData<DataType>> deviceData;
 
 	// timers
-	float histo_time, scan_time, reorder_time, sort_time, transpose_time;
+	float histo_time, scan_time, reorder_time, sort_time;
 };

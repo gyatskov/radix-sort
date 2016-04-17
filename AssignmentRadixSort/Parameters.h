@@ -18,7 +18,6 @@ struct Parameters {
 	// (for other sizes, pad the list with big values) 
 	static const auto _NUM_MAX_INPUT_ELEMS = (1U << 10U);  // maximal size of the list  
 	static const auto VERBOSE   = false;
-	static const auto TRANSPOSE = false; // transpose the initial vector (faster memory access)
 	//#define PERMUT  // store the final permutation
 	////////////////////////////////////////////////////////
 

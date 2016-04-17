@@ -45,11 +45,7 @@ __kernel void histogram(
   // compute the index
   // the computation depends on the transposition
   for(int j = 0; j < sublist_size; j++) {
-#ifdef TRANSPOSE
-    k= groups * items * j + ig;
-#else
     k = j + sublist_start;
-#endif
 
     key = d_Keys[k] + OFFSET;
 
@@ -74,46 +70,6 @@ __kernel void histogram(
 
   // TODO: Check if this barrier here is really necessary.
   barrier(CLK_GLOBAL_MEM_FENCE);
-}
-
-// initial transpose of the list for improving
-// coalescent memory access
-__kernel void transpose(const __global int* invect,
-    __global int* outvect,
-    const int nbcol,
-    const int nbrow,
-    const __global int* inperm,
-    __global int* outperm,
-    __local int* blockmat,
-    __local int* blockperm,
-    const int tilesize){
-    int i0 = get_global_id(0)*tilesize;  // first row index
-    int j = get_global_id(1);  // column index
-
-    int jloc = get_local_id(1);  // local column index
-
-    // fill the cache
-    for (int iloc = 0; iloc<tilesize; iloc++){
-        int k = (i0 + iloc)*nbcol + j;  // position in the matrix
-        blockmat[iloc*tilesize + jloc] = invect[k];
-#ifdef PERMUT 
-        blockperm[iloc*tilesize + jloc] = inperm[k];
-#endif
-    }
-
-    barrier(CLK_LOCAL_MEM_FENCE);
-
-    // first row index in the transpose
-    int j0 = get_group_id(1)*tilesize;
-
-    // put the cache at the good place
-    for (int iloc = 0; iloc<tilesize; iloc++){
-        int kt = (j0 + iloc)*nbrow + i0 + jloc;  // position in the transpose
-        outvect[kt] = blockmat[jloc*tilesize + iloc];
-#ifdef PERMUT 
-        outperm[kt] = blockperm[jloc*tilesize + iloc];
-#endif
-    }
 }
 
 // each virtual processor reorders its data using the scanned histogram
@@ -151,25 +107,12 @@ __kernel void reorder(
 	int newpost;		// new position of element (transposed)
 
     for (int j = 0; j < size; j++) {
-#ifdef TRANSPOSE
-        k = groups * items * j + ig;
-#else
         k = j + start;
-#endif
         key = d_inKeys[k] + OFFSET;
         shortkey = ((key >> (pass * _BITS)) & (_RADIX - 1));	// shift element to relevant bit positions
 
         newpos = loc_histo[shortkey * items + it];
-
-
-#ifdef TRANSPOSE
-        int ignew, jnew;
-        ignew = newpos / (n / groups / items);
-        jnew = newpos % (n / groups / items);
-        newpost = jnew * (groups*items) + ignew;
-#else
         newpost = newpos;
-#endif
 
         d_outKeys[newpost] = key - OFFSET;
 
