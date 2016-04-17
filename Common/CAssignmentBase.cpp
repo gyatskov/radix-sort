@@ -15,8 +15,8 @@ using namespace std;
 ///////////////////////////////////////////////////////////////////////////////
 // CAssignmentBase
 
-CAssignmentBase::CAssignmentBase()
-	: m_CLPlatform(nullptr), m_CLDevice(nullptr), m_CLContext(nullptr), m_CLCommandQueue(nullptr)
+CAssignmentBase::CAssignmentBase(Arguments arguments /*= Arguments()*/)
+    : m_CLPlatform(nullptr), m_CLDevice(nullptr), m_CLContext(nullptr), m_CLCommandQueue(nullptr), m_arguments(arguments)
 {
 }
 

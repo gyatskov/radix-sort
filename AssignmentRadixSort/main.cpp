@@ -3,7 +3,7 @@ GPU Computing / GPGPU Praktikum source code.
 
 ******************************************************************************/
 
-#include "CAssignment2.h"
+#include "CRunner.h"
 
 #include <iostream>
 
@@ -11,9 +11,10 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	CAssignment2 myAssignment;
+    Arguments arguments(argc, argv);
+	CRunner radixSortRunner(arguments);
 
-	myAssignment.EnterMainLoop();
+    radixSortRunner.EnterMainLoop();
 
 	cout<<"Press any key..."<<endl;
 	cin.get();

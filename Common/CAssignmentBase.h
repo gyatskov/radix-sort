@@ -23,6 +23,7 @@
 #include "IComputeTask.h"
 
 #include "CommonDefs.h"
+#include "CArguments.h"
 
 //! Base class for all assignments
 /*! 
@@ -38,7 +39,7 @@
 class CAssignmentBase
 {
 public:
-	CAssignmentBase();
+	CAssignmentBase(Arguments arguments = Arguments());
 
 	virtual ~CAssignmentBase();
 
@@ -59,6 +60,8 @@ protected:
 	cl_device_id		m_CLDevice;
 	cl_context			m_CLContext;
 	cl_command_queue	m_CLCommandQueue;
+
+    Arguments m_arguments;
 };
 
 #endif // _CASSIGNMENT_BASE_H
