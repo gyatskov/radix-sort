@@ -49,11 +49,10 @@ Random<DataType>::Random()
 {
     std::string seedStr("Test :P");
     std::seed_seq seed(seedStr.begin(), seedStr.end());
-    std::default_random_engine generator(seed);
+    std::mt19937 generator(seed);
 
-    std::uniform_int_distribution<DataType> dis(std::numeric_limits<DataType>::min(), std::numeric_limits<DataType>::max());
     // fill the array with some values
-    std::generate(dataset.begin(), dataset.end(), std::bind(dis, generator));
+    std::generate(dataset.begin(), dataset.end(), generator);
 }
 
 template <typename DataType>
