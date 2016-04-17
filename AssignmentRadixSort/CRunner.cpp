@@ -24,6 +24,8 @@ bool CRunner::DoCompute()
 {
     const auto options = RadixSortOptions(m_arguments);
 
+    typedef std::tuple<uint32_t, int32_t, uint64_t, int64_t> allowedTypes;
+
 	cout<<"########################################"<<endl;
 	cout<<"Running radix sort task..."<<endl<<endl;
 	size_t LocalWorkSize[3] = { 1, 1, 1 }; // LocalWorkSize does not mean anything right now
@@ -35,7 +37,8 @@ bool CRunner::DoCompute()
 			std::make_shared<Zeros<DataType>>(),
 			std::make_shared<Range<DataType>>(),
 			std::make_shared<InvertedRange<DataType>>(),
-			std::make_shared<Random<DataType>>()
+			std::make_shared<RandomDistributed<DataType>>(),
+            std::make_shared<Random<DataType>>()
 		};
 		for (const auto dataset : datasets)
 		{
@@ -49,7 +52,8 @@ bool CRunner::DoCompute()
 			std::make_shared<Zeros<DataType>>(),
 			std::make_shared<Range<DataType>>(),
 			std::make_shared<InvertedRange<DataType>>(),
-			std::make_shared<Random<DataType>>()
+			std::make_shared<RandomDistributed<DataType>>(),
+            std::make_shared<Random<DataType>>()
 		};
 		for (const auto dataset : datasets)
 		{
@@ -63,7 +67,8 @@ bool CRunner::DoCompute()
 			std::make_shared<Zeros<DataType>>(),
 			std::make_shared<Range<DataType>>(),
 			std::make_shared<InvertedRange<DataType>>(),
-			std::make_shared<Random<DataType>>()
+			std::make_shared<RandomDistributed<DataType>>(),
+            std::make_shared<Random<DataType>>()
 		};
 		for (const auto dataset : datasets)
 		{
@@ -77,7 +82,8 @@ bool CRunner::DoCompute()
 			std::make_shared<Zeros<DataType>>(),
 			std::make_shared<Range<DataType>>(),
 			std::make_shared<InvertedRange<DataType>>(),
-			std::make_shared<Random<DataType>>()
+			std::make_shared<RandomDistributed<DataType>>(),
+            std::make_shared<Random<DataType>>()
 		};
 		for (const auto dataset : datasets)
 		{

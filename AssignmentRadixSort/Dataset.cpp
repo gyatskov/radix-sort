@@ -11,7 +11,10 @@ template <typename DataType>
 const char* const Zeros<DataType>::name = "Zeros";
 
 template <typename DataType>
-const char* const Random<DataType>::name = "Uniform random";
+const char* const RandomDistributed<DataType>::name = "Uniform random";
+
+template <typename DataType>
+const char* const Random<DataType>::name = "Random";
 
 template <typename DataType>
 const char* const Range<DataType>::name = "Range";
@@ -26,13 +29,12 @@ Zeros<DataType>::Zeros()
 }
 
 template <typename DataType>
-Random<DataType>::Random()
+RandomDistributed<DataType>::RandomDistributed()
 {
-	std::string seedStr("Schmutz :P");
+	std::string seedStr("Test :P");
 	std::seed_seq seed(seedStr.begin(), seedStr.end());
 	std::mt19937 generator(seed);
 
-	/// TODO("Adapt to signed integers, later on.");
 	std::uniform_int_distribution<DataType> dis(std::numeric_limits<DataType>::min(), std::numeric_limits<DataType>::max());
 	// fill the array with some values
 	std::generate(dataset.begin(), dataset.end(), std::bind(dis, generator));
@@ -40,6 +42,18 @@ Random<DataType>::Random()
 	// Ensure that min and max are in the input array
 	*dataset.begin() = std::numeric_limits<DataType>::max();
 	*(dataset.end() - 1) = std::numeric_limits<DataType>::min();
+}
+
+template <typename DataType>
+Random<DataType>::Random()
+{
+    std::string seedStr("Test :P");
+    std::seed_seq seed(seedStr.begin(), seedStr.end());
+    std::default_random_engine generator(seed);
+
+    std::uniform_int_distribution<DataType> dis(std::numeric_limits<DataType>::min(), std::numeric_limits<DataType>::max());
+    // fill the array with some values
+    std::generate(dataset.begin(), dataset.end(), std::bind(dis, generator));
 }
 
 template <typename DataType>
@@ -60,10 +74,16 @@ template struct Dataset < int64_t > ;
 template struct Dataset < uint32_t > ;
 template struct Dataset < uint64_t > ;
 
-template struct Random < int32_t > ;
-template struct Random < int64_t > ;
-template struct Random < uint32_t > ;
-template struct Random < uint64_t > ;
+template struct RandomDistributed < int32_t > ;
+template struct RandomDistributed < int64_t > ;
+template struct RandomDistributed < uint32_t > ;
+template struct RandomDistributed < uint64_t > ;
+
+template struct Random < int32_t >;
+template struct Random < int64_t >;
+template struct Random < uint32_t >;
+template struct Random < uint64_t >;
+
 
 template struct Zeros < int32_t > ;
 template struct Zeros < int64_t > ;

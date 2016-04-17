@@ -39,14 +39,25 @@ struct Zeros : Dataset<DataType> {
 };
 
 template <typename DataType>
-struct Random : Dataset < DataType > {
+struct RandomDistributed : Dataset < DataType > {
 	static const char* const name;
 
-	Random();
+	RandomDistributed();
 
 	virtual const char* const getName() {
-		return Random::name;
+		return RandomDistributed::name;
 	}
+};
+
+template <typename DataType>
+struct Random : Dataset < DataType > {
+    static const char* const name;
+
+    Random();
+
+    virtual const char* const getName() {
+        return Random::name;
+    }
 };
 
 template <typename DataType>
