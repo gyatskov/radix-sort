@@ -9,6 +9,7 @@ GPU Computing / GPGPU Praktikum source code.
 #include "RadixSortOptions.h"
 
 #include <iostream>
+#include <array>
 #include "Dataset.h"
 
 using namespace std;
@@ -19,6 +20,29 @@ CRunner::CRunner(Arguments arguments /*= Arguments()*/) : CAssignmentBase(argume
 
 ///////////////////////////////////////////////////////////////////////////////
 // CRunner
+static const size_t NUM_DATASETS = 5;
+
+template <typename DataType>
+std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator() {
+    std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> result = {
+        std::make_shared<Zeros<DataType>>(),
+        std::make_shared<Range<DataType>>(),
+        std::make_shared<InvertedRange<DataType>>(),
+        std::make_shared<RandomDistributed<DataType>>(),
+        std::make_shared<Random<DataType>>()
+    };
+    return result;
+}
+
+template <typename DataType>
+void CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]) {
+    const auto datasets = DataSetKreator<DataType>();
+    for (const auto dataset : datasets)
+    {
+        CRadixSortTask<DataType> radixSort(options, dataset);
+        RunComputeTask(radixSort, LocalWorkSize);
+    }
+}
 
 bool CRunner::DoCompute()
 {
@@ -31,66 +55,10 @@ bool CRunner::DoCompute()
 	size_t LocalWorkSize[3] = { 1, 1, 1 }; // LocalWorkSize does not mean anything right now
 	const auto problemSize = options.num_elements;
 	cout << "Sorting " << problemSize << " elements" << std::endl;
-	{
-		using DataType = uint32_t;
-		const std::shared_ptr<Dataset<DataType>> datasets[] = {
-			std::make_shared<Zeros<DataType>>(),
-			std::make_shared<Range<DataType>>(),
-			std::make_shared<InvertedRange<DataType>>(),
-			std::make_shared<RandomDistributed<DataType>>(),
-            std::make_shared<Random<DataType>>()
-		};
-		for (const auto dataset : datasets)
-		{
-			CRadixSortTask<DataType> radixSort(problemSize, dataset);
-			RunComputeTask(radixSort, LocalWorkSize);
-		}
-	}
-	{
-		using DataType = int32_t;
-		const std::shared_ptr<Dataset<DataType>> datasets[] = {
-			std::make_shared<Zeros<DataType>>(),
-			std::make_shared<Range<DataType>>(),
-			std::make_shared<InvertedRange<DataType>>(),
-			std::make_shared<RandomDistributed<DataType>>(),
-            std::make_shared<Random<DataType>>()
-		};
-		for (const auto dataset : datasets)
-		{
-			CRadixSortTask<DataType> radixSort(problemSize, dataset);
-			RunComputeTask(radixSort, LocalWorkSize);
-		}
-	}
-	{
-		using DataType = uint64_t;
-		const std::shared_ptr<Dataset<DataType>> datasets[] = {
-			std::make_shared<Zeros<DataType>>(),
-			std::make_shared<Range<DataType>>(),
-			std::make_shared<InvertedRange<DataType>>(),
-			std::make_shared<RandomDistributed<DataType>>(),
-            std::make_shared<Random<DataType>>()
-		};
-		for (const auto dataset : datasets)
-		{
-			CRadixSortTask<DataType> radixSort(problemSize, dataset);
-			RunComputeTask(radixSort, LocalWorkSize);
-		}
-	}
-	{
-		using DataType = int64_t;
-		const std::shared_ptr<Dataset<DataType>> datasets[] = {
-			std::make_shared<Zeros<DataType>>(),
-			std::make_shared<Range<DataType>>(),
-			std::make_shared<InvertedRange<DataType>>(),
-			std::make_shared<RandomDistributed<DataType>>(),
-            std::make_shared<Random<DataType>>()
-		};
-		for (const auto dataset : datasets)
-		{
-			CRadixSortTask<DataType> radixSort(problemSize, dataset);
-			RunComputeTask(radixSort, LocalWorkSize);
-		}
-	}
+    runTask<uint32_t>(options, LocalWorkSize);
+    runTask<int32_t> (options, LocalWorkSize);
+    runTask<uint64_t>(options, LocalWorkSize);
+    runTask<int64_t> (options, LocalWorkSize);
 
 	return true;
 }

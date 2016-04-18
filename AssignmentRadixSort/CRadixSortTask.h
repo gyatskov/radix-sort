@@ -3,6 +3,7 @@
 #include "../Common/IComputeTask.h"
 #include "HostData.h"
 #include "Parameters.h"
+#include "RadixSortOptions.h"
 
 #include <vector>
 #include <map>
@@ -20,7 +21,7 @@ public:
 	using DataType = _DataType;
 	using Parameters = Parameters < DataType > ;
 
-	CRadixSortTask(size_t ArraySize, std::shared_ptr<Dataset<DataType>> dataset);
+	CRadixSortTask(const RadixSortOptions& options, std::shared_ptr<Dataset<DataType>> dataset);
 
 	virtual ~CRadixSortTask();
 
@@ -61,4 +62,6 @@ protected:
 
 	// timers
 	double histo_time, scan_time, reorder_time, paste_time, sort_time;
+
+    RadixSortOptions options;
 };
