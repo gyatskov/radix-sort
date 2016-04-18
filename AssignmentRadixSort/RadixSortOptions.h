@@ -8,7 +8,7 @@
 struct RadixSortOptions {
     size_t num_elements;
 
-    RadixSortOptions(Arguments args) : num_elements(1 << 10) {
+    RadixSortOptions(Arguments args) : num_elements(Parameters<int>::_NUM_MAX_INPUT_ELEMS) {
         for (size_t i = 0; i < args.getArguments().size(); i++) {
             auto arg = args.getArguments()[i];
             if (arg == "--num-elements") {

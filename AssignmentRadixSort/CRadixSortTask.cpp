@@ -25,6 +25,7 @@ CRadixSortTask<DataType>::CRadixSortTask(size_t ArraySize, std::shared_ptr<Datas
 
     histo_time(0),
     scan_time(0),
+    paste_time(0),
     reorder_time(0)
 {}
 
@@ -223,6 +224,8 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 
     cl_event eve;
 
+    CTimer timer;
+    timer.Start();
 	// Execute kernel
 	V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		histogramKernel,
@@ -233,6 +236,8 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 		"Could not execute histogram kernel");
 
     clFinish(CommandQueue);
+    timer.Stop();
+    histo_time = (histo_time + timer.GetElapsedMilliseconds()) / (pass + 1);
 
 #ifdef MORE_PROFILING
     cl_ulong debut, fin;
@@ -257,7 +262,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue) {
+void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int pass) {
     // numbers of processors for the local scan
     // = half the size of the local histograms
     // global work size
@@ -284,6 +289,9 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue) {
 	// Execute kernel for first scan (local)
     const cl_uint workDimension = 1;
     size_t* globalWorkOffset = nullptr;
+
+    CTimer timer;
+    timer.Start();
     V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		scanHistogramKernel,
         workDimension,
@@ -293,6 +301,8 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue) {
         0, NULL, &eve), "Could not execute 1st instance of scanHistogram kernel.");
 
     clFinish(CommandQueue);
+    timer.Stop();
+    scan_time = (scan_time + timer.GetElapsedMilliseconds()) / (pass + 1);
 
 #ifdef MORE_PROFILING
     cl_int err = CL_SUCCESS;
@@ -327,6 +337,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue) {
     // local work size
     nblocitems = nbitems;
 
+    timer.Start();
 	// Execute kernel for second scan (global)
     V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		scanHistogramKernel,
@@ -337,6 +348,9 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue) {
         0, NULL, &eve), "Could not execute 2nd instance of scanHistogram kernel.");
 
     clFinish(CommandQueue);
+    timer.Stop();
+    scan_time = (scan_time + timer.GetElapsedMilliseconds()) / (pass + 1);
+
 
 #ifdef MORE_PROFILING
     err = clGetEventProfilingInfo(eve,
@@ -366,6 +380,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue) {
 	V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, 1, sizeof(cl_mem), &deviceData->m_dGlobsum), "Could not set globsum argument");
 
 	// Execute paste histogram kernel
+    timer.Start();
     V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		pasteHistogramKernel,
         workDimension, 
@@ -375,6 +390,8 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue) {
         0, NULL, &eve), "Could not execute paste histograms kernel");
 
     clFinish(CommandQueue);
+    timer.Stop();
+    paste_time = (paste_time + timer.GetElapsedMilliseconds()) / (pass + 1);
 
 #ifdef MORE_PROFILING
     err = clGetEventProfilingInfo(eve,
@@ -448,6 +465,8 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) 
     const cl_uint workDimension = 1;
     const size_t* globalWorkOffset = nullptr;
 	// Execute kernel
+    CTimer timer;
+    timer.Start();
 	V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		reorderKernel,
         workDimension, 
@@ -456,6 +475,8 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) 
 		&nblocitems,
 		0, NULL, &eve), "Could not execute reorder kernel");
     clFinish(CommandQueue);
+    timer.Stop();
+    reorder_time = (reorder_time + timer.GetElapsedMilliseconds()) / (pass + 1);
 
 #ifdef MORE_PROFILING
     cl_int err = CL_SUCCESS;
@@ -567,12 +588,6 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
         cout << "Start sorting " << nkeys << " keys." << endl;
     }
 
-#ifdef TRANSPOSE
-    if (VERBOSE) {
-        cout << "Transpose" << endl;
-    }
-    Transpose(nbrow, nbcol);
-#endif
 
     for (int pass = 0; pass < Parameters::_NUM_PASSES; pass++){
         if (Parameters::VERBOSE) {
@@ -587,7 +602,7 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
         if (Parameters::VERBOSE) {
             cout << "Scanning histograms" << endl;
         }
-        ScanHistogram(CommandQueue);
+        ScanHistogram(CommandQueue, pass);
 
         if (Parameters::VERBOSE) {
             cout << "Reordering " << endl;
@@ -719,7 +734,11 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     timer.Stop();
 
     double ms = timer.GetElapsedMilliseconds() / double(nIterations);
-    cout << "  average time: " << ms << " ms, throughput: " << 1.0e-6 * (double)Parameters::_NUM_MAX_INPUT_ELEMS / ms << " Gelem/s" << endl;
+    cout << "  avg time histogram: " << histo_time << " ms" << endl;
+    cout << "  avg time scan: " << scan_time << " ms" << endl;
+    cout << "  avg time paste: " << paste_time << " ms" << endl;
+    cout << "  avg time reorder: " << reorder_time << " ms" << endl;
+    cout << "  avg time total: " << ms << " ms, throughput: " << 1.0e-6 * (double)Parameters::_NUM_MAX_INPUT_ELEMS / ms << " Gelem/s" << endl;
 }
 
 /// Template specializations

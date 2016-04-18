@@ -43,7 +43,7 @@ protected:
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
 	void Histogram(cl_command_queue CommandQueue, int pass);
-	void ScanHistogram(cl_command_queue CommandQueue);
+	void ScanHistogram(cl_command_queue CommandQueue, int pass);
 	void Reorder(cl_command_queue CommandQueue, int pass);
 
 	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& kernel);
@@ -60,5 +60,5 @@ protected:
     std::shared_ptr<ComputeDeviceData<DataType>> deviceData;
 
 	// timers
-	float histo_time, scan_time, reorder_time, sort_time;
+	double histo_time, scan_time, reorder_time, paste_time, sort_time;
 };
