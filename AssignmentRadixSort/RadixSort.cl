@@ -22,7 +22,7 @@ __kernel void histogram(
   int it = get_local_id(0);  // i local number of the processor
   int ig = get_global_id(0); // global number = i + g I
 
-  int gr = get_group_id(0); // g group number
+  int gr = get_group_id(0); // gr group number
 
   const int groups = get_num_groups(0);
   int items  = get_local_size(0);
@@ -83,15 +83,15 @@ __kernel void reorder(
           __local  int* loc_histo,
     const int n){
 
-    int it = get_local_id(0);	// 
-    int ig = get_global_id(0);	//
+	int it = get_local_id(0);  // i local number of the processor
+	int ig = get_global_id(0); // global number = i + g I
 
-    int gr = get_group_id(0);				// 
+    int gr = get_group_id(0);				// gr group number
     const int groups = get_num_groups(0);	// G: group count
     int items = get_local_size(0);			// group size
 
-	int start = ig *(n / groups / items);   // eq. 2.1 : index of first elem this work-item processes
-    int size  = n / groups / items;			//			 count of elements this work-item processes
+	int start = ig *(n / groups / items);   // index of first elem this work-item processes
+    int size  = n / groups / items;			// count of elements this work-item processes
 
     // take the histogram in the cache
     for (int ir = 0; ir < _RADIX; ir++){
@@ -100,11 +100,10 @@ __kernel void reorder(
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
-	int newpos;			// new position of element
+	int newpos;					// new position of element
 	UnsignedDataType key;		// key element
 	UnsignedDataType shortkey;	// key element within cache (cache line)
-	int k;				// global position within input elements
-	int newpost;		// new position of element (transposed)
+	int k;						// global position within input elements
 
     for (int j = 0; j < size; j++) {
         k = j + start;
@@ -112,13 +111,8 @@ __kernel void reorder(
         shortkey = ((key >> (pass * _BITS)) & (_RADIX - 1));	// shift element to relevant bit positions
 
         newpos = loc_histo[shortkey * items + it];
-        newpost = newpos;
 
-        d_outKeys[newpost] = key - OFFSET;
-
-#ifdef PERMUT 
-        d_outPermut[newpost] = d_inPermut[k];
-#endif
+        d_outKeys[newpos] = key - OFFSET;
 
         newpos++;
         loc_histo[shortkey * items + it] = newpos;
