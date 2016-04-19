@@ -120,7 +120,7 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
 
 	cl_int clError;
 	// Create each kernel in global kernel list
-	hostData.m_hResultGPUMap["RadixSort_01"] = std::vector<DataType>(Parameters::_NUM_MAX_INPUT_ELEMS);
+	hostData.m_hResultGPUMap["RadixSort_01"] = std::vector<DataType>(nkeys_rounded);
     for (const auto& kernelName : deviceData->kernelNames) {
 		// Input data stays the same for each kernel
         deviceData->m_kernelMap[kernelName] = clCreateKernel(deviceData->m_Program, kernelName.c_str(), &clError);
@@ -644,7 +644,8 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
 template <typename DataType>
 void CRadixSortTask<DataType>::AllocateDeviceMemory(cl_context Context) {
 	// Done in constructor of ComputeDeviceData :)
-	deviceData = std::make_shared<ComputeDeviceData<DataType>>(Context);
+	Resize(nkeys);
+	deviceData = std::make_shared<ComputeDeviceData<DataType>>(Context, nkeys_rounded);
 }
 
 template <typename DataType>
@@ -653,7 +654,7 @@ void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
         deviceData->m_dInKeys,
         CL_TRUE, 0,
-        sizeof(DataType) * Parameters::_NUM_MAX_INPUT_ELEMS,
+        sizeof(DataType) * nkeys_rounded,
         hostData.m_hKeys.data(),
         0, NULL, NULL),
 		"Could not initialize input keys device buffer");
@@ -663,7 +664,7 @@ void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
         deviceData->m_dInPermut,
         CL_TRUE, 0,
-        sizeof(uint32_t) * Parameters::_NUM_MAX_INPUT_ELEMS,
+        sizeof(uint32_t) * nkeys_rounded,
         hostData.h_Permut.data(),
         0, NULL, NULL),
 		"Could not initialize input permutation device buffer");
@@ -676,7 +677,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dInKeys,
 		CL_TRUE, 0,
-		sizeof(DataType) * Parameters::_NUM_MAX_INPUT_ELEMS,
+		sizeof(DataType) * nkeys_rounded,
         hostData.m_hResultGPUMap["RadixSort_01"].data(),
 		0, NULL, NULL),
 		"Could not read result data");
@@ -686,7 +687,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dInPermut,
 		CL_TRUE, 0,
-		sizeof(uint32_t)  * Parameters::_NUM_MAX_INPUT_ELEMS,
+		sizeof(uint32_t)  * nkeys_rounded,
         hostData.h_Permut.data(),
 		0, NULL, NULL),
 		"Could not read result permutation");

@@ -5,7 +5,7 @@
 #include <iostream>
 
 template <typename DataType>
-ComputeDeviceData<DataType>::ComputeDeviceData(cl_context Context) :
+ComputeDeviceData<DataType>::ComputeDeviceData(cl_context Context, size_t buffer_size) :
     m_Program(NULL)
 {
     kernelNames.emplace_back("histogram");
@@ -18,13 +18,13 @@ ComputeDeviceData<DataType>::ComputeDeviceData(cl_context Context) :
 	// allocate device resources
 	cl_int clError;
 	TODO("Consider using CL_MEM_HOST_whatever");
-	m_dInKeys = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(DataType) * Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
+	m_dInKeys = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(DataType) * buffer_size, NULL, &clError);
 	V_RETURN_CL(clError, "Error allocating device array");
-	m_dOutKeys = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(DataType) * Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
+	m_dOutKeys = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(DataType) * buffer_size, NULL, &clError);
 	V_RETURN_CL(clError, "Error allocating device array");
-	m_dInPermut = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t) * Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
+	m_dInPermut = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t) * buffer_size, NULL, &clError);
 	V_RETURN_CL(clError, "Error allocating device array");
-	m_dOutPermut = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t) * Parameters::_NUM_MAX_INPUT_ELEMS, NULL, &clError);
+	m_dOutPermut = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeof(uint32_t) * buffer_size, NULL, &clError);
 	V_RETURN_CL(clError, "Error allocating device array");
 	// allocate the histogram on the GPU
 	m_dHistograms = clCreateBuffer(Context, CL_MEM_READ_WRITE,

@@ -11,7 +11,7 @@ struct ComputeDeviceData {
 	using DataType = _DataType;
 	using Parameters = Parameters < DataType >;
 
-    ComputeDeviceData(cl_context Context);
+    ComputeDeviceData(cl_context Context, size_t buffer_size);
     ~ComputeDeviceData();
 
     //OpenCL program and kernels
