@@ -143,7 +143,7 @@ void CRadixSortTask<DataType>::ReleaseResources()
 template <typename DataType>
 void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
 {
-	Resize(CommandQueue, nkeys);
+	padGPUData(CommandQueue, nkeys);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
 
 	TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
@@ -152,26 +152,39 @@ void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue C
 template <typename DataType>
 void CRadixSortTask<DataType>::ComputeCPU()
 {
+	/// Resize in order to have achieve the same size on GPU and CPU
+	Resize(nkeys);
 	std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_resultSTLCPU.begin());
 
-	// Reference sorting (STL quicksort):
-	std::sort(hostData.m_resultSTLCPU.begin(), hostData.m_resultSTLCPU.end());
-
+	const unsigned int NUM_CPU_ITERATIONS = 20;
+	
 	CTimer timer;
 	timer.Start();
+	for (auto j = 0; j < NUM_CPU_ITERATIONS; j++) {
+		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultSTLCPU.begin());
 
-	const unsigned int NUM_ITERATIONS = 10;
-    for (auto j = 0; j < NUM_ITERATIONS; j++) {
-		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_resultRadixSortCPU.begin());
+		// Reference sorting (STL quicksort):
+		std::sort(hostData.m_resultSTLCPU.begin(), hostData.m_resultSTLCPU.begin() + nkeys_rounded);
+	}
+	timer.Stop();
+	double stlcpu_ms = timer.GetElapsedMilliseconds() / double(NUM_CPU_ITERATIONS);
+
+	hostData.m_resultRadixSortCPU.resize(nkeys_rounded);
+	
+	timer.Start();
+	
+	for (auto j = 0; j < NUM_CPU_ITERATIONS; j++) {
+		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultRadixSortCPU.begin());
 
 		// Reference sorting implementation on CPU (radixsort):
 		RadixSortCPU<DataType>::sort(hostData.m_resultRadixSortCPU);
     }
 	timer.Stop();
 
-    double ms = timer.GetElapsedMilliseconds() / double(NUM_ITERATIONS);
+	double radixcpu_ms = timer.GetElapsedMilliseconds() / double(NUM_CPU_ITERATIONS);
     if (options.perf_to_stdout) {
-        cout << "  avg time: " << ms << " ms, throughput: " << 1.0e-6 * (double)Parameters::_NUM_MAX_INPUT_ELEMS / ms << " Gelem/s" << endl;
+		cout << " radixsort cpu avg time: " << radixcpu_ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / radixcpu_ms << " Gelem/s" << endl;
+		cout << " stl cpu avg time: " << stlcpu_ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / stlcpu_ms << " Gelem/s" << endl;
     }
 }
 
@@ -539,7 +552,7 @@ void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device) {
 
 /// resize the sorted vector
 template <typename DataType>
-void CRadixSortTask<DataType>::Resize(cl_command_queue CommandQueue, int nn) {
+int CRadixSortTask<DataType>::Resize(int nn) {
 	assert(nn <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
     if (options.verbose){
@@ -551,26 +564,36 @@ void CRadixSortTask<DataType>::Resize(cl_command_queue CommandQueue, int nn) {
     int rest = nkeys % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
     nkeys_rounded = nkeys;
 
-	const auto MAX_INT = std::numeric_limits<DataType>::max();
-	std::vector<DataType> pad(Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP, MAX_INT - 1);
-
     if (rest != 0) {
-        nkeys_rounded = nkeys - rest + (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
-        // pad the vector with big values
+		nkeys_rounded = nkeys - rest + (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+    }
+
+	return rest;
+}
+
+template <typename DataType>
+void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue, int nn)
+{
+	const auto rest = Resize(nn);
+	if (rest != 0) {
+		const auto MAX_INT = std::numeric_limits<DataType>::max();
+		std::vector<DataType> pad(Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP, MAX_INT - 1);
+
+		// pad the vector with big values
 		assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
-        const auto blocking = CL_TRUE;
-        const auto offset   = sizeof(DataType) * nkeys;
-        const auto size     = sizeof(DataType) * (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - rest);
+		const auto blocking = CL_TRUE;
+		const auto offset = sizeof(DataType) * nkeys;
+		const auto size = sizeof(DataType) * (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - rest);
 		V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
-            deviceData->m_dInKeys,
-            blocking, 
-            offset,
+			deviceData->m_dInKeys,
+			blocking,
+			offset,
 			size,
 			pad.data(),
 			0, NULL, NULL),
 			"Could not write input data");
-    }
+	}
 }
 
 template <typename DataType>
@@ -716,7 +739,7 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     timer.Start();
 
     //run the kernel N times
-    const unsigned int nIterations = 100;
+    const unsigned int nIterations = 20;
     for (auto i = 0; i < nIterations; i++) {
         //run selected task
         switch (Task) {
@@ -739,7 +762,7 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
         cout << "  avg time scan:      " << scan_time << " ms" << endl;
         cout << "  avg time paste:     " << paste_time << " ms" << endl;
         cout << "  avg time reorder:   " << reorder_time << " ms" << endl;
-        cout << "  avg time total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)Parameters::_NUM_MAX_INPUT_ELEMS / ms << " Gelem/s" << endl;
+        cout << "  avg time total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / ms << " Gelem/s" << endl;
     }
 }
 

@@ -40,7 +40,8 @@ protected:
 	void CheckDivisibility();
 	void CopyDataToDevice(cl_command_queue CommandQueue);
 	void CopyDataFromDevice(cl_command_queue CommandQueue);
-	void Resize(cl_command_queue CommandQueue, int nn);
+	int  Resize(int nn);
+	void padGPUData(cl_command_queue CommandQueue, int nn);
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
 	void Histogram(cl_command_queue CommandQueue, int pass);
