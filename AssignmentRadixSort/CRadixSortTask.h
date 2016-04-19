@@ -80,6 +80,9 @@ protected:
 	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& kernel);
 	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int task);
 
+    bool writePerformanceToFile(const std::string& filename);
+    void writePerformanceToStdout();
+
 	//NOTE: we have two memory address spaces, so we mark pointers with a prefix
 	//to avoid confusions: 'h' - host, 'd' - device
 
@@ -93,6 +96,7 @@ protected:
 
 	// timers
 	Statistics histo_time, scan_time, reorder_time, paste_time, sort_time;
+    Statistics cpu_radix_time, cpu_stl_time;
 
     RadixSortOptions options;
 };

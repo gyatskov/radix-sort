@@ -9,12 +9,14 @@ struct RadixSortOptions {
     size_t num_elements;
     bool perf_to_stdout;
     bool perf_to_csv;
+    bool perf_csv_to_stdout;
     bool verbose;
 
     RadixSortOptions(Arguments args) : 
         num_elements(Parameters<int>::_NUM_MAX_INPUT_ELEMS),
         perf_to_stdout(false),
         perf_to_csv(false),
+        perf_csv_to_stdout(false),
         verbose(false)
     {
         for (size_t i = 0; i < args.getArguments().size(); i++) {
@@ -26,6 +28,8 @@ struct RadixSortOptions {
                 perf_to_stdout = true;
             } else if (arg == "--perf-to-csv") {
                 perf_to_csv = true;
+            } else if (arg == "--perf-csv-to-stdout") {
+                perf_csv_to_stdout = true;
             } else if (arg == "-v" || arg == "--verbose") {
                 verbose = true;
             }

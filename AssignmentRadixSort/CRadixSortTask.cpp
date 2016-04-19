@@ -10,9 +10,14 @@
 #include <algorithm>
 #include <numeric>
 #include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <ctime>        // std::time_t, struct std::tm, std::localtime
+#include <chrono>       // std::chrono::system_clock
 #include <functional>
 #include <type_traits>
 #include <cassert>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -159,12 +164,11 @@ void CRadixSortTask<DataType>::ComputeCPU()
 		std::sort(hostData.m_resultSTLCPU.begin(), hostData.m_resultSTLCPU.begin() + nkeys_rounded);
 	}
 	timer.Stop();
-	double stlcpu_ms = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+	cpu_stl_time.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
 
 	hostData.m_resultRadixSortCPU.resize(nkeys_rounded);
 	
 	timer.Start();
-	
 	for (auto j = 0; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
 		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultRadixSortCPU.begin());
 
@@ -173,11 +177,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
     }
 	timer.Stop();
 
-	double radixcpu_ms = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
-    if (options.perf_to_stdout) {
-		cout << " radixsort cpu avg time: " << radixcpu_ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / radixcpu_ms << " Gelem/s" << endl;
-		cout << " stl cpu avg time: " << stlcpu_ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / stlcpu_ms << " Gelem/s" << endl;
-    }
+    cpu_radix_time.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
 }
 
 template <typename DataType>
@@ -625,7 +625,7 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
         }
     }
     
-    sort_time.avg = histo_time.avg + scan_time.avg + reorder_time.avg;
+    sort_time.avg = histo_time.avg + scan_time.avg + reorder_time.avg + paste_time.avg;
     sort_time.n = histo_time.n;
     if (options.verbose){
         cout << "End sorting" << endl;
@@ -718,8 +718,74 @@ void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue 
 }
 
 template <typename DataType>
+bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filename) {
+    bool file_exists = false;
+    {
+        struct stat buffer;
+        file_exists = (stat(filename.c_str(), &buffer) == 0);
+    }
+
+    std::ofstream outfile(filename, std::ofstream::out | std::ofstream::app);
+    const std::vector<std::string> columns = {
+        "NumElements", "Datatype", "Dataset", "avgHistogram", "avgScan", "avgPaste", "avgReorder", "avgTotalGPU", "avgTotalSTLCPU", "avgTotalRDXCPU"
+    };
+    // Print columns
+    if (!file_exists)
+    {
+        outfile << columns[0];
+        for (int i = 1; i < columns.size(); i++) {
+            outfile << "," << columns[i];
+        }
+    }
+    outfile << std::endl;
+    outfile << nkeys << ",";
+    outfile << TypeNameString<DataType>::stdint_name << ",";
+    outfile << hostData.m_selectedDataset->getName() << ",";
+    outfile << histo_time.avg << ",";
+    outfile << scan_time.avg << ",";
+    outfile << paste_time.avg << ",";
+    outfile << reorder_time.avg << ",";
+    outfile << sort_time.avg << ",";
+    outfile << cpu_stl_time.avg << ",";
+    outfile << cpu_radix_time.avg;
+    outfile << std::endl;
+    
+    return true;
+}
+
+template <typename DataType>
+void CRadixSortTask<DataType>::writePerformanceToStdout() {
+    const std::vector<std::string> columns = {
+        "NumElements", "Datatype", "Dataset", "avgHistogram", "avgScan", "avgPaste", "avgReorder", "avgTotalGPU", "avgTotalSTLCPU", "avgTotalRDXCPU"
+    };
+    // Print columns
+
+    std::cout << columns[0];
+    for (int i = 1; i < columns.size(); i++) {
+        std::cout << "," << columns[i];
+    }
+    std::cout << std::endl;
+    std::cout << nkeys << ",";
+    std::cout << TypeNameString<DataType>::stdint_name << ",";
+    std::cout << hostData.m_selectedDataset->getName() << ",";
+    std::cout << histo_time.avg << ",";
+    std::cout << scan_time.avg << ",";
+    std::cout << paste_time.avg << ",";
+    std::cout << reorder_time.avg << ",";
+    std::cout << sort_time.avg << ",";
+    std::cout << cpu_stl_time.avg << ",";
+    std::cout << cpu_radix_time.avg;
+    std::cout << std::endl;
+}
+
+template <typename DataType>
 void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
 {
+    if (options.perf_to_stdout) {
+        cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_radix_time.avg << " Gelem/s" << endl;
+        cout << " stl cpu avg time: " << cpu_stl_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_stl_time.avg << " Gelem/s" << endl;
+    }
+
     if (options.perf_to_stdout) {
         cout << "Testing performance of GPU task " << deviceData->kernelNames[Task] << endl;
     }
@@ -759,8 +825,21 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
         cout << " -----------------------------------------------" << endl;
         cout << "  total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / ms << " Gelem/s" << endl;
     }
+    
+    using std::chrono::system_clock;
+    std::time_t tt = system_clock::to_time_t(system_clock::now());
+    struct std::tm * ptm = std::localtime(&tt);
+    const std::string dateFormat = "%H-%M-%S";
+    std::stringstream fileNameBuilder;
 
+    fileNameBuilder << "radix_" << std::put_time(ptm, dateFormat.c_str()) << ".csv";
 
+    if (options.perf_to_csv) {
+        writePerformanceToFile(fileNameBuilder.str());
+    }
+    if (options.perf_csv_to_stdout) {
+        writePerformanceToStdout();
+    }
 }
 
 /// Template specializations
