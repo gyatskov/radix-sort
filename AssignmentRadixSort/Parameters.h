@@ -27,4 +27,6 @@ struct Parameters {
 	// maximal value of integers for the sort to be correct
 	static const DataType _MAXINT = (1ULL << (_TOTALBITS - 1ULL));
 	// static const DataType _MAXINT_2 = std::numeric_limits<DataType>::max(); // VS13 does not support constexpr yet ;_;
+
+	static const auto _NUM_PERFORMANCE_ITERATIONS = 5; // number of iterations for performance testing
 };

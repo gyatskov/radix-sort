@@ -40,8 +40,8 @@ protected:
 	void CheckDivisibility();
 	void CopyDataToDevice(cl_command_queue CommandQueue);
 	void CopyDataFromDevice(cl_command_queue CommandQueue);
-	int  Resize(int nn);
-	void padGPUData(cl_command_queue CommandQueue, int nn);
+	void Resize(int nn);
+	void padGPUData(cl_command_queue CommandQueue);
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
 	void Histogram(cl_command_queue CommandQueue, int pass);
@@ -57,6 +57,7 @@ protected:
     // list of keys
     uint32_t nkeys; // actual number of keys
     uint32_t nkeys_rounded; // next multiple of _ITEMS*_GROUPS
+	uint32_t nkeys_rest; // rest to fit to number of gpu processors
 
     HostData<DataType>							 hostData;
     std::shared_ptr<ComputeDeviceData<DataType>> deviceData;
