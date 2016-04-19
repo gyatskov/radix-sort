@@ -812,8 +812,8 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
 
     timer.Stop();
-
 	double ms = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+    sort_time.avg = ms;
     if (options.perf_to_stdout) {
 
         cout << " kernel |    avg      |     min     |    max " << endl;
