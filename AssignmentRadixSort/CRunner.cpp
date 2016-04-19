@@ -23,7 +23,7 @@ CRunner::CRunner(Arguments arguments /*= Arguments()*/) : CAssignmentBase(argume
 static const size_t NUM_DATASETS = 5;
 
 template <typename DataType>
-std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator() {
+std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size_t num_elements) {
     std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> result = {
         std::make_shared<Zeros<DataType>>(),
         std::make_shared<Range<DataType>>(),
@@ -36,7 +36,7 @@ std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator() {
 
 template <typename DataType>
 void CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]) {
-    const auto datasets = DataSetKreator<DataType>();
+    const auto datasets = DataSetKreator<DataType>(options.num_elements);
     for (const auto dataset : datasets)
     {
         CRadixSortTask<DataType> radixSort(options, dataset);

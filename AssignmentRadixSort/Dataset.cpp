@@ -23,13 +23,13 @@ template <typename DataType>
 const char* const InvertedRange<DataType>::name = "Inverted range";
 
 template <typename DataType>
-Zeros<DataType>::Zeros()
+Zeros<DataType>::Zeros(size_t size) : Dataset(size)
 {
 	std::fill(dataset.begin(), dataset.end(), 0);
 }
 
 template <typename DataType>
-RandomDistributed<DataType>::RandomDistributed()
+RandomDistributed<DataType>::RandomDistributed(size_t size) : Dataset(size)
 {
 	std::string seedStr("Test :P");
 	std::seed_seq seed(seedStr.begin(), seedStr.end());
@@ -45,7 +45,7 @@ RandomDistributed<DataType>::RandomDistributed()
 }
 
 template <typename DataType>
-Random<DataType>::Random()
+Random<DataType>::Random(size_t size) : Dataset(size)
 {
     std::string seedStr("Test :P");
     std::seed_seq seed(seedStr.begin(), seedStr.end());
@@ -56,14 +56,14 @@ Random<DataType>::Random()
 }
 
 template <typename DataType>
-InvertedRange<DataType>::InvertedRange()
+InvertedRange<DataType>::InvertedRange(size_t size) : Dataset(size)
 {
 	std::iota(dataset.begin(), dataset.end(), std::numeric_limits<DataType>::min());
 	std::reverse(dataset.begin(), dataset.end());
 }
 
 template <typename DataType>
-Range<DataType>::Range()
+Range<DataType>::Range(size_t size) : Dataset(size)
 {
 	std::iota(dataset.begin(), dataset.end(), std::numeric_limits<DataType>::min());
 }
