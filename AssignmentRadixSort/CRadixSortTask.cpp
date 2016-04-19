@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <iomanip>
 #include <functional>
 #include <type_traits>
 #include <cassert>
@@ -22,12 +23,7 @@ CRadixSortTask<DataType>::CRadixSortTask(const RadixSortOptions& options, std::s
     nkeys(static_cast<decltype(nkeys)>(options.num_elements)),
 	nkeys_rounded(Parameters::_NUM_MAX_INPUT_ELEMS),
 	hostData(dataset),
-    options(options),
-
-    histo_time(0),
-    scan_time(0),
-    paste_time(0),
-    reorder_time(0)
+    options(options)
 {}
 
 template <typename DataType>
@@ -245,7 +241,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 
     clFinish(CommandQueue);
     timer.Stop();
-    histo_time = (histo_time + timer.GetElapsedMilliseconds()) / (pass + 1);
+    histo_time.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
     cl_ulong debut, fin;
@@ -310,7 +306,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 
     clFinish(CommandQueue);
     timer.Stop();
-    scan_time = (scan_time + timer.GetElapsedMilliseconds()) / (pass + 1);
+    scan_time.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
     cl_int err = CL_SUCCESS;
@@ -357,7 +353,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 
     clFinish(CommandQueue);
     timer.Stop();
-    scan_time = (scan_time + timer.GetElapsedMilliseconds()) / (pass + 1);
+    scan_time.update(timer.GetElapsedMilliseconds());
 
 
 #ifdef MORE_PROFILING
@@ -399,7 +395,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 
     clFinish(CommandQueue);
     timer.Stop();
-    paste_time = (paste_time + timer.GetElapsedMilliseconds()) / (pass + 1);
+    paste_time.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
     err = clGetEventProfilingInfo(eve,
@@ -484,7 +480,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) 
 		0, NULL, &eve), "Could not execute reorder kernel");
     clFinish(CommandQueue);
     timer.Stop();
-    reorder_time = (reorder_time + timer.GetElapsedMilliseconds()) / (pass + 1);
+    reorder_time.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
     cl_int err = CL_SUCCESS;
@@ -629,7 +625,8 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
         }
     }
     
-    sort_time = histo_time + scan_time + reorder_time;
+    sort_time.avg = histo_time.avg + scan_time.avg + reorder_time.avg;
+    sort_time.n = histo_time.n;
     if (options.verbose){
         cout << "End sorting" << endl;
     }
@@ -752,12 +749,18 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
 
 	double ms = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
     if (options.perf_to_stdout) {
-        cout << "  avg time histogram: " << histo_time << " ms" << endl;
-        cout << "  avg time scan:      " << scan_time << " ms" << endl;
-        cout << "  avg time paste:     " << paste_time << " ms" << endl;
-        cout << "  avg time reorder:   " << reorder_time << " ms" << endl;
-        cout << "  avg time total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / ms << " Gelem/s" << endl;
+
+        cout << " kernel |    avg      |     min     |    max " << endl;
+        cout << " -----------------------------------------------" << endl;
+        cout << "  histogram: " << std::setw(8) << histo_time.avg << " | " << histo_time.min << " | " << histo_time.max << endl;
+        cout << "  scan:      " << std::setw(8) << scan_time.avg << " | " << scan_time.min << " | " << scan_time.max << endl;
+        cout << "  paste:     " << std::setw(8) << paste_time.avg << " | " << paste_time.min << " | " << paste_time.max << endl;
+        cout << "  reorder:   " << std::setw(8) << reorder_time.avg << " | " << reorder_time.min << " | " << reorder_time.max << endl;
+        cout << " -----------------------------------------------" << endl;
+        cout << "  total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / ms << " Gelem/s" << endl;
     }
+
+
 }
 
 /// Template specializations

@@ -13,6 +13,35 @@
 template <typename DataType>
 struct ComputeDeviceData;
 
+struct Statistics {
+    double min;
+    double max;
+    double avg;
+    double sum;
+
+    size_t n;
+
+    Statistics() : 
+        min(std::numeric_limits<decltype(min)>::infinity()),
+        max(-std::numeric_limits<decltype(max)>::infinity()),
+        avg(0),
+        sum(0),
+        n(0)
+    {}
+
+    void update(double value) {
+        n++;
+        sum += value;
+        avg = sum / n;
+        if (value > max) {
+            max = value;
+        }
+        else if (value < min) {
+            min = value;
+        }
+    }
+};
+
 /// Parallel radix sort
 template <typename _DataType>
 class CRadixSortTask : public IComputeTask
@@ -63,7 +92,7 @@ protected:
     std::shared_ptr<ComputeDeviceData<DataType>> deviceData;
 
 	// timers
-	double histo_time, scan_time, reorder_time, paste_time, sort_time;
+	Statistics histo_time, scan_time, reorder_time, paste_time, sort_time;
 
     RadixSortOptions options;
 };
