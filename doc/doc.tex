@@ -53,7 +53,7 @@ Karlsruhe Institute of Technology, Karlsruhe, Germany\\
 \maketitle
 
 \begin{abstract}
-TODO
+Parallel sorting algorithm can increase the performance of lots of applications tremendously. This draft shows a rather simple implementation of Radix-Sort on OpenCL where it can achieve a high speedup providing a good sorting method for integers of any kind.
 \end{abstract}
 
 % Final Submit TODO: remove this prior to FINAL submission
@@ -94,7 +94,7 @@ Another notable implementation detail is the usage of local memory and barriers 
 
 \newpage
 \section{Experimental Results}
-All experimental benchmarks were made on a NVIDIA GeForce GTX 680 and a Intel i7-3770K CPU. GPU Driver Version 361.91 with OpenCL 1.2. For comparison the data was also sorted with std::sort and a custom single threaded Radix-Sort implementation on the CPU. The test data consisted of 5 different datasets:
+All experimental benchmarks were made on a NVIDIA GeForce GTX 680 and a Intel i7-3770K CPU. GPU Driver Version 361.91 with OpenCL 1.2. For comparison the data was also sorted with std::sort and a custom single threaded Radix-Sort implementation on the CPU. The test data started at an input amount of $2^{13}$ elements and ended at $2^{25}$ elements. To test different scenarios every input consisted  of 5 different datasets:
 
 \begin{enumerate}
   \item \textbf{Zeros}\\ Dataset containing only zeros
@@ -108,13 +108,7 @@ All experimental benchmarks were made on a NVIDIA GeForce GTX 680 and a Intel i7
   \item \textbf{InvertedRange}\\ Dataset containing the integers from range in inverted order
 \end{enumerate}
 
-% Your hardware.
-
-% What do you benchmark.
-
-% Running time~\ref{fi:runningtime:uniform} and speedup plots~\ref{fi:speedup:uniform} (for each generator, 64-bit integer and 32-bit floating point (not for  non-comparative integer sorting algorithms).
-
-% Interpretation.
+Below you can see the charts of benchmarks and speedup of the zero values and the uniform distributed random values. All these benchmarks were made with uint64 integers and were executed on the explained machine. The experimental results are illustraded by these two input groups. As you can see in figure \ref{fig:zero_bench} the runtime of the GPU algorithm on only zero values is much longer than the runtime of the standard c++ sorting algorithm std::sort. This beahviour is explainable by the behaviour of std::sort and Radix-Sort itself. While Radix-Sort is always going throug every bucket, the quicksort algorithm of std::sort can be optimized to recognize such inputs, consisting of only same elements, before starting the whole sorting process. Therefore the overhead of copying the input to the GPU and executing the whole algorithm on this pre-sorted dataset is inefficient. As expected the speedup of GPU Radix-Sort is below 1 which can be seen in figure \ref{fig:zero_speedup}. For other inputs like uniform distributed random integers, the runtime of GPU Radix-Sort increases significantly as you can see in figure \ref{fig:uniform_bench} and reaches a speedup up to a factor of ~25, which can be seen in figure \ref{fig:uniform_speedup}. The growing curve promises an even better performance for higher input amounts above $2^{25}$ elements. All other inputs described above, behave the same way. For more details about the average execution times of the used algorithm parts you can have a look at figure \ref{fig:components}.
 
 \begin{figure}
   \begin{center}
