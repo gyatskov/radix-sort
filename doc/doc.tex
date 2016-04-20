@@ -116,144 +116,39 @@ All experimental benchmarks were made on a NVIDIA GeForce GTX 680 and a Intel i7
 
 % Interpretation.
 
-\begin{figure}[h!]
-\centering
-\pgfplotsset{compat=1.5}
-\begin{tikzpicture}[scale=1]
-  \begin{axis}[
-    title={Your title.},
-    xlabel={Item Count [$n$]},
-    ylabel={Run Time per Item [Microseconds / Item]},
-    legend pos=north west,
-    xmode=log,
-    log basis x={2},
-    ] 
-    %% MULTIPLOT(threads) SELECT n AS x, (avg("wall-time") * 1.0 / n) AS y, MULTIPLOT
-    %% FROM stats
-    %% WHERE it > 0 AND "input-type"='uniform'
-    %% GROUP BY MULTIPLOT,x ORDER BY MULTIPLOT,x
-    \addplot coordinates { (1,6.14588) (2,25.8) (4,21.85) (8,18.075) (16,18.4125) (32,26.3438) (64,27.9469) (128,30.9563) (256,33.6352) (512,38.7367) (1024,53.5891) (2048,57.7013) (4096,62.2103) (8192,67.5351) (16384,72.0565) (32768,77.1085) (65536,72.8129) (131072,72.7906) (262144,74.5003) (524288,77.8793) (1048576,81.5511) (2097152,85.7657) (4194304,90.2553) (8388608,93.7425) (16777216,98.6555) };
-    \addlegendentry{GPU RadixSort};
-    \addplot coordinates { (1,0.2998) (2,23.5) (4,28.8) (8,23.675) (16,19.85) (32,24.75) (64,27.7625) (128,31.0453) (256,44.6383) (512,37.8852) (1024,33.967) (2048,31.1891) (4096,31.4354) (8192,31.9057) (16384,33.1395) (32768,35.4618) (65536,37.2686) (131072,39.349) (262144,41.8065) (524288,44.6163) (1048576,50.6581) (2097152,59.1302) (4194304,59.1624) (8388608,53.3066) (16777216,57.644) };
-    \addlegendentry{std::sort};
-    \addplot coordinates { (1,0.4005) (2,28) (4,24.55) (8,23.025) (16,19.525) (32,24.5875) (64,26.925) (128,31.4609) (256,34.6203) (512,38.2023) (1024,43.274) (2048,36.3531) (4096,25.3622) (8192,23.3748) (16384,22.7897) (32768,23.568) (65536,24.1379) (131072,37.6677) (262144,27.6724) (524288,34.9413) (1048576,33.1177) (2097152,33.0524) (4194304,34.8011) (8388608,35.3875) (16777216,37.0874) };
-    \addlegendentry{CPU RadixSort};
-  \end{axis}
-\end{tikzpicture}
-\caption{Runtimes of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
-\label{fi:runningtime:uniform}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\columnwidth]{charts/zero_benchmark.png}
+  \end{center}
+  \caption{Benchmark of only zero values.}\label{fig:zero_bench}
 \end{figure}
 
-\begin{figure}[h!]
-\centering
-\pgfplotsset{compat=1.5}
-\begin{tikzpicture}[scale=1]
-  \begin{axis}[
-    title={Your title.},
-    xlabel={Item Count [$n$]},
-    ylabel={Run Time per Item [Microseconds / Item]},
-    legend pos=north west,
-    xmode=log,
-    log basis x={2},
-    ] 
-    %% MULTIPLOT(threads) SELECT n AS x, (avg("wall-time") * 1.0 / n) AS y, MULTIPLOT
-    %% FROM stats
-    %% WHERE it > 0 AND "input-type"='uniform'
-    %% GROUP BY MULTIPLOT,x ORDER BY MULTIPLOT,x
-   \addplot coordinates { (1,6.14588) (2,25.8) (4,21.85) (8,18.075) (16,18.4125) (32,26.3438) (64,27.9469) (128,30.9563) (256,33.6352) (512,38.7367) (1024,53.5891) (2048,57.7013) (4096,62.2103) (8192,67.5351) (16384,72.0565) (32768,77.1085) (65536,72.8129) (131072,72.7906) (262144,74.5003) (524288,77.8793) (1048576,81.5511) (2097152,85.7657) (4194304,90.2553) (8388608,93.7425) (16777216,98.6555) };
-    \addlegendentry{GPU RadixSort};
-    \addplot coordinates { (1,0.2998) (2,23.5) (4,28.8) (8,23.675) (16,19.85) (32,24.75) (64,27.7625) (128,31.0453) (256,44.6383) (512,37.8852) (1024,33.967) (2048,31.1891) (4096,31.4354) (8192,31.9057) (16384,33.1395) (32768,35.4618) (65536,37.2686) (131072,39.349) (262144,41.8065) (524288,44.6163) (1048576,50.6581) (2097152,59.1302) (4194304,59.1624) (8388608,53.3066) (16777216,57.644) };
-    \addlegendentry{std::sort};
-    \addplot coordinates { (1,0.4005) (2,28) (4,24.55) (8,23.025) (16,19.525) (32,24.5875) (64,26.925) (128,31.4609) (256,34.6203) (512,38.2023) (1024,43.274) (2048,36.3531) (4096,25.3622) (8192,23.3748) (16384,22.7897) (32768,23.568) (65536,24.1379) (131072,37.6677) (262144,27.6724) (524288,34.9413) (1048576,33.1177) (2097152,33.0524) (4194304,34.8011) (8388608,35.3875) (16777216,37.0874) };
-    \addlegendentry{CPU RadixSort};
-  \end{axis}
-\end{tikzpicture}
-\caption{Running times of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
-\label{fi:runningtime:uniform}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\columnwidth]{charts/zero_speedup.png}
+  \end{center}
+  \caption{Speedup of only zero values compared to std::out.}\label{fig:zero_speedup}
 \end{figure}
 
-\begin{figure}[h!]
-\centering
-\pgfplotsset{compat=1.5}
-\begin{tikzpicture}[scale=1]
-  \begin{axis}[
-    title={Your title.},
-    xlabel={Item Count [$n$]},
-    ylabel={Run Time per Item [Microseconds / Item]},
-    legend pos=north west,
-    xmode=log,
-    log basis x={2},
-    ] 
-    %% MULTIPLOT(threads) SELECT n AS x, (avg("wall-time") * 1.0 / n) AS y, MULTIPLOT
-    %% FROM stats
-    %% WHERE it > 0 AND "input-type"='uniform'
-    %% GROUP BY MULTIPLOT,x ORDER BY MULTIPLOT,x
-    \addplot coordinates { (1,6.14588) (2,25.8) (4,21.85) (8,18.075) (16,18.4125) (32,26.3438) (64,27.9469) (128,30.9563) (256,33.6352) (512,38.7367) (1024,53.5891) (2048,57.7013) (4096,62.2103) (8192,67.5351) (16384,72.0565) (32768,77.1085) (65536,72.8129) (131072,72.7906) (262144,74.5003) (524288,77.8793) (1048576,81.5511) (2097152,85.7657) (4194304,90.2553) (8388608,93.7425) (16777216,98.6555) };
-    \addlegendentry{GPU RadixSort};
-    \addplot coordinates { (1,0.2998) (2,23.5) (4,28.8) (8,23.675) (16,19.85) (32,24.75) (64,27.7625) (128,31.0453) (256,44.6383) (512,37.8852) (1024,33.967) (2048,31.1891) (4096,31.4354) (8192,31.9057) (16384,33.1395) (32768,35.4618) (65536,37.2686) (131072,39.349) (262144,41.8065) (524288,44.6163) (1048576,50.6581) (2097152,59.1302) (4194304,59.1624) (8388608,53.3066) (16777216,57.644) };
-    \addlegendentry{std::sort};
-    \addplot coordinates { (1,0.4005) (2,28) (4,24.55) (8,23.025) (16,19.525) (32,24.5875) (64,26.925) (128,31.4609) (256,34.6203) (512,38.2023) (1024,43.274) (2048,36.3531) (4096,25.3622) (8192,23.3748) (16384,22.7897) (32768,23.568) (65536,24.1379) (131072,37.6677) (262144,27.6724) (524288,34.9413) (1048576,33.1177) (2097152,33.0524) (4194304,34.8011) (8388608,35.3875) (16777216,37.0874) };
-    \addlegendentry{CPU RadixSort};
-  \end{axis}
-\end{tikzpicture}
-\caption{Runtimes of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
-\label{fi:runningtime:uniform}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\columnwidth]{charts/uniform_benchmark.png}
+  \end{center}
+  \caption{Benchmark of uniform distributed random values.}\label{fig:uniform_bench}
 \end{figure}
 
-\begin{figure}[h!]
-\centering
-\pgfplotsset{compat=1.5}
-\begin{tikzpicture}[scale=1]
-  \begin{axis}[
-    title={Your title.},
-    xlabel={Item Count [$n$]},
-    ylabel={Run Time per Item [Microseconds / Item]},
-    legend pos=north west,
-    xmode=log,
-    log basis x={2},
-    ] 
-    %% MULTIPLOT(threads) SELECT n AS x, (avg("wall-time") * 1.0 / n) AS y, MULTIPLOT
-    %% FROM stats
-    %% WHERE it > 0 AND "input-type"='uniform'
-    %% GROUP BY MULTIPLOT,x ORDER BY MULTIPLOT,x
-    \addplot coordinates { (1,6.14588) (2,25.8) (4,21.85) (8,18.075) (16,18.4125) (32,26.3438) (64,27.9469) (128,30.9563) (256,33.6352) (512,38.7367) (1024,53.5891) (2048,57.7013) (4096,62.2103) (8192,67.5351) (16384,72.0565) (32768,77.1085) (65536,72.8129) (131072,72.7906) (262144,74.5003) (524288,77.8793) (1048576,81.5511) (2097152,85.7657) (4194304,90.2553) (8388608,93.7425) (16777216,98.6555) };
-    \addlegendentry{GPU RadixSort};
-    \addplot coordinates { (1,0.2998) (2,23.5) (4,28.8) (8,23.675) (16,19.85) (32,24.75) (64,27.7625) (128,31.0453) (256,44.6383) (512,37.8852) (1024,33.967) (2048,31.1891) (4096,31.4354) (8192,31.9057) (16384,33.1395) (32768,35.4618) (65536,37.2686) (131072,39.349) (262144,41.8065) (524288,44.6163) (1048576,50.6581) (2097152,59.1302) (4194304,59.1624) (8388608,53.3066) (16777216,57.644) };
-    \addlegendentry{std::sort};
-    \addplot coordinates { (1,0.4005) (2,28) (4,24.55) (8,23.025) (16,19.525) (32,24.5875) (64,26.925) (128,31.4609) (256,34.6203) (512,38.2023) (1024,43.274) (2048,36.3531) (4096,25.3622) (8192,23.3748) (16384,22.7897) (32768,23.568) (65536,24.1379) (131072,37.6677) (262144,27.6724) (524288,34.9413) (1048576,33.1177) (2097152,33.0524) (4194304,34.8011) (8388608,35.3875) (16777216,37.0874) };
-    \addlegendentry{CPU RadixSort};
-  \end{axis}
-\end{tikzpicture}
-\caption{Runtimes of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
-\label{fi:runningtime:uniform}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\columnwidth]{charts/uniform_speedup.png}
+  \end{center}
+  \caption{Speedup of uniform distributed random values compared to std::out.}\label{fig:uniform_speedup}
 \end{figure}
 
-\begin{figure}[h!]
-\centering
-\pgfplotsset{compat=1.5}
-\begin{tikzpicture}[scale=1]
-  \begin{axis}[
-    title={Your title.},
-    xlabel={Item Count [$n$]},
-    ylabel={Run Time per Item [Microseconds / Item]},
-    legend pos=north west,
-    xmode=log,
-    log basis x={2},
-    ] 
-    %% MULTIPLOT(threads) SELECT n AS x, (avg("wall-time") * 1.0 / n) AS y, MULTIPLOT
-    %% FROM stats
-    %% WHERE it > 0 AND "input-type"='uniform'
-    %% GROUP BY MULTIPLOT,x ORDER BY MULTIPLOT,x
-    \addplot coordinates { (1,6.14588) (2,25.8) (4,21.85) (8,18.075) (16,18.4125) (32,26.3438) (64,27.9469) (128,30.9563) (256,33.6352) (512,38.7367) (1024,53.5891) (2048,57.7013) (4096,62.2103) (8192,67.5351) (16384,72.0565) (32768,77.1085) (65536,72.8129) (131072,72.7906) (262144,74.5003) (524288,77.8793) (1048576,81.5511) (2097152,85.7657) (4194304,90.2553) (8388608,93.7425) (16777216,98.6555) };
-    \addlegendentry{GPU RadixSort};
-    \addplot coordinates { (1,0.2998) (2,23.5) (4,28.8) (8,23.675) (16,19.85) (32,24.75) (64,27.7625) (128,31.0453) (256,44.6383) (512,37.8852) (1024,33.967) (2048,31.1891) (4096,31.4354) (8192,31.9057) (16384,33.1395) (32768,35.4618) (65536,37.2686) (131072,39.349) (262144,41.8065) (524288,44.6163) (1048576,50.6581) (2097152,59.1302) (4194304,59.1624) (8388608,53.3066) (16777216,57.644) };
-    \addlegendentry{std::sort};
-    \addplot coordinates { (1,0.4005) (2,28) (4,24.55) (8,23.025) (16,19.525) (32,24.5875) (64,26.925) (128,31.4609) (256,34.6203) (512,38.2023) (1024,43.274) (2048,36.3531) (4096,25.3622) (8192,23.3748) (16384,22.7897) (32768,23.568) (65536,24.1379) (131072,37.6677) (262144,27.6724) (524288,34.9413) (1048576,33.1177) (2097152,33.0524) (4194304,34.8011) (8388608,35.3875) (16777216,37.0874) };
-    \addlegendentry{CPU RadixSort};
-  \end{axis}
-\end{tikzpicture}
-\caption{Running times of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
-\label{fi:runningtime:uniform}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\columnwidth]{charts/uniform_details.png}
+  \end{center}
+  \caption{Average runtimes of the components of the GPU Radix-Sort algorithm.}\label{fig:components}
 \end{figure}
 
 \bibliographystyle{splncs03}
