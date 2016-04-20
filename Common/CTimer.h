@@ -8,9 +8,6 @@
 	Use this timer to measure elapsed time on the HOST side.
 	Not suitable for measuring the execution of DEVICE code
 	without synchronization with the HOST.
-
-	NOTE: This class is not thread-safe (like most other classes in these
-	examples), but we are not doing CPU multithreading in the praktikum...
 */
 class CTimer
 {

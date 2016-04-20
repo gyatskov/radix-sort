@@ -83,7 +83,9 @@ To finally reorder the elements, the Prefixsum of the Histograms is needed. As d
 
 \newpage
 \section{Implementation Details}
-In this chapter the focus lays on the implementation. The basecode is written for OpenCL 1.2. The main routine focuses on instantiating buffers and delegating the computational tasks to the GPU processors. The three main parts, shown in \ref{Algorithm}, are represented by so called OpenCL kernels. For each of these described tasks one kernel is in charge. Because a GPU is a PRAM architecture, all processors are working on the same main memory. So the main difficulty here was to effectively seperate the memory each Processor is working on to avoid data corruption. To achieve this the kernels made use of the standard OpenCL routines to get to know what their operating ranges are on the main memory. This restriction also allows to use the OpenCL \textit{restrict} keyword, which gives the compiler a hint, that the marked buffers' adress spaces do not overlap. Therefore, the compiler is able to increase the overall performance by making use of cache optimizations.
+In this chapter the focus lays on the implementation. The basecode is written for OpenCL 1.2 and the base features like compiling the OpenCL code is inspired by the code base of the GPGPU practicum at the KIT.
+
+The main routine focuses on instantiating buffers and delegating the computational tasks to the GPU processors. The three main parts, shown in \ref{Algorithm}, are represented by so called OpenCL kernels. For each of these described tasks one kernel is in charge. Because a GPU is a PRAM architecture, all processors are working on the same main memory. So the main difficulty here was to effectively seperate the memory each Processor is working on to avoid data corruption. To achieve this the kernels made use of the standard OpenCL routines to get to know what their operating ranges are on the main memory. This restriction also allows to use the OpenCL \textit{restrict} keyword, which gives the compiler a hint, that the marked buffers' adress spaces do not overlap. Therefore, the compiler is able to increase the overall performance by making use of cache optimizations.
 
 To ensure the usage of different datatypes on the same codebase, this implementation is heavily based on the concept of C++ templates. The whole sorting algorithm can be instantiated with one of 4 supported data types: int32 / int64 / uint32 / uint64. This makes it easy to use this implementation for further projects without the need to accept performance losses if only 32-bit integers are of interest.
 
@@ -144,6 +146,17 @@ Below you can see the charts of benchmarks and speedup of the zero values and th
   \end{center}
   \caption{Average runtimes of the components of the GPU Radix-Sort algorithm.}\label{fig:components}
 \end{figure}
+
+\section{Usage}
+Below you can find a short list of commands to run this implementation. All tests are automatically executed on all dataset configurations on all data types available.
+
+\begin{itemize}
+  \item[] \texttt{--num-elements}\\ Number of elements to be sorted.
+  \item[] \texttt{--perf-to-stdout}\\ Print all measured performances to stdout.
+  \item[] \texttt{--perf-to-csv}\\ Write all measured performances to automatically generated csv files.
+  \item[] \texttt{--perf-csv-to-stdout}\\ Print all measured performances to stdout in a csv format.
+  \item[] \texttt{-v or --verbose}\\ Enable verbose prints for debugging.
+\end{itemize}
 
 \bibliographystyle{splncs03}
 \bibliography{sources}
