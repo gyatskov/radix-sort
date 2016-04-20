@@ -61,9 +61,9 @@ TODO
 
 \section{Algorithm}
 \label{Algorithm}
-This algorithm is based on an open source implementation of P. Helluy \cite{ocl-radix-helluy}. Before we come to the detailed explanation of the algorithm, we first need to define several values. $K(j)$, represents the non-sorted input values which consist only of integers. The implementation of P. Helluy is only capable of sorting 32-bit unsigned integers. So in his implementation, each of these integers in $K(j)$ for $j=0 \dots N-1$ is positive and will be called a \textit{key} in the further explanation. To expand the usage of this algorithm, this draft explains the expansion to support also 64-bit unsigned integers, and normal 32 and 64-bit integers. Because of the fact, that Radix-Sort is a non-comparative integer sorting algorithm, this implementation will not support floating point numbers. To enable also the work with normal integers, the integers are incremented by an offset. This offset is in case of a signed input list, the absolute value of the minimum possible value of the given integer. In case of a 32-bit signed integer this would be $abs(-2^{31})$. The GPU kernels are still working on the unsigned representation of the given input data type, and the offset incrementation is done on the fly, when the key is first accessed. Also the decremenrtation at the end of the algorithm is done on the fly to prevent performance losses. So basically from the outside it seems the algorithm is working directly on the signed integer values, but on the inside it is working with a shifted number range to fit in the unsigned number range.
+This algorithm is based on an open source implementation of P. Helluy \cite{ocl-radix-helluy}. Before we come to the detailed explanation of the algorithm, we first need to define several values. $K(j)$, represents the non-sorted input values which consist only of integers. The implementation of P. Helluy is only capable of sorting 32-bit unsigned integers. So in his implementation, each of these integers in $K(j)$ for $j=0 \dots N-1$ is positive and will be called a \textit{key} in the further explanation. To expand the usage of this algorithm, this draft explains the expansion to support also 64-bit unsigned integers, and signed 32 and 64-bit integers. Because of the fact, that Radix-Sort is a non-comparative integer sorting algorithm, this implementation will not support floating point numbers. In order to allow operation with signed integers, an offset is added to the integers. This offset is in case of a signed input list, the absolute value of the minimum possible value of the given integer. In case of a 32-bit signed integer this would be $abs(-2^{31})$. The GPU kernels are still working on the unsigned representation of the given input data type, and the offset incrementation is done on the fly, when the key is first accessed. Also the decrementation at the end of the algorithm is done on the fly to prevent performance losses. So basically from the outside it seems the algorithm is working directly on the signed integer values, but on the inside it is working with a shifted number range to fit into the unsigned number range.
 
-The Radix is represented by $R = 2^r$ where $r$ is the number of bits necessary representing $R$. We suppose that $b$ is divisible by $r$ and so the number of passes is denoted by $p = b/r$. This assumption can be satisfied by an appropriate definition of $r$. Each pass $q=0 \dots p-1$ of the algorithm consists in sorting the list according to the $q^{th}$ digit (in base $R$) $K(j)_q$. A pass can be imagined as a reordering of the list by this $q^{th}$ Radix. So after $p = b/r$ passes the list is sorted totally. It is important to say, that each pass sorts the corresponding elements in a stable manner. So the work done in each pass is not corrupted by previous passes and will not corrupt following passes.
+The Radix is represented by $R = 2^r$ where $r$ is the number of bits necessary representing $R$. We suppose that $b$, the total number of bits representing the keys is divisible by $r$ and so the number of passes is denoted by $p = b/r$. This assumption can be satisfied by an appropriate definition of $r$. Each pass $q=0 \dots p-1$ of the algorithm consists in sorting the list according to the $q^{th}$ digit (in base $R$) $K(j)_q$. A pass can be imagined as a reordering of the list by this $q^{th}$ Radix. So after $p = b/r$ passes the list is sorted totally. It is important to say, that each pass sorts the corresponding elements in a stable manner. So the work done in each pass is not corrupted by previous passes and will not corrupt following passes.
 
 The final algorithm is seperated into three different phases, which are executed consecutively in every pass. These phases are called Histograming, Scanning and Reordering. The explanation is listed below.
 
@@ -71,7 +71,7 @@ The final algorithm is seperated into three different phases, which are executed
 
 
 \subsection{Histograming}
-This first phase of the algorithm is in charge of calculating the so called \textit{Histograms}. A histogram represents the number of occuring Radix in the given list of elements $K$. To do this fully parallel, the porcessing units are seperated in Groups $G$ with Items $I$, where an Item represents a Processor. So based on the GPU Architecture, the total amount of available Processing Units is $GI$. For the explanation we can suppose, that $N=GI$. If this is (most likely) not the case in a real scenario, the data is extended by adding keys which represent the biggest possible value. Each Item is in charge of a part of the list. It computes the Histogram of its own sublist and adds his histogram to the histogram of the Group. This is simply done by just inspecting every element in the list, computing every $q^{th}$ bit sequence with the length $r$ and then incrementing the corresponding entry in the local Histogram, which represents the computed Radix.
+This first phase of the algorithm is in charge of calculating key \textit{histograms}. A histogram represents the number of occuring Radix in the given list of elements $K$. To do this fully parallel, the porcessing units are seperated in Groups $G$ with Items $I$, where an Item represents a Processor. So based on the GPU Architecture, the total amount of available Processing Units is $GI$. For the explanation we can suppose, that $N=GI$. If this is (most likely) not the case in a real scenario, the data is extended by adding keys which represent the biggest possible value. Each Item is in charge of a part of the list. It computes the Histogram of its own sublist and adds his histogram to the histogram of the Group. This is simply done by just inspecting every element in the list, computing every $q^{th}$ bit sequence with the length $r$ and then incrementing the corresponding entry in the local Histogram, which represents the computed Radix.
 
 %TODO Geschickte Groupwahl etc noch einbringen.
 
@@ -83,13 +83,13 @@ To finally reorder the elements, the Prefixsum of the Histograms is needed. As d
 
 \newpage
 \section{Implementation Details}
-In this chapter the focus lays on the implementation. The basecode is written for OpenCL 1.1. The main routine focuses on instantiating buffers and delegating the computational tasks to the GPU processors. The three main parts, shown in \ref{Algorithm}, are represented by so called OpenCL kernel. For each of these described tasks one kernel is in charge. Because a GPU is a PRAM architecture, all processors are working on the same main memory. So the main difficulty here was to effectively seperate the memory each Processor is working on to avoid data corruption. To achieve this the kernels made use of the standard OpenCL routines to get to know what their operating ranges are on the main memory. This restrictions also allows to use the OpenCL \textit{restrict} keyword, which signalizes the compiler, that the marked buffer is only owned by a single processor during runtime. Therefore the compiler is able to increase the overall performance by making use of cache optimizations.
+In this chapter the focus lays on the implementation. The basecode is written for OpenCL 1.2. The main routine focuses on instantiating buffers and delegating the computational tasks to the GPU processors. The three main parts, shown in \ref{Algorithm}, are represented by so called OpenCL kernels. For each of these described tasks one kernel is in charge. Because a GPU is a PRAM architecture, all processors are working on the same main memory. So the main difficulty here was to effectively seperate the memory each Processor is working on to avoid data corruption. To achieve this the kernels made use of the standard OpenCL routines to get to know what their operating ranges are on the main memory. This restriction also allows to use the OpenCL \textit{restrict} keyword, which gives the compiler a hint, that the marked buffers' adress spaces do not overlap. Therefore, the compiler is able to increase the overall performance by making use of cache optimizations.
 
-To ensure the usage of different datatypes on the same codebase, this implementation is heavily based on the c++ template model. The whole sorting algorithm can be instantiated with one of 4 supported data types (int32 / int64 / uint32 / uint64). This makes it easy to use this implementation for further projects without the need to accept performance losses if you only want to use 32-bit integers instead of 64-bit.
+To ensure the usage of different datatypes on the same codebase, this implementation is heavily based on the concept of C++ templates. The whole sorting algorithm can be instantiated with one of 4 supported data types: int32 / int64 / uint32 / uint64. This makes it easy to use this implementation for further projects without the need to accept performance losses if only 32-bit integers are of interest.
 
-These typerestrictions can easily be handled in c++ but for OpenCL we needed a more special method. So as usual the codebase of the OpenCL kernels is loaded during runtime and then compiled for the local GPU. Right before the compilation the code is imported with prepocessor arguments which are settig the internal data types to either 32 or 64 bit unsigned and the in \ref{Algorithm} shown \textit{offset} to the needed value, which depends on wether the input data type is signed or unsigned.
+These type restrictions can easily be handled in C++ but for OpenCL we needed a more special method. Usually, the codebase of the OpenCL kernels is loaded during runtime and then compiled for the local GPU. Right before the compilation the code is imported with appended prepocessor \#define directives which set the internal data types to either 32 or 64 bit unsigned integer and the \textit{offset} show in \ref{Algorithm} to the appropriate value, which depends on whether the input data type is signed or unsigned.
 
-Another notable implementation detail is the usage of local memory and barriers within the OpenCL code. The processors need to be aligned after several operations like copying the histograms to the local memory. To avoid data corruption these actions are controlled by barriers. The usage of the local memory of every processor leads once again to an overall performance increase.
+Another notable implementation detail is the usage of local memory and barriers within the OpenCL code. The processors need to be aligned after several operations like copying the histograms to the local memory. To avoid data corruption these actions are controlled by memory barriers. The usage of the local memory of every processor leads once again to an overall significant performance increase as it allows for a considerable boost in access time and can be, broadly speaking, regarded as a cache.
 % \subsection{Kernel}
 
 \newpage
@@ -140,7 +140,7 @@ All experimental benchmarks were made on a NVIDIA GeForce GTX 680 and a Intel i7
     \addlegendentry{CPU RadixSort};
   \end{axis}
 \end{tikzpicture}
-\caption{Running times of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
+\caption{Runtimes of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
 \label{fi:runningtime:uniform}
 \end{figure}
 
@@ -196,7 +196,7 @@ All experimental benchmarks were made on a NVIDIA GeForce GTX 680 and a Intel i7
     \addlegendentry{CPU RadixSort};
   \end{axis}
 \end{tikzpicture}
-\caption{Running times of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
+\caption{Runtimes of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
 \label{fi:runningtime:uniform}
 \end{figure}
 
@@ -224,7 +224,7 @@ All experimental benchmarks were made on a NVIDIA GeForce GTX 680 and a Intel i7
     \addlegendentry{CPU RadixSort};
   \end{axis}
 \end{tikzpicture}
-\caption{Running times of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
+\caption{Runtimes of \texttt{std::sort} with uniform input. Mean of \iterationcnt~iterations.}
 \label{fi:runningtime:uniform}
 \end{figure}
 
