@@ -1,0 +1,260 @@
+OpenCL platform:
+
+Name: NVIDIA CUDA
+Vendor: NVIDIA Corporation
+Version: OpenCL 1.2 CUDA 8.0.10
+Profile: FULL_PROFILE
+
+Device:
+
+Name: GeForce GTX 680
+Vendor: NVIDIA Corporation
+Driver version: 361.91
+Local memory size: 49152 Byte
+
+******************************
+
+########################################
+Running radix sort task...
+
+Sorting 1 elements
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint32_t,Zeros,0.0910833,0.0573458,0.0605229,0.0313146,2.50242,0,0.49992
+DONE
+Data set: Zeros
+Data type: uint32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint32_t,Range,0.0208625,0.0677365,0.0685062,0.0938125,2.65918,0.29994,0.60054
+DONE
+Data set: Range
+Data type: uint32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint32_t,Inverted range,0.0806146,0.0365,0.0833771,0.0416937,2.67594,0.29992,1.17998
+DONE
+Data set: Inverted range
+Data type: uint32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint32_t,Uniform random,0.081125,0.0365073,0.0521104,0.0520979,2.58112,0.60026,1.35112
+DONE
+Data set: Uniform random
+Data type: uint32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint32_t,Random,0.0314042,0.0729594,0.0626125,0.0900458,3.9029,0.3999,1.56642
+DONE
+Data set: Random
+Data type: uint32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int32_t,Zeros,0,0.072875,0.02085,0.0627146,2.30154,0.1,0.09994
+DONE
+Data set: Zeros
+Data type: int32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int32_t,Range,0.0938521,0.0312719,0.0416875,0.0104229,2.30208,0.29986,1.40084
+DONE
+Data set: Range
+Data type: int32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int32_t,Inverted range,0.104242,0.00521042,0.0312771,0.0938104,2.30148,0.29986,1.30086
+DONE
+Data set: Inverted range
+Data type: int32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int32_t,Uniform random,0.0521521,0.0678021,0.02085,0.0521375,2.60254,0.50008,1.30086
+DONE
+Data set: Uniform random
+Data type: int32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int32_t,Random,0.0313083,0.0521146,0.0834063,0.0730292,2.70252,0.59972,1.40156
+DONE
+Data set: Random
+Data type: int32_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint64_t,Zeros,0.0782396,0.0529974,0.0260594,0.0416979,4.83752,0,0.19958
+DONE
+Data set: Zeros
+Data type: uint64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint64_t,Range,0.0780885,0.0531896,0.0678333,0.0573219,6.14588,0.2998,0.4005
+DONE
+Data set: Range
+Data type: uint64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint64_t,Inverted range,0.0364833,0.0808026,0.0261146,0.0208396,4.60486,0.3001,0.80054
+DONE
+Data set: Inverted range
+Data type: uint64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint64_t,Uniform random,0.0938135,0.031324,0.0520219,0.0260771,4.70444,0.6002,2.00132
+DONE
+Data set: Uniform random
+Data type: uint64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,uint64_t,Random,0.036499,0.0843573,0,0.0469042,4.66252,0.59996,1.0007
+DONE
+Data set: Random
+Data type: uint64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int64_t,Zeros,0.0678073,0.0521089,0.0156323,0.0608448,4.78346,0.09982,0.09998
+DONE
+Data set: Zeros
+Data type: int64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int64_t,Range,0.0569062,0.0717422,0.0417458,0.0834021,5.65776,0.29992,2.50242
+DONE
+Data set: Range
+Data type: int64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int64_t,Inverted range,0.0312615,0.0599255,0.0416937,0.0781833,4.80326,0.49998,3.10238
+DONE
+Data set: Inverted range
+Data type: int64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int64_t,Uniform random,0.0417125,0.0703594,0.0403865,0.0677667,5.57888,0.50008,2.1473
+DONE
+Data set: Uniform random
+Data type: int64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
+Build log:
+
+Computing CPU reference result...DONE
+Computing GPU result...
+NumElements,Datatype,Dataset,avgHistogram,avgScan,avgPaste,avgReorder,avgTotalGPU,avgTotalSTLCPU,avgTotalRDXCPU
+1,int64_t,Random,0.0313469,0.064525,0.0364802,0.0521219,4.58076,0.70006,1.10064
+DONE
+Data set: Random
+Data type: int64_t
+Validation of CPU RadixSort has passed :)
+Validation of GPU RadixSort has passed :)
+GOLD TEST PASSED!
