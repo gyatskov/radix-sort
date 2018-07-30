@@ -68,6 +68,7 @@ Range<DataType>::Range(size_t size) : Dataset(size)
 	std::iota(dataset.begin(), dataset.end(), std::numeric_limits<DataType>::min());
 }
 
+// Specialize datasets for exactly these four types.
 template struct Dataset < int32_t > ;
 template struct Dataset < int64_t > ;
 template struct Dataset < uint32_t > ;

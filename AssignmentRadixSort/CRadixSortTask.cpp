@@ -32,25 +32,27 @@ CRadixSortTask<DataType>::CRadixSortTask(const RadixSortOptions& options, std::s
 {}
 
 template <typename DataType>
-CRadixSortTask<DataType>::~CRadixSortTask()
+CRadixSortTask<DataType>::~CRadixSortTask() 
 {
 	ReleaseResources();
 }
 
 template<typename T>
 typename std::enable_if<std::is_integral<T>::value>::type
-    appendToOptions(std::string& dst, const std::string& key, const T value) {
+    appendToOptions(std::string& dst, const std::string& key, const T value) 
+{
     dst += " -D" + key + "=" + to_string(value);
 }
 
 template <typename T>
 typename std::enable_if<!std::is_integral<T>::value>::type
-    appendToOptions(std::string& dst, const std::string& key, const T str) {
+    appendToOptions(std::string& dst, const std::string& key, const T str) 
+{
     dst += " -D" + key + "=" + string(str);
 }
 
 template <typename DataType>
-std::string CRadixSortTask<DataType>::buildOptions()
+std::string CRadixSortTask<DataType>::buildOptions() 
 {
     std::string options;
     //options += " -cl-opt-disable";
@@ -84,7 +86,7 @@ std::string CRadixSortTask<DataType>::buildOptions()
 }
 
 template <typename DataType>
-bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Context)
+bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Context) 
 {
     // CPU resources
 
@@ -142,7 +144,7 @@ void CRadixSortTask<DataType>::ReleaseResources()
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
+void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]) 
 {
 	padGPUData(CommandQueue);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
@@ -151,7 +153,7 @@ void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue C
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ComputeCPU()
+void CRadixSortTask<DataType>::ComputeCPU() 
 {
 	std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_resultSTLCPU.begin());
 	
@@ -181,7 +183,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
 }
 
 template <typename DataType>
-bool CRadixSortTask<DataType>::ValidateResults()
+bool CRadixSortTask<DataType>::ValidateResults() 
 {
 	bool success = true;
 
@@ -208,7 +210,8 @@ bool CRadixSortTask<DataType>::ValidateResults()
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass) {
+void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass) 
+{
     size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
     size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
 
@@ -266,7 +269,8 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int pass) {
+void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int pass) 
+{
     // numbers of processors for the local scan
     // = half the size of the local histograms
     // global work size
@@ -417,7 +421,8 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) {
+void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) 
+{
 	size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
     size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
 
@@ -517,7 +522,8 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) 
 
 /// Check divisibility of works to assign correct amounts of work to groups/work-items.
 template <typename DataType>
-void CRadixSortTask<DataType>::CheckDivisibility() {
+void CRadixSortTask<DataType>::CheckDivisibility() 
+{
     assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
     assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
     assert(Parameters::_NUM_MAX_INPUT_ELEMS % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
@@ -527,7 +533,8 @@ void CRadixSortTask<DataType>::CheckDivisibility() {
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device) {
+void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device) 
+{
     // check that the local mem is sufficient (suggestion of Jose Luis Cerc\F3s Pita)
     cl_ulong localMem;
 	clGetDeviceInfo(Device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(localMem), &localMem, NULL);
@@ -544,7 +551,8 @@ void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device) {
 
 /// resize the sorted vector
 template <typename DataType>
-void CRadixSortTask<DataType>::Resize(int nn) {
+void CRadixSortTask<DataType>::Resize(int nn) 
+{
 	assert(nn <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
     if (options.verbose){
@@ -633,7 +641,8 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::AllocateDeviceMemory(cl_context Context) {
+void CRadixSortTask<DataType>::AllocateDeviceMemory(cl_context Context) 
+{
 	// Done in constructor of ComputeDeviceData :)
 	Resize(nkeys);
 	deviceData = std::make_shared<ComputeDeviceData<DataType>>(Context, nkeys_rounded);
@@ -664,7 +673,8 @@ void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue) {
+void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue) 
+{
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dInKeys,
 		CL_TRUE, 0,
@@ -718,7 +728,8 @@ void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue 
 }
 
 template <typename DataType>
-bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filename) {
+bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filename) 
+{
     bool file_exists = false;
     {
         struct stat buffer;
@@ -754,7 +765,8 @@ bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filenam
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::writePerformanceToStdout() {
+void CRadixSortTask<DataType>::writePerformanceToStdout() 
+{
     const std::vector<std::string> columns = {
         "NumElements", "Datatype", "Dataset", "avgHistogram", "avgScan", "avgPaste", "avgReorder", "avgTotalGPU", "avgTotalSTLCPU", "avgTotalRDXCPU"
     };
@@ -842,12 +854,8 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     }
 }
 
-/// Template specializations
-/// ONLY these types will be permitted.
-
+// Specialize CRadixSortTask for exactly these four types.
 template class CRadixSortTask < int32_t >;
 template class CRadixSortTask < int64_t >;
 template class CRadixSortTask < uint32_t >;
 template class CRadixSortTask < uint64_t >;
-
-///////////////////////////////////////////////////////////////////////////////

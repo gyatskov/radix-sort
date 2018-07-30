@@ -7,8 +7,9 @@
 #include "Parameters.h"
 
 template <typename _DataType>
-struct ComputeDeviceData {
-	using DataType = _DataType;
+struct ComputeDeviceData 
+{
+	using DataType   = _DataType;
 	using Parameters = Parameters < DataType >;
 
     ComputeDeviceData(cl_context Context, size_t buffer_size);

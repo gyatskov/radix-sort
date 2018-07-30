@@ -6,7 +6,7 @@
 
 template <typename DataType>
 ComputeDeviceData<DataType>::ComputeDeviceData(cl_context Context, size_t buffer_size) :
-    m_Program(NULL)
+    m_Program(NULL) 
 {
     kernelNames.emplace_back("histogram");
     kernelNames.emplace_back("scanhistograms");
@@ -41,7 +41,8 @@ ComputeDeviceData<DataType>::ComputeDeviceData(cl_context Context, size_t buffer
 }
 
 template <typename DataType>
-ComputeDeviceData<DataType>::~ComputeDeviceData() {
+ComputeDeviceData<DataType>::~ComputeDeviceData() 
+{
     SAFE_RELEASE_MEMOBJECT(m_dInKeys);
     SAFE_RELEASE_MEMOBJECT(m_dOutKeys);
     SAFE_RELEASE_MEMOBJECT(m_dInPermut);
@@ -54,6 +55,7 @@ ComputeDeviceData<DataType>::~ComputeDeviceData() {
     SAFE_RELEASE_PROGRAM(m_Program);
 }
 
+// Specialize ComputeDeviceData for exactly these four types.
 template struct ComputeDeviceData < int32_t >;
 template struct ComputeDeviceData < int64_t >;
 template struct ComputeDeviceData < uint32_t >;

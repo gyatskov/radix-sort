@@ -19,6 +19,7 @@ HostData<DataType>::HostData(std::shared_ptr<Dataset<DataType>> dataset) :
 	std::copy(m_hKeys.begin(), m_hKeys.end(), m_hCheckKeys.begin());
 }
 
+// Specialize datasets for exactly these four types.
 template struct HostData < int32_t > ;
 template struct HostData < int64_t > ;
 template struct HostData < uint32_t > ;

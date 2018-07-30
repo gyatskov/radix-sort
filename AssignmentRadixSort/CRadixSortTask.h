@@ -13,7 +13,8 @@
 template <typename DataType>
 struct ComputeDeviceData;
 
-struct Statistics {
+struct Statistics 
+{
     double min;
     double max;
     double avg;

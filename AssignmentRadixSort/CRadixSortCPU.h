@@ -11,14 +11,10 @@ class RadixSortCPU {
 public:
 	using Parameters = Parameters < DataType > ;
 
-	struct uint128_t {
+	struct uint128_t 
+	{
 		uint64_t low;
 		uint64_t high;
-
-
-		//uint128_t operator* (uint128_t other) {
-		//	return
-		//}
 	};
 
 	static const auto NUM_BINS = Parameters::_TOTALBITS / Parameters::_NUM_BITS_PER_RADIX;
@@ -63,7 +59,8 @@ public:
 	}
 
 	template <typename ElemType>
-	static typename std::make_unsigned<ElemType>::type customAbs(ElemType val) {
+	static typename std::make_unsigned<ElemType>::type customAbs(ElemType val) 
+	{
 		return (val < 0) ? (-val) : (val);
 	}
 
@@ -86,7 +83,7 @@ public:
 	// The main function to that sorts arr[] of size n using
 	// Radix Sort
 	template<typename ElemType>
-	static void sort(std::vector<ElemType>& arr)
+	static void sort(std::vector<ElemType>& arr) 
 	{
 		// Find the maximum number to know number of digits
 		// in O(nkeys)

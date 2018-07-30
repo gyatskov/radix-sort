@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-using namespace std;
-
 int main(int argc, char** argv)
 {
     Arguments arguments(argc, argv);
@@ -11,6 +9,6 @@ int main(int argc, char** argv)
 
     radixSortRunner.EnterMainLoop();
 
-	cout<<"Press any key..."<<endl;
-	cin.get();
+	std::cout << "Press any key..." << std::endl;
+	std::cin.get();
 }

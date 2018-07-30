@@ -2,8 +2,10 @@
 
 #include <cstdint>
 
+/// Collection of compile-time parameters.
 template <typename _DataType>
-struct Parameters {
+struct Parameters 
+{
 	using DataType = _DataType;
 	///////////////////////////////////////////////////////
 	// these parameters can be changed

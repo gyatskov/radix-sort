@@ -12,7 +12,8 @@
 #include "Parameters.h"
 
 template <typename _DataType>
-struct HostData {
+struct HostData 
+{
 	using DataType = _DataType;
 	using Parameters = Parameters < DataType > ;
 

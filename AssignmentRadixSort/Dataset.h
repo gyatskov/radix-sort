@@ -12,7 +12,8 @@
 #include "Parameters.h"
 
 template <typename _DataType>
-struct Dataset {
+struct Dataset 
+{
 	using DataType = _DataType;
 	using Parameters = Parameters < DataType > ;
 
@@ -28,7 +29,8 @@ struct Dataset {
 };
 
 template <typename DataType>
-struct Zeros : Dataset<DataType> {
+struct Zeros : Dataset<DataType> 
+{
 	static const char* const name;
 
     Zeros(size_t size = Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -39,7 +41,8 @@ struct Zeros : Dataset<DataType> {
 };
 
 template <typename DataType>
-struct RandomDistributed : Dataset < DataType > {
+struct RandomDistributed : Dataset < DataType > 
+{
 	static const char* const name;
 
     RandomDistributed(size_t size = Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -50,7 +53,8 @@ struct RandomDistributed : Dataset < DataType > {
 };
 
 template <typename DataType>
-struct Random : Dataset < DataType > {
+struct Random : Dataset < DataType > 
+{
     static const char* const name;
 
     Random(size_t size = Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -61,7 +65,8 @@ struct Random : Dataset < DataType > {
 };
 
 template <typename DataType>
-struct Range : Dataset < DataType > {
+struct Range : Dataset < DataType > 
+{
 	static const char* const name;
 
     Range(size_t size = Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -72,7 +77,8 @@ struct Range : Dataset < DataType > {
 };
 
 template <typename DataType>
-struct InvertedRange : Dataset < DataType > {
+struct InvertedRange : Dataset < DataType > 
+{
 	static const char* const name;
 
     InvertedRange(size_t size = Parameters::_NUM_MAX_INPUT_ELEMS);

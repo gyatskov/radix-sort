@@ -1,5 +1,4 @@
-#ifndef _CASSIGNMENT_H
-#define _CASSIGNMENT_H
+#pragma once
 
 #include "../Common/CAssignmentBase.h"
 
@@ -17,5 +16,3 @@ public:
     template <typename DataType>
     void runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]);
 };
-
-#endif // _CASSIGNMENT_H

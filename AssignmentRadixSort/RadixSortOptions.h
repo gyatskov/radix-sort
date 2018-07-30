@@ -5,7 +5,8 @@
 
 #include "../Common/CArguments.h"
 
-struct RadixSortOptions {
+struct RadixSortOptions 
+{
     size_t num_elements;
     bool perf_to_stdout;
     bool perf_to_csv;
@@ -35,5 +36,4 @@ struct RadixSortOptions {
             }
         }
     }
-
 };

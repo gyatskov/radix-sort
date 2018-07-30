@@ -17,8 +17,10 @@ CRunner::CRunner(Arguments arguments /*= Arguments()*/) : CAssignmentBase(argume
 // CRunner
 static const size_t NUM_DATASETS = 5;
 
+/// [sic]
 template <typename DataType>
-std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size_t num_elements) {
+std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size_t num_elements) 
+{
     std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> result = {
         std::make_shared<Zeros<DataType>>(),
         std::make_shared<Range<DataType>>(),
@@ -30,7 +32,8 @@ std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size
 }
 
 template <typename DataType>
-void CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]) {
+void CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]) 
+{
     const auto datasets = DataSetKreator<DataType>(options.num_elements);
     for (const auto dataset : datasets)
     {
@@ -43,7 +46,7 @@ bool CRunner::DoCompute()
 {
     const auto options = RadixSortOptions(m_arguments);
 
-    typedef std::tuple<uint32_t, int32_t, uint64_t, int64_t> allowedTypes;
+    using allowedTypes = std::tuple<uint32_t, int32_t, uint64_t, int64_t>;
 
 	cout<<"########################################"<<endl;
 	cout<<"Running radix sort task..."<<endl<<endl;

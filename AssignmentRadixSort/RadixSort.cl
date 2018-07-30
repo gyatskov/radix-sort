@@ -4,12 +4,12 @@
 #define DataType int
 #endif
 
-#ifndef OFFSET
-#define OFFSET (0)
-#endif
-
 #ifndef UnsignedDataType
 #define UnsignedDataType unsigned int
+#endif
+
+#ifndef OFFSET
+#define OFFSET (0)
 #endif
 
 // compute the histogram for each radix and each virtual processor for the pass
@@ -18,7 +18,8 @@ __kernel void histogram(
 			      __global int*      restrict d_Histograms,
 			const int pass,
 			       __local int* loc_histo,
-			const int n) {
+			const int n) 
+{
   int it = get_local_id(0);  // i local number of the processor
   int ig = get_global_id(0); // global number = i + g I
 
@@ -81,7 +82,8 @@ __kernel void reorder(
           __global int* d_inPermut,
           __global int* d_outPermut,
           __local  int* loc_histo,
-    const int n){
+    const int n)
+{
 
 	int it = get_local_id(0);  // i local number of the processor
 	int ig = get_global_id(0); // global number = i + g I
@@ -126,7 +128,8 @@ __kernel void reorder(
 __kernel void scanhistograms(
     __global int* histo, 
     __local int* temp, 
-    __global int* globsum) {
+    __global int* globsum) 
+{
     int it = get_local_id(0);
     int ig = get_global_id(0);
     int decale = 1;
@@ -187,7 +190,8 @@ __kernel void scanhistograms(
 // each work item updates two values
 __kernel void pastehistograms(
           __global int* restrict histo, 
-    const __global int* restrict globsum) {
+    const __global int* restrict globsum) 
+{
     int ig = get_global_id(0);
     int gr = get_group_id(0);
 
