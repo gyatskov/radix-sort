@@ -200,7 +200,4 @@ __kernel void pastehistograms(
     // write results to device memory
     histo[(ig << 1)]     += s;
     histo[(ig << 1) + 1] += s;
-
-    // TODO: Check if this barrier here is really necessary.
-    barrier(CLK_GLOBAL_MEM_FENCE);
 }
