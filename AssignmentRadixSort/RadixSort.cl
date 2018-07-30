@@ -58,7 +58,7 @@ __kernel void histogram(
   barrier(CLK_LOCAL_MEM_FENCE);
 
   // copy the local histogram to the global one
-  for(int ir=0;ir<_RADIX;ir++){
+  for(int ir = 0; ir < _RADIX; ir++) {
     d_Histograms[items * (ir * groups + gr) + it] = loc_histo[ir * items + it];
   }
 
@@ -175,7 +175,6 @@ __kernel void reorder(const __global DataType* d_inKeys,
 // perform a parallel prefix sum (a scan) on the local histograms
 // (see Blelloch 1990) each workitem worries about two memories
 // see also http://http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
-// NOTE: currently problematic
 __kernel void scanhistograms(
     __global int* histo, 
     __local int* temp, 
@@ -228,8 +227,7 @@ __kernel void scanhistograms(
     barrier(CLK_LOCAL_MEM_FENCE);
 
     // write results to device memory
-
-    histo[(ig << 1)]       = temp[it << 1];
+    histo[(ig << 1)]       = temp[(it << 1)];
     histo[(ig << 1) + 1]   = temp[(it << 1) + 1];
 
     barrier(CLK_GLOBAL_MEM_FENCE);
