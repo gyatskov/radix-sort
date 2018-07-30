@@ -68,9 +68,6 @@ __kernel void histogram(
   for(int ir = 0; ir < _RADIX; ir++) {
     d_Histograms[items * (ir * groups + gr) + it] = loc_histo[ir * items + it];
   }
-
-  // TODO: Check if this barrier here is really necessary.
-  barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
 // each virtual processor reorders its data using the scanned histogram
