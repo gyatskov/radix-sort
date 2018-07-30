@@ -1,4 +1,4 @@
-#include "CRadixSortTask.h"
+ï»¿#include "CRadixSortTask.h"
 #include "CRadixSortCPU.h"
 
 #include "../Common/CLUtil.h"
@@ -524,7 +524,7 @@ void CRadixSortTask<DataType>::CheckDivisibility() {
 
 template <typename DataType>
 void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device) {
-    // check that the local mem is sufficient (suggestion of Jose Luis Cercós Pita)
+    // check that the local mem is sufficient (suggestion of Jose Luis Cerc\F3s Pita)
     cl_ulong localMem;
 	clGetDeviceInfo(Device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(localMem), &localMem, NULL);
     if (Parameters::VERBOSE) {
@@ -587,7 +587,6 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
     if (Parameters::VERBOSE) {
         cout << "Start sorting " << nkeys << " keys." << endl;
     }
-
 
     for (int pass = 0; pass < Parameters::_NUM_PASSES; pass++){
         if (Parameters::VERBOSE) {
