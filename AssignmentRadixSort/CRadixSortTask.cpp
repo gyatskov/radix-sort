@@ -189,10 +189,6 @@ bool CRadixSortTask<DataType>::ValidateResults()
 
 	for (const auto& alternative : deviceData->alternatives)
 	{
-//#define RADIXSORT_CL_NOT_YET_IMPLEMENTED
-#ifdef RADIXSORT_CL_NOT_YET_IMPLEMENTED
-		std::sort(m_hResultGPUMap[kernelName].begin(), m_hResultGPUMap[kernelName].end());
-#endif
 		const bool validCPURadixSort = memcmp(hostData.m_resultRadixSortCPU.data(), hostData.m_resultSTLCPU.data(), sizeof(DataType) * nkeys) == 0;
 		const bool validGPURadixSort = memcmp(hostData.m_hResultGPUMap[alternative].data(), hostData.m_resultSTLCPU.data(), sizeof(DataType) * nkeys) == 0;
 
