@@ -181,9 +181,6 @@ __kernel void scanhistograms(
     // write results to device memory
     histo[(ig << 1)]       = temp[(it << 1)];
     histo[(ig << 1) + 1]   = temp[(it << 1) + 1];
-
-    // TODO: Check if this barrier here is really necessary.
-    barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
 // use the global sum for updating the local histograms
