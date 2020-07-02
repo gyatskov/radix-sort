@@ -63,6 +63,7 @@ public:
 	virtual bool ValidateResults();
 
 protected:
+    using Parameters = AlgorithmParameters<DataType>;
 
 	// Helper methods
     std::string buildOptions();
