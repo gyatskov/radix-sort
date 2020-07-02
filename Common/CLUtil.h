@@ -1,6 +1,8 @@
 #ifndef CL_UTIL_H
 #define CL_UTIL_H
 
+#include "CommonDefs.h"
+
 // All OpenCL headers
 #if defined(WIN32)
     #include <CL/opencl.h>
@@ -8,9 +10,7 @@
     #include <OpenCL/opencl.h>
 #else
     #include <CL/cl.h>
-#endif 
-
-#include "CommonDefs.h"
+#endif
 
 #include <string>
 #include <iostream>
@@ -35,9 +35,9 @@ public:
 	//! Measures the execution time of a kernel by executing it N times and returning the average time in milliseconds.
 	/*!
 		The scheduling cost of the kernel can be amortized if we enqueue
-		the kernel multiple times. If your kernel is simple and fast, use a high number of iterations!		
+		the kernel multiple times. If your kernel is simple and fast, use a high number of iterations!
 	*/
-	static double ProfileKernel(cl_command_queue CommandQueue, cl_kernel Kernel, cl_uint Dimensions, 
+	static double ProfileKernel(cl_command_queue CommandQueue, cl_kernel Kernel, cl_uint Dimensions,
 		const size_t* pGlobalWorkSize, const size_t* pLocalWorkSize, int NIterations);
 
 	static const char* GetCLErrorString(cl_int CLErrorCode);

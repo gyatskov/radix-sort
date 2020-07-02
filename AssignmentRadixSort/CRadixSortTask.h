@@ -1,28 +1,29 @@
 #pragma once
 
 #include "../Common/IComputeTask.h"
-#include "HostData.h"
 #include "Parameters.h"
+#include "HostData.h"
 #include "RadixSortOptions.h"
 
 #include <vector>
 #include <map>
 #include <memory>
+#include <limits>
 #include <cstdint>
 
 template <typename DataType>
 struct ComputeDeviceData;
 
-struct Statistics 
+struct Statistics
 {
     double min;
     double max;
     double avg;
     double sum;
 
-    size_t n;
+    std::size_t n;
 
-    Statistics() : 
+    Statistics() :
         min(std::numeric_limits<decltype(min)>::infinity()),
         max(-std::numeric_limits<decltype(max)>::infinity()),
         avg(0),
@@ -49,7 +50,6 @@ class CRadixSortTask : public IComputeTask
 {
 public:
 	using DataType = _DataType;
-	using Parameters = Parameters < DataType > ;
 
 	CRadixSortTask(const RadixSortOptions& options, std::shared_ptr<Dataset<DataType>> dataset);
 
@@ -63,6 +63,7 @@ public:
 	virtual bool ValidateResults();
 
 protected:
+
 	// Helper methods
     std::string buildOptions();
 	void AllocateDeviceMemory(cl_context Context);

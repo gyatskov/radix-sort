@@ -19,7 +19,7 @@ static const size_t NUM_DATASETS = 5;
 
 /// [sic]
 template <typename DataType>
-std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size_t num_elements) 
+std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size_t num_elements)
 {
     std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> result = {
         std::make_shared<Zeros<DataType>>(),
@@ -32,7 +32,7 @@ std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size
 }
 
 template <typename DataType>
-void CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]) 
+void CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3])
 {
     const auto datasets = DataSetKreator<DataType>(options.num_elements);
     for (const auto dataset : datasets)
@@ -53,6 +53,7 @@ bool CRunner::DoCompute()
 	size_t LocalWorkSize[3] = { 1, 1, 1 }; // LocalWorkSize does not mean anything right now
 	const auto problemSize = options.num_elements;
 	cout << "Sorting " << problemSize << " elements" << std::endl;
+
     runTask<uint32_t>(options, LocalWorkSize);
     runTask<int32_t> (options, LocalWorkSize);
     runTask<uint64_t>(options, LocalWorkSize);

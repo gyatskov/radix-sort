@@ -1,16 +1,18 @@
 #pragma once
 
+#include "Parameters.h"
+
 #include "../Common/CLUtil.h"
+
 #include <vector>
 #include <map>
 #include <string>
-#include "Parameters.h"
 
 template <typename _DataType>
-struct ComputeDeviceData 
+struct ComputeDeviceData
 {
 	using DataType   = _DataType;
-	using Parameters = Parameters < DataType >;
+	using Parameters = AlgorithmParameters < DataType >;
 
     ComputeDeviceData(cl_context Context, size_t buffer_size);
     ~ComputeDeviceData();

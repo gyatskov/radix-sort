@@ -1,6 +1,8 @@
 #ifndef _ICOMPUTE_TASK_H
 #define _ICOMPUTE_TASK_H
 
+#include "CommonDefs.h"
+
 // All OpenCL headers
 #if defined(WIN32)
     #include <CL/opencl.h>
@@ -8,9 +10,8 @@
     #include <OpenCL/opencl.h>
 #else
     #include <CL/cl.h>
-#endif 
+#endif
 
-#include "CommonDefs.h"
 
 //! Common interface for the tasks within the assignment.
 /*!
@@ -22,7 +23,7 @@ class IComputeTask
 public:
 
 	virtual ~IComputeTask() {};
-	
+
 	//! Init any resources specific to the current task
 	virtual bool InitResources(cl_device_id Device, cl_context Context) = 0;
 

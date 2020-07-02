@@ -1,5 +1,6 @@
 ﻿#include "CRadixSortTask.h"
 #include "CRadixSortCPU.h"
+#include "RadixSortOptions.h"
 
 #include "../Common/CLUtil.h"
 #include "../Common/CTimer.h"
@@ -16,43 +17,46 @@
 #include <chrono>       // std::chrono::system_clock
 #include <functional>
 #include <type_traits>
+#include <cstring>      // memcmp
 #include <cassert>
 #include <sys/stat.h>
 
-using namespace std;
+template <typename DataType>
+using Parameters = AlgorithmParameters <DataType>;
+
 
 //#define MORE_PROFILING
 template <typename DataType>
 CRadixSortTask<DataType>::CRadixSortTask(const RadixSortOptions& options, std::shared_ptr<Dataset<DataType>> dataset)
 	:
     nkeys(static_cast<decltype(nkeys)>(options.num_elements)),
-	nkeys_rounded(Parameters::_NUM_MAX_INPUT_ELEMS),
+	nkeys_rounded(Parameters<DataType>::_NUM_MAX_INPUT_ELEMS),
 	hostData(dataset),
     options(options)
 {}
 
 template <typename DataType>
-CRadixSortTask<DataType>::~CRadixSortTask() 
+CRadixSortTask<DataType>::~CRadixSortTask()
 {
 	ReleaseResources();
 }
 
 template<typename T>
 typename std::enable_if<std::is_integral<T>::value>::type
-    appendToOptions(std::string& dst, const std::string& key, const T value) 
+    appendToOptions(std::string& dst, const std::string& key, const T value)
 {
-    dst += " -D" + key + "=" + to_string(value);
+    dst += " -D" + key + "=" + std::to_string(value);
 }
 
 template <typename T>
 typename std::enable_if<!std::is_integral<T>::value>::type
-    appendToOptions(std::string& dst, const std::string& key, const T str) 
+    appendToOptions(std::string& dst, const std::string& key, const T str)
 {
     dst += " -D" + key + "=" + string(str);
 }
 
 template <typename DataType>
-std::string CRadixSortTask<DataType>::buildOptions() 
+std::string CRadixSortTask<DataType>::buildOptions()
 {
     std::string options;
     //options += " -cl-opt-disable";
@@ -61,32 +65,32 @@ std::string CRadixSortTask<DataType>::buildOptions()
     {
         ///////////////////////////////////////////////////////
         // these parameters can be changed
-        appendToOptions(options, "_ITEMS", Parameters::_NUM_ITEMS_PER_GROUP); // number of items in a group
-        appendToOptions(options, "_GROUPS", Parameters::_NUM_GROUPS); // the number of virtual processors is Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
-        appendToOptions(options, "_HISTOSPLIT", Parameters::_NUM_HISTOSPLIT); // number of splits of the histogram
-        appendToOptions(options, "_TOTALBITS", Parameters::_TOTALBITS);  // number of bits for the integer in the list (max=32)
-        appendToOptions(options, "_BITS", Parameters::_NUM_BITS_PER_RADIX);  // number of bits in the radix
+        appendToOptions(options, "_ITEMS", Parameters<DataType>::_NUM_ITEMS_PER_GROUP); // number of items in a group
+        appendToOptions(options, "_GROUPS", Parameters<DataType>::_NUM_GROUPS); // the number of virtual processors is Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
+        appendToOptions(options, "_HISTOSPLIT", Parameters<DataType>::_NUM_HISTOSPLIT); // number of splits of the histogram
+        appendToOptions(options, "_TOTALBITS", Parameters<DataType>::_TOTALBITS);  // number of bits for the integer in the list (max=32)
+        appendToOptions(options, "_BITS", Parameters<DataType>::_NUM_BITS_PER_RADIX);  // number of bits in the radix
         // max size of the sorted vector
         // it has to be divisible by  Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
         // (for other sizes, pad the list with big values)
-        appendToOptions(options, "_N", Parameters::_NUM_MAX_INPUT_ELEMS);// maximal size of the list
+        appendToOptions(options, "_N", Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);// maximal size of the list
         //#define PERMUT  // store the final permutation
         ////////////////////////////////////////////////////////
 
         // the following parameters are computed from the previous
-        appendToOptions(options, "_RADIX", Parameters::_RADIX);//  radix  = 2^_BITS
-        appendToOptions(options, "_PASS", Parameters::_NUM_PASSES); // number of needed passes to sort the list
-        appendToOptions(options, "_HISTOSIZE", Parameters::_HISTOSIZE);// size of the histogram
+        appendToOptions(options, "_RADIX", Parameters<DataType>::_RADIX);//  radix  = 2^_BITS
+        appendToOptions(options, "_PASS", Parameters<DataType>::_NUM_PASSES); // number of needed passes to sort the list
+        appendToOptions(options, "_HISTOSIZE", Parameters<DataType>::_HISTOSIZE);// size of the histogram
         // maximal value of integers for the sort to be correct
         //appendToOptions(options, "_MAXINT", Parameters::_MAXINT);
-        
+
         //appendToOptions(options, "DataType", TypeNameString<DataType>::open_cl_name);
     }
     return options;
 }
 
 template <typename DataType>
-bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Context) 
+bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Context)
 {
     // CPU resources
 
@@ -106,12 +110,13 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
 
     //load and compile kernels
     {
-        string programCode;
-        string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::open_cl_name) + std::string("\n");
-		string unsignedDataTypeDefine = "#define UnsignedDataType " + std::string(TypeNameString< std::make_unsigned<DataType>::type >::open_cl_name) + std::string("\n");
+        using UnsignedType = typename std::make_unsigned<DataType>::type;
+        std::string programCode;
+        std::string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::open_cl_name) + std::string("\n");
+        std::string unsignedDataTypeDefine = "#define UnsignedDataType " + std::string(TypeNameString< UnsignedType >::open_cl_name) + std::string("\n");
 		const auto OFFSET = -std::numeric_limits<DataType>::min();
-		string summandDefine = "#define OFFSET " + std::to_string(OFFSET) + std::string("\n");
-        size_t programSize = 0;
+        std::string summandDefine = "#define OFFSET " + std::to_string(OFFSET) + std::string("\n");
+        std::size_t programSize = 0;
         CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
 		programCode = dataTypeDefine + unsignedDataTypeDefine + summandDefine + programCode;
         const auto options = buildOptions();
@@ -127,7 +132,7 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
     for (const auto& kernelName : deviceData->kernelNames) {
 		// Input data stays the same for each kernel
         deviceData->m_kernelMap[kernelName] = clCreateKernel(deviceData->m_Program, kernelName.c_str(), &clError);
-		
+
         std::string errorMsg("Failed to create kernel: ");
         errorMsg += kernelName;
         V_RETURN_FALSE_CL(clError, errorMsg.c_str());
@@ -144,7 +149,7 @@ void CRadixSortTask<DataType>::ReleaseResources()
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]) 
+void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
 {
 	padGPUData(CommandQueue);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
@@ -153,25 +158,25 @@ void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue C
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ComputeCPU() 
+void CRadixSortTask<DataType>::ComputeCPU()
 {
 	std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.end(), hostData.m_resultSTLCPU.begin());
-	
+
 	CTimer timer;
 	timer.Start();
-	for (auto j = 0; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
+	for (auto j = 0; j < Parameters<DataType>::_NUM_PERFORMANCE_ITERATIONS; j++) {
 		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultSTLCPU.begin());
 
 		// Reference sorting (STL quicksort):
 		std::sort(hostData.m_resultSTLCPU.begin(), hostData.m_resultSTLCPU.begin() + nkeys_rounded);
 	}
 	timer.Stop();
-	cpu_stl_time.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+	cpu_stl_time.avg = timer.GetElapsedMilliseconds() / double(Parameters<DataType>::_NUM_PERFORMANCE_ITERATIONS);
 
 	hostData.m_resultRadixSortCPU.resize(nkeys_rounded);
-	
+
 	timer.Start();
-	for (auto j = 0; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
+	for (auto j = 0; j < Parameters<DataType>::_NUM_PERFORMANCE_ITERATIONS; j++) {
 		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultRadixSortCPU.begin());
 
 		// Reference sorting implementation on CPU (radixsort):
@@ -179,11 +184,11 @@ void CRadixSortTask<DataType>::ComputeCPU()
     }
 	timer.Stop();
 
-    cpu_radix_time.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+    cpu_radix_time.avg = timer.GetElapsedMilliseconds() / double(Parameters<DataType>::_NUM_PERFORMANCE_ITERATIONS);
 }
 
 template <typename DataType>
-bool CRadixSortTask<DataType>::ValidateResults() 
+bool CRadixSortTask<DataType>::ValidateResults()
 {
 	bool success = true;
 
@@ -194,10 +199,10 @@ bool CRadixSortTask<DataType>::ValidateResults()
 
 		const std::string hasPassedCPU = validCPURadixSort ? "passed :)" : "FAILED >:O";
 		const std::string hasPassedGPU = validGPURadixSort ? "passed :)" : "FAILED >:O";
-		cout << "Data set: " << hostData.m_selectedDataset->getName() << std::endl;
-		cout << "Data type: " << TypeNameString<DataType>::stdint_name << std::endl;
-		cout << "Validation of CPU RadixSort has " + hasPassedCPU << std::endl;
-		cout << "Validation of GPU RadixSort has " + hasPassedGPU << std::endl;
+		std::cout << "Data set: " << hostData.m_selectedDataset->getName() << std::endl;
+		std::cout << "Data type: " << TypeNameString<DataType>::stdint_name << std::endl;
+		std::cout << "Validation of CPU RadixSort has " + hasPassedCPU << std::endl;
+		std::cout << "Validation of GPU RadixSort has " + hasPassedGPU << std::endl;
 
 		success = success && validCPURadixSort && validGPURadixSort;
 	}
@@ -206,13 +211,13 @@ bool CRadixSortTask<DataType>::ValidateResults()
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass) 
+void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass)
 {
-    size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
-    size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
+    size_t nbitems = Parameters<DataType>::_NUM_ITEMS_PER_GROUP * Parameters<DataType>::_NUM_GROUPS;
+    size_t nblocitems = Parameters<DataType>::_NUM_ITEMS_PER_GROUP;
 
-	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
-	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+	assert(nkeys_rounded % (Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP) == 0);
+	assert(nkeys_rounded <= Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
 
 	auto histogramKernel = deviceData->m_kernelMap["histogram"];
 
@@ -221,7 +226,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 		V_RETURN_CL(clSetKernelArg(histogramKernel, 0, sizeof(cl_mem), &deviceData->m_dInKeys), "Could not set input elements argument");
 		V_RETURN_CL(clSetKernelArg(histogramKernel, 1, sizeof(cl_mem), &deviceData->m_dHistograms), "Could not set input histograms");
 		V_RETURN_CL(clSetKernelArg(histogramKernel, 2, sizeof(pass), &pass), "Could not set pass argument");
-		V_RETURN_CL(clSetKernelArg(histogramKernel, 3, sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP, NULL), "Could not set local cache");
+		V_RETURN_CL(clSetKernelArg(histogramKernel, 3, sizeof(cl_int) * Parameters<DataType>::_RADIX * Parameters<DataType>::_NUM_ITEMS_PER_GROUP, NULL), "Could not set local cache");
 		V_RETURN_CL(clSetKernelArg(histogramKernel, 4, sizeof(int), &nkeys_rounded), "Could not set key count");
 	}
 
@@ -250,7 +255,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
         sizeof(cl_ulong),
         (void*)&debut,
         NULL);
-    //cout << err<<" , "<<CL_PROFILING_INFO_NOT_AVAILABLE<<endl;
+    //std::cout << err<<" , "<<CL_PROFILING_INFO_NOT_AVAILABLE<<std::endl;
     assert(err == CL_SUCCESS);
 
     err = clGetEventProfilingInfo(eve,
@@ -265,17 +270,17 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int pass) 
+void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int pass)
 {
     // numbers of processors for the local scan
     // = half the size of the local histograms
     // global work size
-	size_t nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+	size_t nbitems    = Parameters<DataType>::_RADIX * Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP / 2;
     // local work size
-	size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
+	size_t nblocitems = nbitems / Parameters<DataType>::_NUM_HISTOSPLIT;
 
-	const uint32_t maxmemcache = max(Parameters::_NUM_HISTOSPLIT, 
-		Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT);
+	const uint32_t maxmemcache = std::max(Parameters<DataType>::_NUM_HISTOSPLIT,
+		Parameters<DataType>::_NUM_ITEMS_PER_GROUP * Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_RADIX / Parameters<DataType>::_NUM_HISTOSPLIT);
 
     // scan locally the histogram (the histogram is split into several
     // parts that fit into the local memory)
@@ -337,7 +342,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
     }
 
     // global work size
-	nbitems    = Parameters::_NUM_HISTOSPLIT / 2;
+	nbitems    = Parameters<DataType>::_NUM_HISTOSPLIT / 2;
     // local work size
     nblocitems = nbitems;
 
@@ -345,7 +350,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 	// Execute kernel for second scan (global)
     V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		scanHistogramKernel,
-        workDimension, 
+        workDimension,
         globalWorkOffset,
         &nbitems,
         &nblocitems,
@@ -376,9 +381,9 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 
     // loops again in order to paste together the local histograms
     // global
-	nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+	nbitems    = Parameters<DataType>::_RADIX * Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP / 2;
     // local work size
-	nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
+	nblocitems = nbitems / Parameters<DataType>::_NUM_HISTOSPLIT;
 
 	V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, 0, sizeof(cl_mem), &deviceData->m_dHistograms), "Could not set histograms argument");
 	V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, 1, sizeof(cl_mem), &deviceData->m_dGlobsum), "Could not set globsum argument");
@@ -387,7 +392,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
     timer.Start();
     V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		pasteHistogramKernel,
-        workDimension, 
+        workDimension,
         globalWorkOffset,
         &nbitems,
         &nblocitems,
@@ -417,12 +422,12 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass) 
+void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 {
-	size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
-    size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
+	size_t nblocitems = Parameters<DataType>::_NUM_ITEMS_PER_GROUP;
+    size_t nbitems    = Parameters<DataType>::_NUM_ITEMS_PER_GROUP * Parameters<DataType>::_NUM_GROUPS;
 
-	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
+	assert(nkeys_rounded % (Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP) == 0);
 
     clFinish(CommandQueue);
     auto reorderKernel = deviceData->m_kernelMap["reorder"];
@@ -457,13 +462,13 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
         V_RETURN_CL(clSetKernelArg(reorderKernel, 4, sizeof(cl_mem), &deviceData->m_dInPermut), "Could not set input permutation for reorder kernel.");
         V_RETURN_CL(clSetKernelArg(reorderKernel, 5, sizeof(cl_mem), &deviceData->m_dOutPermut), "Could not set output permutation for reorder kernel.");
 		V_RETURN_CL(clSetKernelArg(reorderKernel, 6,
-			sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP,
+			sizeof(cl_int) * Parameters<DataType>::_RADIX * Parameters<DataType>::_NUM_ITEMS_PER_GROUP,
             NULL), "Could not set local memory for reorder kernel."); // mem cache
 
         V_RETURN_CL(clSetKernelArg(reorderKernel, 7, sizeof(nkeys_rounded), &nkeys_rounded), "Could not set number of input keys for reorder kernel.");
 	}
 
-	assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
+	assert(Parameters<DataType>::_RADIX == pow(2, Parameters<DataType>::_NUM_BITS_PER_RADIX));
 
     cl_event eve;
 
@@ -474,7 +479,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
     timer.Start();
 	V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
 		reorderKernel,
-        workDimension, 
+        workDimension,
         globalWorkOffset,
 		&nbitems,
 		&nblocitems,
@@ -518,50 +523,50 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 
 /// Check divisibility of works to assign correct amounts of work to groups/work-items.
 template <typename DataType>
-void CRadixSortTask<DataType>::CheckDivisibility() 
+void CRadixSortTask<DataType>::CheckDivisibility()
 {
-    assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
-    assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
-    assert(Parameters::_NUM_MAX_INPUT_ELEMS % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
-    assert((Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_RADIX) % Parameters::_NUM_HISTOSPLIT == 0);
-    assert(pow(2, (int)log2(Parameters::_NUM_GROUPS)) == Parameters::_NUM_GROUPS);
-    assert(pow(2, (int)log2(Parameters::_NUM_ITEMS_PER_GROUP)) == Parameters::_NUM_ITEMS_PER_GROUP);
+    assert(Parameters<DataType>::_RADIX == pow(2, Parameters<DataType>::_NUM_BITS_PER_RADIX));
+    assert(Parameters<DataType>::_TOTALBITS % Parameters<DataType>::_NUM_BITS_PER_RADIX == 0);
+    assert(Parameters<DataType>::_NUM_MAX_INPUT_ELEMS % (Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP) == 0);
+    assert((Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP * Parameters<DataType>::_RADIX) % Parameters<DataType>::_NUM_HISTOSPLIT == 0);
+    assert(pow(2, (int)log2(Parameters<DataType>::_NUM_GROUPS)) == Parameters<DataType>::_NUM_GROUPS);
+    assert(pow(2, (int)log2(Parameters<DataType>::_NUM_ITEMS_PER_GROUP)) == Parameters<DataType>::_NUM_ITEMS_PER_GROUP);
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device) 
+void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device)
 {
     // check that the local mem is sufficient (suggestion of Jose Luis Cerc\F3s Pita)
     cl_ulong localMem;
 	clGetDeviceInfo(Device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(localMem), &localMem, NULL);
     if (options.verbose) {
-        cout << "Cache size   = " << localMem << " Bytes." << endl;
-		cout << "Needed cache = " << sizeof(cl_uint) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP << " Bytes." << endl;
+        std::cout << "Cache size   = " << localMem << " Bytes." << std::endl;
+		std::cout << "Needed cache = " << sizeof(cl_uint) * Parameters<DataType>::_RADIX * Parameters<DataType>::_NUM_ITEMS_PER_GROUP << " Bytes." << std::endl;
     }
-	assert(localMem > sizeof(DataType) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP);
+	assert(localMem > sizeof(DataType) * Parameters<DataType>::_RADIX * Parameters<DataType>::_NUM_ITEMS_PER_GROUP);
 
-	unsigned int maxmemcache = max(Parameters::_NUM_HISTOSPLIT, 
-		Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT);
+	unsigned int maxmemcache = std::max(Parameters<DataType>::_NUM_HISTOSPLIT,
+		Parameters<DataType>::_NUM_ITEMS_PER_GROUP * Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_RADIX / Parameters<DataType>::_NUM_HISTOSPLIT);
 	assert(localMem > sizeof(DataType)*maxmemcache);
 }
 
 /// resize the sorted vector
 template <typename DataType>
-void CRadixSortTask<DataType>::Resize(int nn) 
+void CRadixSortTask<DataType>::Resize(int nn)
 {
-	assert(nn <= Parameters::_NUM_MAX_INPUT_ELEMS);
+	assert(nn <= Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
 
     if (options.verbose){
-        cout << "Resize to  " << nn << endl;
+        std::cout << "Resize to  " << nn << std::endl;
     }
     nkeys = nn;
 
     // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
-    int rest = nkeys % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+    int rest = nkeys % (Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP);
     nkeys_rounded = nkeys;
 
     if (rest != 0) {
-		nkeys_rounded = nkeys - rest + (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+		nkeys_rounded = nkeys - rest + (Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP);
     }
 	nkeys_rest = rest;
 }
@@ -571,14 +576,14 @@ void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
 {
 	if (nkeys_rest != 0) {
 		const auto MAX_INT = std::numeric_limits<DataType>::max();
-		std::vector<DataType> pad(Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP, MAX_INT - 1);
+		std::vector<DataType> pad(Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP, MAX_INT - 1);
 
 		// pad the vector with big values
-		assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+		assert(nkeys_rounded <= Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
 
 		const auto blocking = CL_TRUE;
 		const auto offset = sizeof(DataType) * nkeys;
-		const auto size = sizeof(DataType) * (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - nkeys_rest);
+		const auto size = sizeof(DataType) * (Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP - nkeys_rest);
 		V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
 			deviceData->m_dInKeys,
 			blocking,
@@ -595,49 +600,49 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
 {
     CheckDivisibility();
 
-	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+	assert(nkeys_rounded <= Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
     assert(nkeys <= nkeys_rounded);
-	int nbcol = nkeys_rounded / (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
-	int nbrow = Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP;
+	int nbcol = nkeys_rounded / (Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP);
+	int nbrow = Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP;
 
     if (options.verbose) {
-        cout << "Start sorting " << nkeys << " keys." << endl;
+        std::cout << "Start sorting " << nkeys << " keys." << std::endl;
     }
 
-    for (int pass = 0; pass < Parameters::_NUM_PASSES; pass++){
+    for (uint32_t pass = 0; pass < Parameters<DataType>::_NUM_PASSES; pass++){
         if (options.verbose) {
-            cout << "Pass " << pass << ":" << endl;
+            std::cout << "Pass " << pass << ":" << std::endl;
         }
 
         if (options.verbose) {
-            cout << "Building histograms" << endl;
+            std::cout << "Building histograms" << std::endl;
         }
         Histogram(CommandQueue, pass);
 
         if (options.verbose) {
-            cout << "Scanning histograms" << endl;
+            std::cout << "Scanning histograms" << std::endl;
         }
         ScanHistogram(CommandQueue, pass);
 
         if (options.verbose) {
-            cout << "Reordering " << endl;
+            std::cout << "Reordering " << std::endl;
         }
         Reorder(CommandQueue, pass);
 
         if (options.verbose) {
-            cout << "-------------------" << endl;
+            std::cout << "-------------------" << std::endl;
         }
     }
-    
+
     sort_time.avg = histo_time.avg + scan_time.avg + reorder_time.avg + paste_time.avg;
     sort_time.n = histo_time.n;
     if (options.verbose){
-        cout << "End sorting" << endl;
+        std::cout << "End sorting" << std::endl;
     }
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::AllocateDeviceMemory(cl_context Context) 
+void CRadixSortTask<DataType>::AllocateDeviceMemory(cl_context Context)
 {
 	// Done in constructor of ComputeDeviceData :)
 	Resize(nkeys);
@@ -669,7 +674,7 @@ void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue) 
+void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 {
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dInKeys,
@@ -694,7 +699,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dHistograms,
 		CL_TRUE, 0,
-		sizeof(uint32_t)  * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
+		sizeof(uint32_t)  * Parameters<DataType>::_RADIX * Parameters<DataType>::_NUM_GROUPS * Parameters<DataType>::_NUM_ITEMS_PER_GROUP,
         hostData.m_hHistograms.data(),
 		0, NULL, NULL),
 		"Could not read result histograms");
@@ -702,7 +707,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dGlobsum,
 		CL_TRUE, 0,
-		sizeof(uint32_t)  * Parameters::_NUM_HISTOSPLIT,
+		sizeof(uint32_t)  * Parameters<DataType>::_NUM_HISTOSPLIT,
 		hostData.m_hGlobsum.data(),
 		0, NULL, NULL),
 		"Could not read result global sum");
@@ -711,7 +716,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const string& alternative)
+void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& alternative)
 {
 	//run selected task
 	if (alternative == "RadixSort_01") {
@@ -724,7 +729,7 @@ void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue 
 }
 
 template <typename DataType>
-bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filename) 
+bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filename)
 {
     bool file_exists = false;
     {
@@ -756,12 +761,12 @@ bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filenam
     outfile << cpu_stl_time.avg << ",";
     outfile << cpu_radix_time.avg;
     outfile << std::endl;
-    
+
     return true;
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::writePerformanceToStdout() 
+void CRadixSortTask<DataType>::writePerformanceToStdout()
 {
     const std::vector<std::string> columns = {
         "NumElements", "Datatype", "Dataset", "avgHistogram", "avgScan", "avgPaste", "avgReorder", "avgTotalGPU", "avgTotalSTLCPU", "avgTotalRDXCPU"
@@ -790,12 +795,12 @@ template <typename DataType>
 void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
 {
     if (options.perf_to_stdout) {
-        cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_radix_time.avg << " Gelem/s" << endl;
-        cout << " stl cpu avg time: " << cpu_stl_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_stl_time.avg << " Gelem/s" << endl;
+        std::cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_radix_time.avg << " Gelem/s" << std::endl;
+        std::cout << " stl cpu avg time: " << cpu_stl_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_stl_time.avg << " Gelem/s" << std::endl;
     }
 
     if (options.perf_to_stdout) {
-        cout << "Testing performance of GPU task " << deviceData->kernelNames[Task] << endl;
+        std::cout << "Testing performance of GPU task " << deviceData->kernelNames[Task] << std::endl;
     }
 
     //finish all before we start measuring the time
@@ -805,7 +810,7 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     timer.Start();
 
     //run the kernel N times
-	for (auto i = 0; i < Parameters::_NUM_PERFORMANCE_ITERATIONS; i++) {
+	for (auto i = 0; i < Parameters<DataType>::_NUM_PERFORMANCE_ITERATIONS; i++) {
         //run selected task
         switch (Task) {
         case 0:
@@ -820,20 +825,20 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
 
     timer.Stop();
-	double ms = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+	double ms = timer.GetElapsedMilliseconds() / double(Parameters<DataType>::_NUM_PERFORMANCE_ITERATIONS);
     sort_time.avg = ms;
     if (options.perf_to_stdout) {
 
-        cout << " kernel |    avg      |     min     |    max " << endl;
-        cout << " -----------------------------------------------" << endl;
-        cout << "  histogram: " << std::setw(8) << histo_time.avg << " | " << histo_time.min << " | " << histo_time.max << endl;
-        cout << "  scan:      " << std::setw(8) << scan_time.avg << " | " << scan_time.min << " | " << scan_time.max << endl;
-        cout << "  paste:     " << std::setw(8) << paste_time.avg << " | " << paste_time.min << " | " << paste_time.max << endl;
-        cout << "  reorder:   " << std::setw(8) << reorder_time.avg << " | " << reorder_time.min << " | " << reorder_time.max << endl;
-        cout << " -----------------------------------------------" << endl;
-        cout << "  total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / ms << " Gelem/s" << endl;
+        std::cout << " kernel |    avg      |     min     |    max " << std::endl;
+        std::cout << " -----------------------------------------------" << std::endl;
+        std::cout << "  histogram: " << std::setw(8) << histo_time.avg << " | " << histo_time.min << " | " << histo_time.max << std::endl;
+        std::cout << "  scan:      " << std::setw(8) << scan_time.avg << " | " << scan_time.min << " | " << scan_time.max << std::endl;
+        std::cout << "  paste:     " << std::setw(8) << paste_time.avg << " | " << paste_time.min << " | " << paste_time.max << std::endl;
+        std::cout << "  reorder:   " << std::setw(8) << reorder_time.avg << " | " << reorder_time.min << " | " << reorder_time.max << std::endl;
+        std::cout << " -----------------------------------------------" << std::endl;
+        std::cout << "  total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / ms << " Gelem/s" << std::endl;
     }
-    
+
     using std::chrono::system_clock;
     std::time_t tt = system_clock::to_time_t(system_clock::now());
     struct std::tm * ptm = std::localtime(&tt);

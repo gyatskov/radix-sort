@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "Parameters.h"
+
 #include <cstdint>
 #include <vector>
 #include <algorithm>
@@ -9,9 +11,9 @@
 template <typename DataType>
 class RadixSortCPU {
 public:
-	using Parameters = Parameters < DataType > ;
+	using Parameters = AlgorithmParameters < DataType > ;
 
-	struct uint128_t 
+	struct uint128_t
 	{
 		uint64_t low;
 		uint64_t high;
@@ -24,7 +26,7 @@ public:
 	template <typename ElemType>
 	static void countSort(std::vector<ElemType>& arr, uint64_t exp)
 	{
-		using UnsignedElemType = std::make_unsigned<ElemType>::type;
+		using UnsignedElemType = typename std::make_unsigned<ElemType>::type;
 
 		const auto n = static_cast<int64_t>(arr.size());
 		std::vector<ElemType> output(n, 0); // output array
@@ -36,7 +38,7 @@ public:
 
 		// Store count of occurrences in count[]
 		for (i = 0; i < n; i++) {
-			const auto elem_value = static_cast<std::make_unsigned<ElemType>::type>(arr[i] + offset);
+			const auto elem_value = static_cast<UnsignedElemType>(arr[i] + offset);
 			count[(elem_value / exp) % NUM_BINS]++;
 		}
 
@@ -48,7 +50,7 @@ public:
 
 		// Build the output array
 		for (i = n - 1; i >= 0; i--) {
-			const auto elem_value = static_cast<std::make_unsigned<ElemType>::type>(arr[i] + offset);
+			const auto elem_value = static_cast<UnsignedElemType>(arr[i] + offset);
 			output[count[( elem_value / exp) % NUM_BINS] - 1] = arr[i];
 			count[(elem_value / exp) % NUM_BINS]--;
 		}
@@ -59,7 +61,7 @@ public:
 	}
 
 	template <typename ElemType>
-	static typename std::make_unsigned<ElemType>::type customAbs(ElemType val) 
+	static typename std::make_unsigned<ElemType>::type customAbs(ElemType val)
 	{
 		return (val < 0) ? (-val) : (val);
 	}
@@ -83,7 +85,7 @@ public:
 	// The main function to that sorts arr[] of size n using
 	// Radix Sort
 	template<typename ElemType>
-	static void sort(std::vector<ElemType>& arr) 
+	static void sort(std::vector<ElemType>& arr)
 	{
 		// Find the maximum number to know number of digits
 		// in O(nkeys)
@@ -103,4 +105,4 @@ public:
 		}
 	}
 };
-											
+
