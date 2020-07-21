@@ -72,7 +72,7 @@ protected:
 	void CheckDivisibility();
 	void CopyDataToDevice(cl_command_queue CommandQueue);
 	void CopyDataFromDevice(cl_command_queue CommandQueue);
-	void Resize(int nn);
+	void Resize(uint32_t nn);
 	void padGPUData(cl_command_queue CommandQueue);
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);

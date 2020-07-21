@@ -112,8 +112,9 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
         std::string unsignedDataTypeDefine = "#define UnsignedDataType " + std::string(TypeNameString< UnsignedType >::open_cl_name) + std::string("\n");
 		const auto OFFSET = -std::numeric_limits<DataType>::min();
         std::string summandDefine = "#define OFFSET " + std::to_string(OFFSET) + std::string("\n");
-        std::size_t programSize = 0;
-        CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode);
+        if(!CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode)) {
+            return false;
+        }
 		programCode = dataTypeDefine + unsignedDataTypeDefine + summandDefine + programCode;
         const auto options = buildOptions();
         deviceData->m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, options);
@@ -160,7 +161,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
 
 	CTimer timer;
 	timer.Start();
-	for (auto j = 0; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
+	for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
 		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultSTLCPU.begin());
 
 		// Reference sorting (STL quicksort):
@@ -172,7 +173,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
 	hostData.m_resultRadixSortCPU.resize(nkeys_rounded);
 
 	timer.Start();
-	for (auto j = 0; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
+	for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
 		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultRadixSortCPU.begin());
 
 		// Reference sorting implementation on CPU (radixsort):
@@ -268,6 +269,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 template <typename DataType>
 void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int pass)
 {
+    static_cast<void>(pass);
     // numbers of processors for the local scan
     // = half the size of the local histograms
     // global work size
@@ -548,7 +550,7 @@ void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device)
 
 /// resize the sorted vector
 template <typename DataType>
-void CRadixSortTask<DataType>::Resize(int nn)
+void CRadixSortTask<DataType>::Resize(uint32_t nn)
 {
 	assert(nn <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
@@ -596,10 +598,11 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
 {
     CheckDivisibility();
 
+    static_cast<void>(Context);
+    static_cast<void>(LocalWorkSize);
+
 	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
     assert(nkeys <= nkeys_rounded);
-	int nbcol = nkeys_rounded / (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
-	int nbrow = Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP;
 
     if (options.verbose) {
         std::cout << "Start sorting " << nkeys << " keys." << std::endl;
@@ -741,7 +744,7 @@ bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filenam
     if (!file_exists)
     {
         outfile << columns[0];
-        for (int i = 1; i < columns.size(); i++) {
+        for (auto i = 1U; i < columns.size(); i++) {
             outfile << "," << columns[i];
         }
     }
@@ -770,7 +773,7 @@ void CRadixSortTask<DataType>::writePerformanceToStdout()
     // Print columns
 
     std::cout << columns[0];
-    for (int i = 1; i < columns.size(); i++) {
+    for (auto i = 1U; i < columns.size(); i++) {
         std::cout << "," << columns[i];
     }
     std::cout << std::endl;
@@ -806,7 +809,7 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     timer.Start();
 
     //run the kernel N times
-	for (auto i = 0; i < Parameters::_NUM_PERFORMANCE_ITERATIONS; i++) {
+	for (auto i = 0U; i < Parameters::_NUM_PERFORMANCE_ITERATIONS; i++) {
         //run selected task
         switch (Task) {
         case 0:

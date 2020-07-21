@@ -4,14 +4,14 @@
 
 template <typename DataType>
 HostData<DataType>::HostData(std::shared_ptr<Dataset<DataType>> dataset) :
-	m_hKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
-	m_hCheckKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
-	h_Permut(Parameters::_NUM_MAX_INPUT_ELEMS),
-	m_hHistograms(Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP),
-	m_hGlobsum(Parameters::_NUM_HISTOSPLIT),
 	m_resultSTLCPU(Parameters::_NUM_MAX_INPUT_ELEMS),
 	m_resultRadixSortCPU(Parameters::_NUM_MAX_INPUT_ELEMS),
-	m_selectedDataset(dataset)
+	m_selectedDataset(dataset),
+	m_hKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
+	m_hCheckKeys(Parameters::_NUM_MAX_INPUT_ELEMS),
+	m_hHistograms(Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP),
+	m_hGlobsum(Parameters::_NUM_HISTOSPLIT),
+	h_Permut(Parameters::_NUM_MAX_INPUT_ELEMS)
 {
 	std::iota(h_Permut.begin(), h_Permut.end(), 0);
 

@@ -26,7 +26,7 @@ struct Dataset
     Dataset(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS) : dataset(size)
 	{}
 
-	virtual const char* const getName() {
+	virtual const char* getName() const {
 		return name;
 	}
 };
@@ -39,7 +39,7 @@ struct Zeros : Dataset<DataType>
 
     Zeros(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
 
-	virtual const char* const getName() {
+	virtual const char* getName() const {
 		return Zeros::name;
 	}
 };
@@ -51,7 +51,7 @@ struct RandomDistributed : Dataset < DataType >
 
     RandomDistributed(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
 
-	virtual const char* const getName() {
+	virtual const char* getName() const {
 		return RandomDistributed::name;
 	}
 };
@@ -63,7 +63,7 @@ struct Random : Dataset < DataType >
 
     Random(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
 
-    virtual const char* const getName() {
+    virtual const char* getName() const {
         return Random::name;
     }
 };
@@ -75,7 +75,7 @@ struct Range : Dataset < DataType >
 
     Range(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
 
-	virtual const char* const getName() {
+	virtual const char* getName() const {
 		return Range::name;
 	}
 };
@@ -87,7 +87,7 @@ struct InvertedRange : Dataset < DataType >
 
     InvertedRange(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
 
-	virtual const char* const getName() {
+	virtual const char* getName() const {
 		return InvertedRange::name;
 	}
 };

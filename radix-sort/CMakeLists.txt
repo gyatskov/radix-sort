@@ -39,3 +39,8 @@ target_link_libraries(radixsort ${OPENCL_LIBRARIES})
 if (WIN32)
 	change_workingdir(radixsort ${CMAKE_SOURCE_DIR})
 endif()
+
+target_compile_options(radixsort
+PRIVATE
+    -Werror -Wall -Wextra -pedantic
+)
