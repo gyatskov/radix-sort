@@ -17,7 +17,7 @@ include(ChangeWorkingDirectory)
 # Search for OpenCL and add paths
 find_package( OpenCL REQUIRED )
 
-include_directories( ${OPENCL_INCLUDE_DIRS} )
+#include_directories( ${OPENCL_INCLUDE_DIRS} )
 
 # Include Common module
 add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
