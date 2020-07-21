@@ -44,3 +44,8 @@ target_compile_options(radixsort
 PRIVATE
     -Werror -Wall -Wextra -pedantic
 )
+
+target_compile_options(GPUCommon
+PRIVATE
+    -Werror -Wall -Wextra -pedantic
+)
