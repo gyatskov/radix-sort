@@ -26,16 +26,16 @@ add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
 file(GLOB Sources   *.cpp)
 file(GLOB Headers   *.h)
 file(GLOB CLSources *.cl)
-add_executable (Assignment
+add_executable (radixsort
 	${Sources}
 	${Headers}
 	${CLSources}
 )
 
 # Link required libraries
-target_link_libraries(Assignment GPUCommon)
-target_link_libraries(Assignment ${OPENCL_LIBRARIES})
+target_link_libraries(radixsort GPUCommon)
+target_link_libraries(radixsort ${OPENCL_LIBRARIES})
 
 if (WIN32)
-	change_workingdir(Assignment ${CMAKE_SOURCE_DIR})
+	change_workingdir(radixsort ${CMAKE_SOURCE_DIR})
 endif()
