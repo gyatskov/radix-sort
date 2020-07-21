@@ -1,6 +1,7 @@
-build
+build/
+.ccls-cache/
 
-#latex stuff
+# Latex artifacts
 *.aux
 *.log
 *.out
