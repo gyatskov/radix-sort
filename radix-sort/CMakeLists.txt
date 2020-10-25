@@ -10,9 +10,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Include support for changing the working directory in Visual Studio
-include(ChangeWorkingDirectory)
-
 # Include Common module
 add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
 
@@ -33,10 +30,6 @@ target_link_libraries(radixsort
 PRIVATE
     GPUCommon
 )
-
-if (WIN32)
-	change_workingdir(radixsort ${CMAKE_SOURCE_DIR})
-endif()
 
 target_compile_options(radixsort
 PRIVATE
