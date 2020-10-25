@@ -13,9 +13,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Include support for changing the working directory in Visual Studio
 include(ChangeWorkingDirectory)
 
-# Search for OpenCL and add paths
-find_package(OpenCL 1.2 REQUIRED)
-
 # Include Common module
 add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
 
@@ -23,7 +20,6 @@ add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
 file(GLOB Sources   *.cpp)
 file(GLOB Headers   *.h)
 file(GLOB CLSources *.cl)
-
 
 # TODO: Make this a library
 add_executable (radixsort
@@ -36,7 +32,6 @@ add_executable (radixsort
 target_link_libraries(radixsort
 PRIVATE
     GPUCommon
-    ${OpenCL_LIBRARIES}
 )
 
 if (WIN32)
