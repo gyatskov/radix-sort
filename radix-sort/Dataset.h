@@ -20,15 +20,12 @@ struct Dataset
 {
 	using DataType = _DataType;
 
-	static const char* const name;
+	virtual const char* name() const {return "UNKNOWN";}
+
 	std::vector<DataType> dataset;
 
     Dataset(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS) : dataset(size)
 	{}
-
-	virtual const char* getName() const {
-		return name;
-	}
 
     virtual ~Dataset() = default;
 };
@@ -37,90 +34,48 @@ struct Dataset
 template <typename DataType>
 struct Zeros : Dataset<DataType>
 {
-	static const char* const name;
+	virtual const char* name() const override {return "Zeros";}
 
     Zeros(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
-
-	virtual const char* getName() const {
-		return Zeros::name;
-	}
-
     virtual ~Zeros() = default;
 };
 
 template <typename DataType>
 struct RandomDistributed : Dataset < DataType >
 {
-	static const char* const name;
+	virtual const char* name() const override {return "Random Uniform";}
 
     RandomDistributed(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
-
-	virtual const char* getName() const {
-		return RandomDistributed::name;
-	}
-
     virtual ~RandomDistributed() = default;
 };
 
 template <typename DataType>
 struct Random : Dataset < DataType >
 {
-    static const char* const name;
+	virtual const char* name() const override {return "Random Random";}
 
     Random(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
-
-    virtual const char* getName() const {
-        return Random::name;
-    }
-
     virtual ~Random() = default;
 };
 
 template <typename DataType>
 struct Range : Dataset < DataType >
 {
-	static const char* const name;
+	virtual const char* name() const override {return "Range";}
 
     Range(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
-
-	virtual const char* getName() const {
-		return Range::name;
-	}
-
     virtual ~Range() = default;
 };
 
 template <typename DataType>
 struct InvertedRange : Dataset < DataType >
 {
-	static const char* const name;
+	virtual const char* name() const override {return "Inverted Range";}
 
     InvertedRange(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
-
-	virtual const char* getName() const {
-		return InvertedRange::name;
-	}
-
     virtual ~InvertedRange() = default;
 };
 
-template <typename DataType>
-const char* const Dataset<DataType>::name = "UNKNOWN";
-
-template <typename DataType>
-const char* const Zeros<DataType>::name = "Zeros";
-
-template <typename DataType>
-const char* const RandomDistributed<DataType>::name = "Uniform random";
-
-template <typename DataType>
-const char* const Random<DataType>::name = "Random";
-
-template <typename DataType>
-const char* const Range<DataType>::name = "Range";
-
-template <typename DataType>
-const char* const InvertedRange<DataType>::name = "Inverted range";
 
 template <typename DataType>
 Zeros<DataType>::Zeros(std::size_t size)

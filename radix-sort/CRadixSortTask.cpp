@@ -203,7 +203,8 @@ bool CRadixSortTask<DataType>::ValidateResults()
 
 		const std::string hasPassedCPU = validCPURadixSort ? "passed" : "FAILED";
 		const std::string hasPassedGPU = validGPURadixSort ? "passed" : "FAILED";
-		std::cout << "Data set: " << hostData.m_selectedDataset->getName() << std::endl;
+
+		std::cout << "Data set: " << hostData.m_selectedDataset->name() << std::endl;
 		std::cout << "Data type: " << TypeNameString<DataType>::stdint_name << std::endl;
 		std::cout << "Validation of CPU RadixSort has " + hasPassedCPU << std::endl;
 		std::cout << "Validation of GPU RadixSort has " + hasPassedGPU << std::endl;
@@ -740,66 +741,30 @@ void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue 
 }
 
 template <typename DataType>
-bool CRadixSortTask<DataType>::writePerformanceToFile(const std::string& filename)
+template <typename Stream>
+void CRadixSortTask<DataType>::writePerformance(Stream&& stream)
 {
-    bool file_exists = false;
-    {
-        struct stat buffer;
-        file_exists = (stat(filename.c_str(), &buffer) == 0);
-    }
-
-    std::ofstream outfile(filename, std::ofstream::out | std::ofstream::app);
-    const std::vector<std::string> columns = {
+    const std::vector<std::string> columns {
         "NumElements", "Datatype", "Dataset", "avgHistogram", "avgScan", "avgPaste", "avgReorder", "avgTotalGPU", "avgTotalSTLCPU", "avgTotalRDXCPU"
     };
-    // Print columns
-    if (!file_exists)
-    {
-        outfile << columns[0];
-        for (auto i = 1U; i < columns.size(); i++) {
-            outfile << "," << columns[i];
-        }
-    }
-    outfile << std::endl;
-    outfile << nkeys << ",";
-    outfile << TypeNameString<DataType>::stdint_name << ",";
-    outfile << hostData.m_selectedDataset->getName() << ",";
-    outfile << histo_time.avg << ",";
-    outfile << scan_time.avg << ",";
-    outfile << paste_time.avg << ",";
-    outfile << reorder_time.avg << ",";
-    outfile << sort_time.avg << ",";
-    outfile << cpu_stl_time.avg << ",";
-    outfile << cpu_radix_time.avg;
-    outfile << std::endl;
 
-    return true;
-}
-
-template <typename DataType>
-void CRadixSortTask<DataType>::writePerformanceToStdout()
-{
-    const std::vector<std::string> columns = {
-        "NumElements", "Datatype", "Dataset", "avgHistogram", "avgScan", "avgPaste", "avgReorder", "avgTotalGPU", "avgTotalSTLCPU", "avgTotalRDXCPU"
-    };
-    // Print columns
-
-    std::cout << columns[0];
+    stream << columns[0];
     for (auto i = 1U; i < columns.size(); i++) {
-        std::cout << "," << columns[i];
+        stream << "," << columns[i];
     }
-    std::cout << std::endl;
-    std::cout << nkeys << ",";
-    std::cout << TypeNameString<DataType>::stdint_name << ",";
-    std::cout << hostData.m_selectedDataset->getName() << ",";
-    std::cout << histo_time.avg << ",";
-    std::cout << scan_time.avg << ",";
-    std::cout << paste_time.avg << ",";
-    std::cout << reorder_time.avg << ",";
-    std::cout << sort_time.avg << ",";
-    std::cout << cpu_stl_time.avg << ",";
-    std::cout << cpu_radix_time.avg;
-    std::cout << std::endl;
+
+    stream << std::endl;
+    stream << nkeys << ",";
+    stream << TypeNameString<DataType>::stdint_name << ",";
+    stream << hostData.m_selectedDataset->name() << ",";
+    stream << histo_time.avg << ",";
+    stream << scan_time.avg << ",";
+    stream << paste_time.avg << ",";
+    stream << reorder_time.avg << ",";
+    stream << sort_time.avg << ",";
+    stream << cpu_stl_time.avg << ",";
+    stream << cpu_radix_time.avg;
+    stream << std::endl;
 }
 
 template <typename DataType>
@@ -859,10 +824,25 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     fileNameBuilder << "radix_" << std::put_time(ptm, dateFormat.c_str()) << ".csv";
 
     if (options.perf_to_csv) {
-        writePerformanceToFile(fileNameBuilder.str());
+        const auto filename = fileNameBuilder.str();
+        bool file_exists = false;
+
+        {
+            struct stat buffer;
+            file_exists = (stat(filename.c_str(), &buffer) == 0);
+        }
+
+        // Print columns
+        if (file_exists)
+        {
+            std::cout << "File " << filename << " already exists, not overwriting!" << std::endl;
+        } else {
+            std::ofstream outstream(filename, std::ofstream::out | std::ofstream::app);
+            writePerformance(outstream);
+        }
     }
     if (options.perf_csv_to_stdout) {
-        writePerformanceToStdout();
+        writePerformance(std::cout);
     }
 }
 
