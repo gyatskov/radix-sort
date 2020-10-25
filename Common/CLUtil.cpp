@@ -114,7 +114,21 @@ double CLUtil::ProfileKernel(
 	// run the kernel N times for better average accuracy
 	for(int i = 0; i < NIterations; i++)
 	{
-		clErr |= clEnqueueNDRangeKernel(CommandQueue, Kernel, Dimensions, NULL, pGlobalWorkSize, pLocalWorkSize, 0, NULL, NULL);
+        constexpr auto pGlobalWorkOffset = nullptr;
+        constexpr auto pEventsInWaitList = nullptr;
+        constexpr auto pEvent = nullptr;
+        constexpr auto numEventsInWaitList = 0U;
+		clErr |= clEnqueueNDRangeKernel(
+            CommandQueue,
+            Kernel,
+            Dimensions,
+            pGlobalWorkOffset,
+            pGlobalWorkSize,
+            pLocalWorkSize,
+            numEventsInWaitList,
+            pEventsInWaitList,
+            pEvent
+        );
 	}
 	// wait again to sync
 	clErr |= clFinish(CommandQueue);
