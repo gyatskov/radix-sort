@@ -42,6 +42,16 @@ void CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3])
     }
 }
 
+template<typename First, typename ...Rest>
+void runAllTypes(CRunner& runner, const RadixSortOptions& options, size_t localWorkSize[3])
+{
+    runner.runTask<First>(options, localWorkSize);
+
+    if constexpr(sizeof...(Rest) > 0) {
+        runAllTypes<Rest...>(runner, options, localWorkSize);
+    }
+}
+
 bool CRunner::DoCompute()
 {
     const auto options = RadixSortOptions(m_arguments);
@@ -54,10 +64,7 @@ bool CRunner::DoCompute()
 	const auto problemSize = options.num_elements;
 	cout << "Sorting " << problemSize << " elements" << std::endl;
 
-    runTask<uint32_t>(options, LocalWorkSize);
-    runTask<int32_t> (options, LocalWorkSize);
-    runTask<uint64_t>(options, LocalWorkSize);
-    runTask<int64_t> (options, LocalWorkSize);
+    runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(*this, options, LocalWorkSize);
 
 	return true;
 }
