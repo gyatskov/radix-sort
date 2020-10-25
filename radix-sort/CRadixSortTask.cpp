@@ -38,19 +38,20 @@ CRadixSortTask<DataType>::~CRadixSortTask()
 	ReleaseResources();
 }
 
-template<typename T>
-typename std::enable_if<std::is_integral<T>::value>::type
-    appendToOptions(std::string& dst, const std::string& key, const T value)
-{
-    dst += " -D" + key + "=" + std::to_string(value);
-}
-
 template <typename T>
 typename std::enable_if<!std::is_integral<T>::value>::type
-    appendToOptions(std::string& dst, const std::string& key, const T str)
+appendToOptions(std::string& dst, const std::string& key, const T& obj)
 {
-    dst += " -D" + key + "=" + string(str);
+    dst += " -D" + key + "=" + "'" + std::string(obj) + "'";
 }
+
+template<typename T>
+typename std::enable_if<std::is_integral<T>::value>::type
+appendToOptions(std::string& dst, const std::string& key, const T& value)
+{
+    dst += " -D" + key + "=" + "'" + std::to_string(value) + "'";
+}
+
 
 template <typename DataType>
 std::string CRadixSortTask<DataType>::buildOptions()
@@ -80,8 +81,6 @@ std::string CRadixSortTask<DataType>::buildOptions()
         appendToOptions(options, "_HISTOSIZE", Parameters::_HISTOSIZE);// size of the histogram
         // maximal value of integers for the sort to be correct
         //appendToOptions(options, "_MAXINT", Parameters::_MAXINT);
-
-        //appendToOptions(options, "DataType", TypeNameString<DataType>::open_cl_name);
     }
     return options;
 }
@@ -107,18 +106,23 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
 
     //load and compile kernels
     {
-        using UnsignedType = typename std::make_unsigned<DataType>::type;
         std::string programCode;
-        std::string dataTypeDefine = "#define DataType " + std::string(TypeNameString<DataType>::open_cl_name) + std::string("\n");
-        std::string unsignedDataTypeDefine = "#define UnsignedDataType " + std::string(TypeNameString< UnsignedType >::open_cl_name) + std::string("\n");
-		const auto OFFSET = -std::numeric_limits<DataType>::min();
-        std::string summandDefine = "#define OFFSET " + std::to_string(OFFSET) + std::string("\n");
         if(!CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode)) {
             return false;
         }
-		programCode = dataTypeDefine + unsignedDataTypeDefine + summandDefine + programCode;
+
+        using UnsignedType = typename std::make_unsigned<DataType>::type;
+
+		const auto OFFSET { -std::numeric_limits<DataType>::min() };
+        std::stringstream ss;
+        ss << "#define DataType " << TypeNameString<DataType>::open_cl_name << std::endl
+           << "#define UnsignedDataType " << TypeNameString< UnsignedType >::open_cl_name << std::endl
+           << "#define OFFSET " << OFFSET << std::endl
+           << programCode << std::endl;
+
+        const auto completeCode = ss.str();
         const auto options = buildOptions();
-        deviceData->m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, programCode, options);
+        deviceData->m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, completeCode, options);
         if (deviceData->m_Program == nullptr) {
             return false;
         }
