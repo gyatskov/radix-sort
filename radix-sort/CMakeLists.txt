@@ -14,7 +14,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(ChangeWorkingDirectory)
 
 # Search for OpenCL and add paths
-find_package(OpenCL REQUIRED)
+find_package(OpenCL 1.2 REQUIRED)
 
 # Include Common module
 add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
@@ -36,7 +36,7 @@ add_executable (radixsort
 target_link_libraries(radixsort
 PRIVATE
     GPUCommon
-    ${OPENCL_LIBRARIES}
+    ${OpenCL_LIBRARIES}
 )
 
 if (WIN32)
