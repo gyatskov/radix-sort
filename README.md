@@ -12,17 +12,18 @@ Every OpenCL 1.2 compliant driver should be supported. For NVIDIA devices, CUDA 
 Building is performed using CMake.
 
 ```
+git clone github.com/gyatskov/radix-sort
 cd radix-sort
-mkdir ../build
-cmake -B ../build
-cmake --build ../build
+cmake -DCMAKE_INSTALL_PREFIX=. -B build -S radix-sort
+cmake --build build
+cmake --build build --target install
 ```
 
 # Running tests #
 ```
-cd radix-sort
-../build/Assignment
+cd bin
+./radixsort
 ```
 
-# Implementation #
+# Documentation #
 The implementation is based on papers referenced in [doc.pdf](doc/doc.pdf)

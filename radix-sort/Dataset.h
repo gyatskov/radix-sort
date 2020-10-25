@@ -29,6 +29,8 @@ struct Dataset
 	virtual const char* getName() const {
 		return name;
 	}
+
+    virtual ~Dataset() = default;
 };
 
 
@@ -42,6 +44,8 @@ struct Zeros : Dataset<DataType>
 	virtual const char* getName() const {
 		return Zeros::name;
 	}
+
+    virtual ~Zeros() = default;
 };
 
 template <typename DataType>
@@ -54,6 +58,8 @@ struct RandomDistributed : Dataset < DataType >
 	virtual const char* getName() const {
 		return RandomDistributed::name;
 	}
+
+    virtual ~RandomDistributed() = default;
 };
 
 template <typename DataType>
@@ -66,6 +72,8 @@ struct Random : Dataset < DataType >
     virtual const char* getName() const {
         return Random::name;
     }
+
+    virtual ~Random() = default;
 };
 
 template <typename DataType>
@@ -78,6 +86,8 @@ struct Range : Dataset < DataType >
 	virtual const char* getName() const {
 		return Range::name;
 	}
+
+    virtual ~Range() = default;
 };
 
 template <typename DataType>
@@ -90,28 +100,9 @@ struct InvertedRange : Dataset < DataType >
 	virtual const char* getName() const {
 		return InvertedRange::name;
 	}
-};
 
-// template <typename DataType>
-// const char* const Zeros<DataType>::getName()
-// {
-// 	return name;
-// }
-// template <typename DataType>
-// const char* const Random<DataType>::getName()
-// {
-// 	return name;
-// }
-// template <typename DataType>
-// const char* const Range<DataType>::getName()
-// {
-// 	return name;
-// }
-// template <typename DataType>
-// const char* const InvertedRange<DataType>::getName()
-// {
-// 	return name;
-// }
+    virtual ~InvertedRange() = default;
+};
 
 template <typename DataType>
 const char* const Dataset<DataType>::name = "UNKNOWN";
@@ -143,7 +134,7 @@ template <typename DataType>
 RandomDistributed<DataType>::RandomDistributed(std::size_t size)
     : Dataset<DataType>(size)
 {
-	std::string seedStr("Test :P");
+	const std::string seedStr("Random Test Seed");
 	std::seed_seq seed(seedStr.begin(), seedStr.end());
 	std::mt19937 generator(seed);
 
@@ -161,7 +152,7 @@ template <typename DataType>
 Random<DataType>::Random(std::size_t size)
     : Dataset<DataType>(size)
 {
-    std::string seedStr("Random test string");
+	const std::string seedStr("Random Test Seed");
     std::seed_seq seed(seedStr.begin(), seedStr.end());
     std::mt19937 generator(seed);
 
