@@ -12,7 +12,7 @@ template <typename _DataType>
 struct ComputeDeviceData
 {
 	using DataType   = _DataType;
-	using Parameters = AlgorithmParameters < DataType >;
+	using Parameters = AlgorithmParameters<DataType>;
 
     ComputeDeviceData(cl_context Context, size_t buffer_size);
     ~ComputeDeviceData();
@@ -22,10 +22,12 @@ struct ComputeDeviceData
     std::vector<std::string> kernelNames;
     std::vector<std::string> alternatives;
 
+    /// Maps kernel names to their low-level handles
     std::map<std::string, cl_kernel> m_kernelMap;
     std::map<std::string, cl_mem>    m_dMemoryMap; // NOTE: not used yet
 
-    cl_mem m_dHistograms;                // histograms on the GPU
+    // Histograms on the GPU
+    cl_mem m_dHistograms;
 
     cl_mem m_dGlobsum;
     cl_mem m_dTemp;  // in case where the sum is not needed
