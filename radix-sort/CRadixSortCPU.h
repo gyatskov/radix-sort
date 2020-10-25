@@ -6,6 +6,17 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
+
+namespace {
+
+template <typename ElemType>
+inline typename std::make_unsigned<ElemType>::type abs(ElemType val)
+{
+    return (val < 0) ? (-val) : (val);
+}
+
+} // namespace
 
 
 template <typename DataType>
@@ -13,13 +24,7 @@ class RadixSortCPU {
 public:
 	using Parameters = AlgorithmParameters < DataType > ;
 
-	struct uint128_t
-	{
-		uint64_t low;
-		uint64_t high;
-	};
-
-	static const auto NUM_BINS = Parameters::_TOTALBITS / Parameters::_NUM_BITS_PER_RADIX;
+	inline static constexpr auto NUM_BINS = Parameters::_TOTALBITS / Parameters::_NUM_BITS_PER_RADIX;
 
 	// A function to do counting sort of arr[] according to
 	// the digit represented by exp.
@@ -60,11 +65,6 @@ public:
 		std::copy(output.begin(), output.end(), arr.begin());
 	}
 
-	template <typename ElemType>
-	static typename std::make_unsigned<ElemType>::type customAbs(ElemType val)
-	{
-		return (val < 0) ? (-val) : (val);
-	}
 
 	//
 	//░░░░░▄▄▄▄▀▀▀▀▀▀▀▀▄▄▄▄▄▄░░░░░░░
@@ -94,11 +94,7 @@ public:
 		// Do counting sort for every digit. Note that instead
 		// of passing digit number, exp is passed. exp is 10^i
 		// where i is current digit number
-		auto numDigits = static_cast<uint64_t>(std::ceil(std::log(customAbs(max_elem)) / std::log(NUM_BINS)));
-		// TODO: Adapt for signed integers, otherwise log(max_elem) is (minus) infinite
-		if (max_elem == 0) {
-			numDigits = 1;
-		}
+		const auto numDigits = max_elem ? static_cast<uint64_t>(std::ceil(std::log(abs(max_elem)) / std::log(NUM_BINS))) : 1;
 		//for (uint64_t exp = 1ULL; std::abs(m) > exp; exp *= Radix) {
 		for (uint64_t exp = 0ULL; exp < numDigits; exp++) {
 			countSort(arr, static_cast<uint64_t>(std::pow(NUM_BINS, exp)));

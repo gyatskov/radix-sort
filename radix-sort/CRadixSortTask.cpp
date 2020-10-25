@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <cstring>      // memcmp
 #include <cassert>
+
 #include <sys/stat.h>
 
 //#define MORE_PROFILING
@@ -130,8 +131,7 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
 		// Input data stays the same for each kernel
         deviceData->m_kernelMap[kernelName] = clCreateKernel(deviceData->m_Program, kernelName.c_str(), &clError);
 
-        std::string errorMsg("Failed to create kernel: ");
-        errorMsg += kernelName;
+        const auto errorMsg { std::string("Failed to create kernel: ") + kernelName };
         V_RETURN_FALSE_CL(clError, errorMsg.c_str());
     }
 
@@ -146,7 +146,10 @@ void CRadixSortTask<DataType>::ReleaseResources()
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
+void CRadixSortTask<DataType>::ComputeGPU(
+    cl_context Context,
+    cl_command_queue CommandQueue,
+    size_t LocalWorkSize[3])
 {
 	padGPUData(CommandQueue);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
