@@ -583,22 +583,25 @@ void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
 {
 	if (nkeys_rest != 0) {
 		const auto MAX_INT = std::numeric_limits<DataType>::max();
-		std::vector<DataType> pad(Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP, MAX_INT - 1);
-
 		// pad the vector with big values
+		const std::vector<DataType> pad(
+            Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
+            MAX_INT - 1);
+
 		assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
 		const auto blocking = CL_TRUE;
 		const auto offset = sizeof(DataType) * nkeys;
 		const auto size = sizeof(DataType) * (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - nkeys_rest);
-		V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
+		V_RETURN_CL(clEnqueueWriteBuffer(
+            CommandQueue,
 			deviceData->m_dInKeys,
 			blocking,
 			offset,
 			size,
 			pad.data(),
 			0, NULL, NULL),
-			"Could not write input data");
+        "Could not write input data");
 	}
 }
 
