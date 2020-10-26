@@ -1,9 +1,3 @@
-cmake_minimum_required (VERSION 3.12.0)
-project (radixsort)
-
-# Add our modules to the path
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../cmake/")
-
 # Enable C++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,9 +5,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Include Common module
-add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
+#add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
 
-# Define source files for this assignment
+# Define source files
 file(GLOB Sources   *.cpp)
 file(GLOB Headers   *.h)
 file(GLOB CLSources *.cl)
