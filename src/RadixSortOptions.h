@@ -15,7 +15,7 @@ struct RadixSortOptions
     bool perf_csv_to_stdout;
     bool verbose;
 
-    RadixSortOptions(Arguments args) :
+    explicit RadixSortOptions(Arguments args) :
         num_elements(AlgorithmParameters<float>::_NUM_MAX_INPUT_ELEMS),
         perf_to_stdout(false),
         perf_to_csv(false),

@@ -19,7 +19,7 @@ Linux:
 ```bash
 git clone github.com/gyatskov/radix-sort
 cd radix-sort
-cmake -DCMAKE_INSTALL_PREFIX=. -B build -S radix-sort
+cmake -DCMAKE_INSTALL_PREFIX=. -B build
 cmake --build build
 cmake --build build --target install
 ```
@@ -28,15 +28,14 @@ Windows (PowerShell):
 ```powershell
 git clone github.com/gyatskov/radix-sort
 cd radix-sort
-cmake -DCMAKE_INSTALL_PREFIX="$(Get-Location)" -B build -S radix-sort
+cmake -DCMAKE_INSTALL_PREFIX="$(Get-Location)" -B build
 cmake --build build
 cmake --build build --target install
 ```
 
 # Running tests #
 ```
-cd bin
-./radixsort
+(cd build/tests && ctest)
 ```
 
 # Documentation #

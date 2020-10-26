@@ -12,7 +12,7 @@ public:
 
 	//! This overloaded method contains the specific solution of A2
 	virtual bool DoCompute();
-    
+
     template <typename DataType>
-    void runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]);
+    bool runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]);
 };

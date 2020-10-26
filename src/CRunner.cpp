@@ -32,31 +32,34 @@ std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size
 }
 
 template <typename DataType>
-void CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3])
+bool CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3])
 {
     const auto datasets = DataSetKreator<DataType>(options.num_elements);
+    bool success = true;
     for (const auto dataset : datasets)
     {
         CRadixSortTask<DataType> radixSort(options, dataset);
-        RunComputeTask(radixSort, LocalWorkSize);
+        success = success && RunComputeTask(radixSort, LocalWorkSize);
     }
+    return success;
 }
 
+namespace {
 template<typename First, typename ...Rest>
-void runAllTypes(CRunner& runner, const RadixSortOptions& options, size_t localWorkSize[3])
+bool runAllTypes(CRunner& runner, const RadixSortOptions& options, size_t localWorkSize[3])
 {
-    runner.runTask<First>(options, localWorkSize);
+    bool success = runner.runTask<First>(options, localWorkSize);
 
     if constexpr(sizeof...(Rest) > 0) {
-        runAllTypes<Rest...>(runner, options, localWorkSize);
+        success = success && runAllTypes<Rest...>(runner, options, localWorkSize);
     }
+    return success;
 }
+} // namespace
 
 bool CRunner::DoCompute()
 {
     const auto options = RadixSortOptions(m_arguments);
-
-    //using allowedTypes = std::tuple<uint32_t, int32_t, uint64_t, int64_t>;
 
 	cout<<"########################################"<<endl;
 	cout<<"Running radix sort task..."<<endl<<endl;
@@ -64,9 +67,7 @@ bool CRunner::DoCompute()
 	const auto problemSize = options.num_elements;
 	cout << "Sorting " << problemSize << " elements" << std::endl;
 
-    runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(*this, options, LocalWorkSize);
-
-	return true;
+    return runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(*this, options, LocalWorkSize);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -9,18 +9,22 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Define source files
 file(GLOB Sources   *.cpp)
-file(GLOB Headers   *.h)
+#file(GLOB Headers   *.h)
 file(GLOB CLSources *.cl)
 
-# TODO: Make this a library
-add_executable (radixsort
+
+add_library(radixsortcl
 	${Sources}
-	${Headers}
 	${CLSources}
 )
 
+target_include_directories(radixsortcl
+PUBLIC
+    ./
+)
+
 # Link required libraries
-target_link_libraries(radixsort
+target_link_libraries(radixsortcl
 PRIVATE
     GPUCommon
 )
@@ -33,10 +37,11 @@ string(
     ">"
 )
 
-target_compile_options(radixsort
+target_compile_options(radixsortcl
 PRIVATE
     ${compile_options}
 )
 
-install(TARGETS radixsort RUNTIME DESTINATION bin)
+# TODO: Check if this makes sense at all
+install(TARGETS radixsortcl RUNTIME DESTINATION bin)
 install(FILES RadixSort.cl DESTINATION bin)

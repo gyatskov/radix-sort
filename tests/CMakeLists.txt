@@ -9,6 +9,7 @@ FetchContent_MakeAvailable(catch2)
 # Tests need to be added as executables first
 add_executable(tests
     tests.cpp
+    CRunner.cpp
 )
 
 target_compile_features(tests
@@ -19,7 +20,7 @@ PRIVATE
 # Should be linked to the main library, as well as the Catch2 testing library
 target_link_libraries(tests
 PRIVATE
-    modern_library
+    radixsortcl
     Catch2::Catch2
 )
 
