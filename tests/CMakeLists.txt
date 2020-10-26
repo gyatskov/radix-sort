@@ -29,4 +29,5 @@ PRIVATE
 add_test(
     NAME tests
     COMMAND tests
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
 ) # Command can be a target

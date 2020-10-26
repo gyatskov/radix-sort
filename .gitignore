@@ -1,5 +1,6 @@
 build/
 bin/
+lib/
 .ccls-cache/
 
 # Latex artifacts

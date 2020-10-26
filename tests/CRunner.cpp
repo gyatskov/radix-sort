@@ -8,35 +8,39 @@
 
 #include <array>
 #include <memory>
+#include <type_traits>
 
-using namespace std;
+namespace {
+
+template <typename Dest=void, typename ...Arg>
+constexpr auto make_array(Arg&& ...arg) {
+   if constexpr (std::is_same<void,Dest>::value)
+      return std::array<std::common_type_t<std::decay_t<Arg>...>, sizeof...(Arg)>{{ std::forward<Arg>(arg)... }};
+   else
+      return std::array<Dest, sizeof...(Arg)>{{ std::forward<Arg>(arg)... }};
+}
+} // namespace
 
 CRunner::CRunner(Arguments arguments /*= Arguments()*/) : CAssignmentBase(arguments)
 {
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// CRunner
-static const size_t NUM_DATASETS = 5;
-
-/// [sic]
 template <typename DataType>
-std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> DataSetKreator(size_t num_elements)
+auto DatasetCreator(size_t num_elements)
 {
-    std::array<std::shared_ptr<Dataset<DataType>>, NUM_DATASETS> result = {
+    return make_array<std::shared_ptr<Dataset<DataType>>>(
         std::make_shared<Zeros<DataType>>(num_elements),
         std::make_shared<Range<DataType>>(num_elements),
         std::make_shared<InvertedRange<DataType>>(num_elements),
         std::make_shared<RandomDistributed<DataType>>(num_elements),
         std::make_shared<Random<DataType>>(num_elements)
-    };
-    return result;
+    );
 }
 
 template <typename DataType>
 bool CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3])
 {
-    const auto datasets = DataSetKreator<DataType>(options.num_elements);
+    const auto datasets = DatasetCreator<DataType>(options.num_elements);
     bool success = true;
     for (const auto dataset : datasets)
     {
