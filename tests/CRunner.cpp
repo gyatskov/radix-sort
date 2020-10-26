@@ -1,11 +1,13 @@
 #include "CRunner.h"
 
+#include <catch2/catch.hpp>
+
 #include "CRadixSortTask.h"
 #include "RadixSortOptions.h"
-
-#include <iostream>
-#include <array>
 #include "Dataset.h"
+
+#include <array>
+#include <memory>
 
 using namespace std;
 
@@ -40,6 +42,7 @@ bool CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3])
     {
         CRadixSortTask<DataType> radixSort(options, dataset);
         success = success && RunComputeTask(radixSort, LocalWorkSize);
+        REQUIRE(success);
     }
     return success;
 }
@@ -61,11 +64,8 @@ bool CRunner::DoCompute()
 {
     const auto options = RadixSortOptions(m_arguments);
 
-	cout<<"########################################"<<endl;
-	cout<<"Running radix sort task..."<<endl<<endl;
 	size_t LocalWorkSize[3] = { 1, 1, 1 }; // LocalWorkSize does not mean anything right now
 	const auto problemSize = options.num_elements;
-	cout << "Sorting " << problemSize << " elements" << std::endl;
 
     return runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(*this, options, LocalWorkSize);
 }
