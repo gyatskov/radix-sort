@@ -15,10 +15,19 @@ add_library(GPUCommon
 
 target_link_libraries(GPUCommon
 PUBLIC
-    ${OpenCL_LIBRARIES}
+    OpenCL::OpenCL
+)
+
+
+string(
+    APPEND compile_options
+    "$<IF:$<CXX_COMPILER_ID:MSVC>,"
+        "/W4;$<$<CONFIG:RELEASE>:/O2>,"
+        "-Wall;-Wextra;-Werror;-pedantic;"
+    ">"
 )
 
 target_compile_options(GPUCommon
 PRIVATE
-    -Werror -Wall -Wextra -pedantic
+    ${compile_options}
 )

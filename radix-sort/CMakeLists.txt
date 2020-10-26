@@ -31,11 +31,18 @@ PRIVATE
     GPUCommon
 )
 
-target_compile_options(radixsort
-PRIVATE
-    -Werror -Wall -Wextra -pedantic
+string(
+    APPEND compile_options
+    "$<IF:$<CXX_COMPILER_ID:MSVC>,"
+        "/W4;$<$<CONFIG:RELEASE>:/O2>,"
+        "-Wall;-Wextra;-Werror;-pedantic;"
+    ">"
 )
 
+target_compile_options(radixsort
+PRIVATE
+    ${compile_options}
+)
 
 install(TARGETS radixsort RUNTIME DESTINATION bin)
 install(FILES RadixSort.cl DESTINATION bin)

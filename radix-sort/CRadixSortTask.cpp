@@ -228,7 +228,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 
 	// Set kernel arguments
 	{
-        size_t argIdx = 0;
+        cl_uint argIdx = 0U;
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &deviceData->m_dInKeys), "Could not set input elements argument");
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &deviceData->m_dHistograms), "Could not set input histograms");
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(pass), &pass), "Could not set pass argument");
@@ -296,7 +296,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
     const auto pasteHistogramKernel = deviceData->m_kernelMap["pastehistograms"];
     // Set kernel arguments
     {
-        size_t argIdx = 0;
+        cl_uint argIdx = 0U;
         V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &deviceData->m_dHistograms), "Could not set histogram argument");
         V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(uint32_t) * maxmemcache, NULL), "Could not set histogram cache size"); // mem cache
         V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &deviceData->m_dGlobsum), "Could not set global histogram argument");
@@ -462,7 +462,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 
 	// set kernel arguments
 	{
-        size_t argIdx = 0;
+        cl_uint argIdx = 0U;
         V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &deviceData->m_dInKeys), "Could not set input keys for reorder kernel.");
         V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &deviceData->m_dOutKeys), "Could not set output keys for reorder kernel.");
         V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &deviceData->m_dHistograms), "Could not set histograms for reorder kernel.");

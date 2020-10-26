@@ -81,8 +81,8 @@ template <typename DataType>
 Zeros<DataType>::Zeros(std::size_t size)
     : Dataset<DataType>(size)
 {
-    auto& dataset = Dataset<DataType>::dataset;
-	std::fill(dataset.begin(), dataset.end(), 0);
+    auto& ds = Dataset<DataType>::dataset;
+	std::fill(ds.begin(), ds.end(), 0);
 }
 
 template <typename DataType>
@@ -95,12 +95,12 @@ RandomDistributed<DataType>::RandomDistributed(std::size_t size)
 
 	std::uniform_int_distribution<DataType> dis(std::numeric_limits<DataType>::min(), std::numeric_limits<DataType>::max());
 	// fill the array with some values
-    auto& dataset = Dataset<DataType>::dataset;
-	std::generate(dataset.begin(), dataset.end(), std::bind(dis, generator));
+    auto& ds = Dataset<DataType>::dataset;
+	std::generate(ds.begin(), ds.end(), std::bind(dis, generator));
 
 	// Ensure that min and max are in the input array
-	*dataset.begin() = std::numeric_limits<DataType>::max();
-	*(dataset.end() - 1) = std::numeric_limits<DataType>::min();
+	*ds.begin() = std::numeric_limits<DataType>::max();
+	*(ds.end() - 1) = std::numeric_limits<DataType>::min();
 }
 
 template <typename DataType>
@@ -112,25 +112,25 @@ Random<DataType>::Random(std::size_t size)
     std::mt19937 generator(seed);
 
     // fill the array with some values
-    auto& dataset = Dataset<DataType>::dataset;
-    std::generate(dataset.begin(), dataset.end(), generator);
+    auto& ds = Dataset<DataType>::dataset;
+    std::generate(ds.begin(), ds.end(), generator);
 }
 
 template <typename DataType>
 InvertedRange<DataType>::InvertedRange(std::size_t size)
     : Dataset<DataType>(size)
 {
-    auto& dataset = Dataset<DataType>::dataset;
-	std::iota(dataset.begin(), dataset.end(), std::numeric_limits<DataType>::min());
-	std::reverse(dataset.begin(), dataset.end());
+    auto& ds = Dataset<DataType>::dataset;
+	std::iota(ds.begin(), ds.end(), std::numeric_limits<DataType>::min());
+	std::reverse(ds.begin(), ds.end());
 }
 
 template <typename DataType>
 Range<DataType>::Range(std::size_t size)
     : Dataset<DataType>(size)
 {
-    auto& dataset = Dataset<DataType>::dataset;
-	std::iota(dataset.begin(), dataset.end(), std::numeric_limits<DataType>::min());
+    auto& ds = Dataset<DataType>::dataset;
+	std::iota(ds.begin(), ds.end(), std::numeric_limits<DataType>::min());
 }
 
 // Specialize datasets for exactly these four types.

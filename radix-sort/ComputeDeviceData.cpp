@@ -22,7 +22,7 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
     const auto createBufferAndCheck = [Context](auto& target, auto sizeInBytes) {
         cl_int clError;
 
-        TODO("Consider using CL_MEM_USE_HOST_PTR for user-provided memory");
+        TODO("Consider using CL_MEM_USE_HOST_PTR for user-provided memory")
         target = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeInBytes, nullptr, &clError);
         constexpr auto ERROR_STRING = "Error allocating device array";
         V_RETURN_CL(clError, ERROR_STRING);
