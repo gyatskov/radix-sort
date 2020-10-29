@@ -114,6 +114,4 @@ public:
 #define SAFE_RELEASE_PROGRAM(ptr) {if(ptr){ clReleaseProgram(ptr); ptr = NULL; }}
 #define SAFE_RELEASE_MEMOBJECT(ptr) {if(ptr){ clReleaseMemObject(ptr); ptr = NULL; }}
 
-#define ARRAYLEN(a) (sizeof(a)/sizeof(a[0]))
-
 #endif // CL_UTIL_H
