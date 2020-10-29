@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../Common/CAssignmentBase.h"
+#include "../Common/CTestBase.h"
 
 #include <array>
 
 struct RadixSortOptions;
 
-class CRunner : public CAssignmentBase
+class CRunner : public CTestBase
 {
 public:
     CRunner(Arguments arguments = Arguments());

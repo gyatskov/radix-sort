@@ -1,4 +1,4 @@
-#include "CAssignmentBase.h"
+#include "CTestBase.h"
 
 #include "CLUtil.h"
 #include "CTimer.h"
@@ -7,46 +7,14 @@
 
 using namespace std;
 
-///////////////////////////////////////////////////////////////////////////////
-// CAssignmentBase
-
-CAssignmentBase::CAssignmentBase(Arguments arguments /*= Arguments()*/)
-    : m_CLPlatform(nullptr),
-      m_CLDevice(nullptr),
-      m_CLContext(nullptr),
-      m_CLCommandQueue(nullptr),
-      m_arguments(arguments)
-{
-}
-
-CAssignmentBase::~CAssignmentBase()
-{
-	ReleaseCLContext();
-}
-
-bool CAssignmentBase::EnterMainLoop()
-{
-	if(!InitCLContext())
-		return false;
-
-	bool success = DoCompute();
-
-	ReleaseCLContext();
-
-	return success;
-}
-
-#define PRINT_INFO(title, buffer, bufferSize, maxBufferSize, expr) { expr; buffer[bufferSize] = '\0'; std::cout << title << ": " << buffer << std::endl; }
-
-bool CAssignmentBase::InitCLContext()
-{
+ComputeState::init() {
 	//////////////////////////////////////////////////////
 	//(Sect 4.3)
 
 	// 1. get all platform IDs
 
 	std::vector<cl_platform_id> platformIds;
-	const cl_uint c_MaxPlatforms = 16;
+	constexpr cl_uint c_MaxPlatforms { 16 };
 	platformIds.resize(c_MaxPlatforms);
 
 	cl_uint countPlatforms;
@@ -55,7 +23,7 @@ bool CAssignmentBase::InitCLContext()
 
 	// 2. find all available GPU devices
 	std::vector<cl_device_id> deviceIds;
-	const int maxDevices = 16;
+	constexpr int maxDevices { 16 };
 	deviceIds.resize(maxDevices);
 	int countAllDevices = 0;
 
@@ -83,7 +51,7 @@ bool CAssignmentBase::InitCLContext()
 	// Printing platform and device data.
 	const int maxBufferSize = 1024;
 	char buffer[maxBufferSize];
-	size_t bufferSize;
+	size_t bufferSize = 0U;
 	std::cout << "OpenCL platform:" << std::endl << std::endl;
 	PRINT_INFO("Name", buffer, bufferSize, maxBufferSize, clGetPlatformInfo(m_CLPlatform, CL_PLATFORM_NAME, maxBufferSize, (void*)buffer, &bufferSize));
 	PRINT_INFO("Vendor", buffer, bufferSize, maxBufferSize, clGetPlatformInfo(m_CLPlatform, CL_PLATFORM_VENDOR, maxBufferSize, (void*)buffer, &bufferSize));
@@ -112,7 +80,7 @@ bool CAssignmentBase::InitCLContext()
 	return true;
 }
 
-void CAssignmentBase::ReleaseCLContext()
+ComputeState::release()
 {
 	if (m_CLCommandQueue != nullptr)
 	{
@@ -127,7 +95,48 @@ void CAssignmentBase::ReleaseCLContext()
 	}
 }
 
-bool CAssignmentBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize)
+///////////////////////////////////////////////////////////////////////////////
+// CTestBase
+
+CTestBase::CTestBase(Arguments arguments /*= Arguments()*/)
+    : m_CLPlatform(nullptr),
+      m_CLDevice(nullptr),
+      m_CLContext(nullptr),
+      m_CLCommandQueue(nullptr),
+      m_arguments(arguments)
+{
+}
+
+CTestBase::~CTestBase()
+{
+	ReleaseCLContext();
+}
+
+bool CTestBase::EnterMainLoop()
+{
+	if(!InitCLContext())
+		return false;
+
+	bool success = DoCompute();
+
+	ReleaseCLContext();
+
+	return success;
+}
+
+#define PRINT_INFO(title, buffer, bufferSize, maxBufferSize, expr) { expr; buffer[bufferSize] = '\0'; std::cout << title << ": " << buffer << std::endl; }
+
+bool CTestBase::InitCLContext()
+{
+    return m_computeState.init();
+}
+
+void CTestBase::ReleaseCLContext()
+{
+    m_computeState.release();
+}
+
+bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize)
 {
 	if(m_CLContext == nullptr)
 	{

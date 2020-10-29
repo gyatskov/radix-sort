@@ -8,17 +8,32 @@
 
 #include <array>
 
-class CAssignmentBase
+/** @TODO: Use cl.hpp */
+struct ComputeState
+{
+    ComputeState() = default;
+
+    bool init();
+
+    void release();
+
+	cl_platform_id		m_CLPlatform;
+	cl_device_id		m_CLDevice;
+	cl_context			m_CLContext;
+	cl_command_queue	m_CLCommandQueue;
+};
+
+class CTestBase
 {
 public:
-	CAssignmentBase(Arguments arguments = Arguments());
+	CTestBase(Arguments arguments = Arguments());
 
-	virtual ~CAssignmentBase();
+	virtual ~CTestBase();
 
-	//! Main loop. You only need to overload this if you do some rendering in your assignment.
+	//! Main loop. Only to be overridden if something is rendered.
 	virtual bool EnterMainLoop();
 
-	//! You need to overload this to define a specific behavior for your assignments
+	//! To be overridden
 	virtual bool DoCompute() = 0;
 
 protected:
@@ -28,10 +43,7 @@ protected:
 
 	virtual bool RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize);
 
-	cl_platform_id		m_CLPlatform;
-	cl_device_id		m_CLDevice;
-	cl_context			m_CLContext;
-	cl_command_queue	m_CLCommandQueue;
+    ComputeState m_computeState;
 
     Arguments m_arguments;
 };

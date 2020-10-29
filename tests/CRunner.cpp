@@ -21,7 +21,7 @@ constexpr auto make_array(Arg&& ...arg) {
 }
 } // namespace
 
-CRunner::CRunner(Arguments arguments /*= Arguments()*/) : CAssignmentBase(arguments)
+CRunner::CRunner(Arguments arguments /*= Arguments()*/) : CTestBase(arguments)
 {
 }
 
