@@ -38,7 +38,7 @@ auto DatasetCreator(size_t num_elements)
 }
 
 template <typename DataType>
-bool CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3])
+bool CRunner::runTask(const RadixSortOptions& options, const std::array<size_t,3>& LocalWorkSize)
 {
     const auto datasets = DatasetCreator<DataType>(options.num_elements);
     bool success = true;
@@ -53,7 +53,7 @@ bool CRunner::runTask(const RadixSortOptions& options, size_t LocalWorkSize[3])
 
 namespace {
 template<typename First, typename ...Rest>
-bool runAllTypes(CRunner& runner, const RadixSortOptions& options, size_t localWorkSize[3])
+bool runAllTypes(CRunner& runner, const RadixSortOptions& options, const std::array<size_t, 3>& localWorkSize)
 {
     bool success = runner.runTask<First>(options, localWorkSize);
 
@@ -68,7 +68,8 @@ bool CRunner::DoCompute()
 {
     const auto options = RadixSortOptions(m_arguments);
 
-	size_t LocalWorkSize[3] = { 1, 1, 1 }; // LocalWorkSize does not mean anything right now
+    // LocalWorkSize does not mean anything right here
+	const std::array<size_t,3> LocalWorkSize { 1, 1, 1 };
 	const auto problemSize = options.num_elements;
 
     return runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(*this, options, LocalWorkSize);

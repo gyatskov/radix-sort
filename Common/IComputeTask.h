@@ -12,6 +12,8 @@
     #include <CL/cl.h>
 #endif
 
+#include <array>
+
 class IComputeTask
 {
 public:
@@ -24,7 +26,10 @@ public:
 	virtual void ReleaseResources() = 0;
 
 	//! Perform calculations on the GPU
-	virtual void ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]) = 0;
+	virtual void ComputeGPU(
+        cl_context Context,
+        cl_command_queue CommandQueue,
+        const std::array<size_t,3>& LocalWorkSize) = 0;
 
 	//! Compute the "golden" solution on the CPU. The GPU results must be equal to this reference
 	virtual void ComputeCPU() = 0;

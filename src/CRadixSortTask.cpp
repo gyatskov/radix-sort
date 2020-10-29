@@ -153,7 +153,7 @@ template <typename DataType>
 void CRadixSortTask<DataType>::ComputeGPU(
     cl_context Context,
     cl_command_queue CommandQueue,
-    size_t LocalWorkSize[3])
+    const std::array<size_t,3>& LocalWorkSize)
 {
 	padGPUData(CommandQueue);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
@@ -607,7 +607,7 @@ void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3])
+void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize)
 {
     CheckDivisibility();
 
@@ -728,7 +728,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& alternative)
+void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, const std::string& alternative)
 {
 	//run selected task
 	if (alternative == "RadixSort_01") {
@@ -768,7 +768,7 @@ void CRadixSortTask<DataType>::writePerformance(Stream&& stream)
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int Task)
+void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, unsigned int Task)
 {
     if (options.perf_to_stdout) {
         std::cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_radix_time.avg << " Gelem/s" << std::endl;

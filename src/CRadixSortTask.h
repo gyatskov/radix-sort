@@ -58,7 +58,7 @@ public:
 	// IComputeTask
 	virtual bool InitResources(cl_device_id Device, cl_context Context);
 	virtual void ReleaseResources();
-	virtual void ComputeGPU(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
+	virtual void ComputeGPU(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize);
 	virtual void ComputeCPU();
 	virtual bool ValidateResults();
 
@@ -75,13 +75,13 @@ protected:
 	void Resize(uint32_t nn);
 	void padGPUData(cl_command_queue CommandQueue);
 
-	void RadixSort(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3]);
+	void RadixSort(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize);
 	void Histogram(cl_command_queue CommandQueue, int pass);
 	void ScanHistogram(cl_command_queue CommandQueue, int pass);
 	void Reorder(cl_command_queue CommandQueue, int pass);
 
-	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], const std::string& kernel);
-	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, size_t LocalWorkSize[3], unsigned int task);
+	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, const std::string& kernel);
+	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, unsigned int task);
 
     template <typename Stream>
     void writePerformance(Stream&& stream);

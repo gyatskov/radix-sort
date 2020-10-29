@@ -11,7 +11,11 @@ using namespace std;
 // CAssignmentBase
 
 CAssignmentBase::CAssignmentBase(Arguments arguments /*= Arguments()*/)
-    : m_CLPlatform(nullptr), m_CLDevice(nullptr), m_CLContext(nullptr), m_CLCommandQueue(nullptr), m_arguments(arguments)
+    : m_CLPlatform(nullptr),
+      m_CLDevice(nullptr),
+      m_CLContext(nullptr),
+      m_CLCommandQueue(nullptr),
+      m_arguments(arguments)
 {
 }
 
@@ -44,7 +48,7 @@ bool CAssignmentBase::InitCLContext()
 	std::vector<cl_platform_id> platformIds;
 	const cl_uint c_MaxPlatforms = 16;
 	platformIds.resize(c_MaxPlatforms);
-	
+
 	cl_uint countPlatforms;
 	V_RETURN_FALSE_CL(clGetPlatformIDs(c_MaxPlatforms, &platformIds[0], &countPlatforms), "Failed to get CL platform ID");
 	platformIds.resize(countPlatforms);
@@ -123,13 +127,13 @@ void CAssignmentBase::ReleaseCLContext()
 	}
 }
 
-bool CAssignmentBase::RunComputeTask(IComputeTask& Task, size_t LocalWorkSize[3])
+bool CAssignmentBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize)
 {
 	if(m_CLContext == nullptr)
 	{
 		std::cerr<<"Error: RunComputeTask() cannot execute because the OpenCL context has not been created first."<<endl;
 	}
-	
+
 	if(!Task.InitResources(m_CLDevice, m_CLContext))
 	{
 		std::cerr << "Error during resource allocation. Aborting execution." <<endl;
@@ -158,7 +162,7 @@ bool CAssignmentBase::RunComputeTask(IComputeTask& Task, size_t LocalWorkSize[3]
 	{
 		cout << "INVALID RESULTS!" << endl;
 	}
-	
+
 	// Cleaning up.
 	Task.ReleaseResources();
 

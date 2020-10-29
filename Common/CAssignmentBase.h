@@ -6,6 +6,8 @@
 #include "CommonDefs.h"
 #include "CArguments.h"
 
+#include <array>
+
 class CAssignmentBase
 {
 public:
@@ -24,7 +26,7 @@ protected:
 
 	virtual void ReleaseCLContext();
 
-	virtual bool RunComputeTask(IComputeTask& Task, size_t LocalWorkSize[3]);
+	virtual bool RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize);
 
 	cl_platform_id		m_CLPlatform;
 	cl_device_id		m_CLDevice;

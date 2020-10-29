@@ -2,6 +2,8 @@
 
 #include "../Common/CAssignmentBase.h"
 
+#include <array>
+
 struct RadixSortOptions;
 
 class CRunner : public CAssignmentBase
@@ -10,9 +12,8 @@ public:
     CRunner(Arguments arguments = Arguments());
 	virtual ~CRunner() {};
 
-	//! This overloaded method contains the specific solution of A2
 	virtual bool DoCompute();
 
     template <typename DataType>
-    bool runTask(const RadixSortOptions& options, size_t LocalWorkSize[3]);
+    bool runTask(const RadixSortOptions& options, const std::array<size_t,3>& LocalWorkSize);
 };
