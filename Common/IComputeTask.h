@@ -12,16 +12,9 @@
     #include <CL/cl.h>
 #endif
 
-
-//! Common interface for the tasks within the assignment.
-/*!
-	Inherit a new class for each computing task.
-	(There are usually more tasks in each assignment).
-*/
 class IComputeTask
 {
 public:
-
 	virtual ~IComputeTask() {};
 
 	//! Init any resources specific to the current task
