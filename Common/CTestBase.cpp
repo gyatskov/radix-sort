@@ -7,7 +7,8 @@
 
 using namespace std;
 
-ComputeState::init() {
+#define PRINT_INFO(title, buffer, bufferSize, maxBufferSize, expr) { expr; buffer[bufferSize] = '\0'; std::cout << title << ": " << buffer << std::endl; }
+bool ComputeState::init() {
 	//////////////////////////////////////////////////////
 	//(Sect 4.3)
 
@@ -79,8 +80,9 @@ ComputeState::init() {
 
 	return true;
 }
+#undef PRINT_INFO
 
-ComputeState::release()
+void ComputeState::release()
 {
 	if (m_CLCommandQueue != nullptr)
 	{
@@ -99,11 +101,7 @@ ComputeState::release()
 // CTestBase
 
 CTestBase::CTestBase(Arguments arguments /*= Arguments()*/)
-    : m_CLPlatform(nullptr),
-      m_CLDevice(nullptr),
-      m_CLContext(nullptr),
-      m_CLCommandQueue(nullptr),
-      m_arguments(arguments)
+    : m_arguments(arguments)
 {
 }
 
@@ -124,7 +122,6 @@ bool CTestBase::EnterMainLoop()
 	return success;
 }
 
-#define PRINT_INFO(title, buffer, bufferSize, maxBufferSize, expr) { expr; buffer[bufferSize] = '\0'; std::cout << title << ": " << buffer << std::endl; }
 
 bool CTestBase::InitCLContext()
 {
@@ -138,12 +135,12 @@ void CTestBase::ReleaseCLContext()
 
 bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize)
 {
-	if(m_CLContext == nullptr)
+	if(m_computeState.m_CLContext == nullptr)
 	{
-		std::cerr<<"Error: RunComputeTask() cannot execute because the OpenCL context has not been created first."<<endl;
+		std::cerr<<"Error: RunComputeTask() cannot execute because the OpenCL context is null."<<endl;
 	}
 
-	if(!Task.InitResources(m_CLDevice, m_CLContext))
+	if(!Task.InitResources(m_computeState.m_CLDevice, m_computeState.m_CLContext))
 	{
 		std::cerr << "Error during resource allocation. Aborting execution." <<endl;
 		Task.ReleaseResources();
@@ -159,7 +156,7 @@ bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& L
 	cout << "Computing GPU result..." << endl;
 
 	// Runing the kernel N times. This make the measurement of the execution time more accurate.
-	Task.ComputeGPU(m_CLContext, m_CLCommandQueue, LocalWorkSize);
+	Task.ComputeGPU(m_computeState.m_CLContext, m_computeState.m_CLCommandQueue, LocalWorkSize);
 	cout << "DONE" << endl;
 
 	// Validating results.
