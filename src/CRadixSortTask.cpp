@@ -31,7 +31,7 @@ CRadixSortTask<DataType>::CRadixSortTask(
     mNumberKeys(static_cast<decltype(mNumberKeys)>(options.num_elements)),
 	mNumberKeysRounded(Parameters::_NUM_MAX_INPUT_ELEMS),
 	mHostData(dataset),
-    options(options)
+    mOptions(options)
 {}
 
 template <typename DataType>
@@ -556,7 +556,7 @@ void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device)
     // check that the local mem is sufficient (suggestion of Jose Luis Cerc\F3s Pita)
     cl_ulong localMem;
 	clGetDeviceInfo(Device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(localMem), &localMem, NULL);
-    if (options.verbose) {
+    if (mOptions.verbose) {
         std::cout << "Cache size   = " << localMem << " Bytes." << std::endl;
 		std::cout << "Needed cache = " << sizeof(cl_uint) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP << " Bytes." << std::endl;
     }
@@ -573,7 +573,7 @@ void CRadixSortTask<DataType>::Resize(uint32_t nn)
 {
 	assert(nn <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
-    if (options.verbose){
+    if (mOptions.verbose){
         std::cout << "Resize to  " << nn << std::endl;
     }
     mNumberKeys = nn;
@@ -629,38 +629,38 @@ void CRadixSortTask<DataType>::RadixSort(
 	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
     assert(mNumberKeys <= mNumberKeysRounded);
 
-    if (options.verbose) {
+    if (mOptions.verbose) {
         std::cout << "Start sorting " << mNumberKeys << " keys." << std::endl;
     }
 
     for (uint32_t pass = 0; pass < Parameters::_NUM_PASSES; pass++){
-        if (options.verbose) {
+        if (mOptions.verbose) {
             std::cout << "Pass " << pass << ":" << std::endl;
         }
 
-        if (options.verbose) {
+        if (mOptions.verbose) {
             std::cout << "Building histograms" << std::endl;
         }
         Histogram(CommandQueue, pass);
 
-        if (options.verbose) {
+        if (mOptions.verbose) {
             std::cout << "Scanning histograms" << std::endl;
         }
         ScanHistogram(CommandQueue, pass);
 
-        if (options.verbose) {
+        if (mOptions.verbose) {
             std::cout << "Reordering " << std::endl;
         }
         Reorder(CommandQueue, pass);
 
-        if (options.verbose) {
+        if (mOptions.verbose) {
             std::cout << "-------------------" << std::endl;
         }
     }
 
     sort_time.avg = histo_time.avg + scan_time.avg + reorder_time.avg + paste_time.avg;
     sort_time.n = histo_time.n;
-    if (options.verbose){
+    if (mOptions.verbose){
         std::cout << "End sorting" << std::endl;
     }
 }
@@ -786,12 +786,12 @@ void CRadixSortTask<DataType>::TestPerformance(
         const std::array<size_t,3>& LocalWorkSize
         )
 {
-    if (options.perf_to_stdout) {
+    if (mOptions.perf_to_stdout) {
         std::cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / cpu_radix_time.avg << " Gelem/s" << std::endl;
         std::cout << " stl cpu avg time: " << cpu_stl_time.avg << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / cpu_stl_time.avg << " Gelem/s" << std::endl;
     }
 
-    if (options.perf_to_stdout) {
+    if (mOptions.perf_to_stdout) {
         std::cout << "Testing performance of GPU task " << mDeviceData->kernelNames[0U] << std::endl;
     }
 
@@ -815,7 +815,7 @@ void CRadixSortTask<DataType>::TestPerformance(
     timer.Stop();
 	double ms = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
     sort_time.avg = ms;
-    if (options.perf_to_stdout) {
+    if (mOptions.perf_to_stdout) {
 
         std::cout << " kernel |    avg      |     min     |    max " << std::endl;
         std::cout << " -----------------------------------------------" << std::endl;
@@ -835,7 +835,7 @@ void CRadixSortTask<DataType>::TestPerformance(
 
     fileNameBuilder << "radix_" << std::put_time(ptm, dateFormat.c_str()) << ".csv";
 
-    if (options.perf_to_csv) {
+    if (mOptions.perf_to_csv) {
         const auto filename = fileNameBuilder.str();
         bool file_exists = false;
 
@@ -853,7 +853,7 @@ void CRadixSortTask<DataType>::TestPerformance(
             writePerformance(outstream);
         }
     }
-    if (options.perf_csv_to_stdout) {
+    if (mOptions.perf_csv_to_stdout) {
         writePerformance(std::cout);
     }
 }

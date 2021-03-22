@@ -60,10 +60,17 @@ protected:
 	void ScanHistogram(cl_command_queue CommandQueue, int pass);
 	void Reorder(cl_command_queue CommandQueue, int pass);
 
-	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, const std::string& kernel);
+	void ExecuteTask(
+        cl_context Context,
+        cl_command_queue CommandQueue,
+        const std::array<size_t,3>& LocalWorkSize,
+        const std::string& kernel);
 
     /** Measures task performance **/
-	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize);
+	void TestPerformance(
+        cl_context Context,
+        cl_command_queue CommandQueue,
+        const std::array<size_t,3>& LocalWorkSize);
 
     /** Writes performance to stream **/
     template <typename Stream>
@@ -84,5 +91,5 @@ protected:
 	Statistics histo_time, scan_time, reorder_time, paste_time, sort_time;
     Statistics cpu_radix_time, cpu_stl_time;
 
-    RadixSortOptions options;
+    RadixSortOptions mOptions;
 };
