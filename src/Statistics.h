@@ -5,20 +5,13 @@
 
 struct Statistics
 {
-    double min;
-    double max;
-    double avg;
-    double sum;
+    double min{std::numeric_limits<decltype(min)>::infinity()};
+    double max{-std::numeric_limits<decltype(max)>::infinity()};
+    double avg{0.0};
+    double sum{0.0};
 
-    std::size_t n;
-
-    Statistics() :
-        min(std::numeric_limits<decltype(min)>::infinity()),
-        max(-std::numeric_limits<decltype(max)>::infinity()),
-        avg(0),
-        sum(0),
-        n(0)
-    {}
+    /** Sample count **/
+    std::size_t n{0U};
 
     void update(double value) {
         n++;
