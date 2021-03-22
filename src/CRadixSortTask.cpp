@@ -56,7 +56,7 @@ appendToOptions(std::string& dst, const std::string& key, const T& value)
 
 
 template <typename DataType>
-std::string CRadixSortTask<DataType>::buildOptions()
+std::string CRadixSortTask<DataType>::BuildOptions()
 {
     std::string options;
     //options += " -cl-opt-disable";
@@ -123,7 +123,7 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
            << programCode << std::endl;
 
         const auto completeCode = ss.str();
-        const auto options = buildOptions();
+        const auto options { BuildOptions() };
         mDeviceData->m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, completeCode, options);
         if (mDeviceData->m_Program == nullptr) {
             return false;

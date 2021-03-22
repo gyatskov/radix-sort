@@ -46,7 +46,7 @@ protected:
     using Parameters = AlgorithmParameters<DataType>;
 
 	// Helper methods
-    std::string buildOptions();
+    static std::string BuildOptions();
 	void AllocateDeviceMemory(cl_context Context);
 	void CheckLocalMemory(cl_device_id Device);
 	void CheckDivisibility();
