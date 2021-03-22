@@ -533,12 +533,10 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 template <typename DataType>
 void CRadixSortTask<DataType>::CheckDivisibility()
 {
-    assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
-    assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
-    assert(Parameters::_NUM_MAX_INPUT_ELEMS % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
-    assert((Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_RADIX) % Parameters::_NUM_HISTOSPLIT == 0);
-    assert(pow(2, (int)log2(Parameters::_NUM_GROUPS)) == Parameters::_NUM_GROUPS);
-    assert(pow(2, (int)log2(Parameters::_NUM_ITEMS_PER_GROUP)) == Parameters::_NUM_ITEMS_PER_GROUP);
+    static_assert(Parameters::_RADIX == 1 << Parameters::_NUM_BITS_PER_RADIX);
+    static_assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
+    static_assert(Parameters::_NUM_MAX_INPUT_ELEMS % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
+    static_assert((Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_RADIX) % Parameters::_NUM_HISTOSPLIT == 0);
 }
 
 template <typename DataType>
