@@ -130,7 +130,7 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
         }
     }
 
-	cl_int clError;
+	cl_int clError{-1};
 	// Create each kernel in global kernel list
 	mHostData.m_hResultGPUMap["RadixSort_01"] = std::vector<DataType>(mNumberKeysRounded);
     for (const auto& kernelName : mDeviceData->kernelNames) {
@@ -257,7 +257,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 
 #ifdef MORE_PROFILING
     cl_ulong debut, fin;
-    cl_int err;
+    cl_int err{-1};
     err = clGetEventProfilingInfo(eve,
         CL_PROFILING_COMMAND_QUEUED,
         sizeof(cl_ulong),
