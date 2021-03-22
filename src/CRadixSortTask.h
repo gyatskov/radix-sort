@@ -21,7 +21,9 @@ class CRadixSortTask : public IComputeTask
 public:
 	using DataType = _DataType;
 
-	CRadixSortTask(const RadixSortOptions& options, std::shared_ptr<Dataset<DataType>> dataset);
+	CRadixSortTask(
+        const RadixSortOptions& options,
+        std::shared_ptr<Dataset<DataType>> dataset);
 
 	virtual ~CRadixSortTask();
 
@@ -75,8 +77,8 @@ protected:
     uint32_t mNumberKeysRounded; // next multiple of _ITEMS*_GROUPS
 	uint32_t mNumberKeysRest; // rest to fit to number of gpu processors
 
-    HostData<DataType>							 hostData;
-    std::shared_ptr<ComputeDeviceData<DataType>> deviceData;
+    HostData<DataType>							 mHostData;
+    std::shared_ptr<ComputeDeviceData<DataType>> mDeviceData;
 
 	// timers
 	Statistics histo_time, scan_time, reorder_time, paste_time, sort_time;
