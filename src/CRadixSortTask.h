@@ -4,45 +4,15 @@
 #include "Parameters.h"
 #include "HostData.h"
 #include "RadixSortOptions.h"
+#include "Statistics.h"
 
 #include <vector>
 #include <map>
 #include <memory>
-#include <limits>
 #include <cstdint>
 
 template <typename DataType>
 struct ComputeDeviceData;
-
-struct Statistics
-{
-    double min;
-    double max;
-    double avg;
-    double sum;
-
-    std::size_t n;
-
-    Statistics() :
-        min(std::numeric_limits<decltype(min)>::infinity()),
-        max(-std::numeric_limits<decltype(max)>::infinity()),
-        avg(0),
-        sum(0),
-        n(0)
-    {}
-
-    void update(double value) {
-        n++;
-        sum += value;
-        avg = sum / n;
-        if (value > max) {
-            max = value;
-        }
-        else if (value < min) {
-            min = value;
-        }
-    }
-};
 
 /// Parallel radix sort
 template <typename _DataType>
