@@ -518,15 +518,10 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 #endif
 
     // swap the old and new vectors of keys
-    cl_mem d_temp;
-	d_temp	              = deviceData->m_dInKeys;
-	deviceData->m_dInKeys  = deviceData->m_dOutKeys;
-    deviceData->m_dOutKeys = d_temp;
+    std::swap(deviceData->m_dInKeys, deviceData->m_dOutKeys);
 
     // swap the old and new permutations
-    d_temp       = deviceData->m_dInPermut;
-    deviceData->m_dInPermut  = deviceData->m_dOutPermut;
-    deviceData->m_dOutPermut = d_temp;
+    std::swap(deviceData->m_dInPermut, deviceData->m_dOutPermut);
 }
 
 /// Check divisibility of works to assign correct amounts of work to groups/work-items.
