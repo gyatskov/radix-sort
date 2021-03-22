@@ -26,11 +26,11 @@ public:
 	virtual ~CRadixSortTask();
 
 	// IComputeTask
-	virtual bool InitResources(cl_device_id Device, cl_context Context);
-	virtual void ReleaseResources();
-	virtual void ComputeGPU(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize);
-	virtual void ComputeCPU();
-	virtual bool ValidateResults();
+	bool InitResources(cl_device_id Device, cl_context Context) override;
+	void ReleaseResources() override;
+	void ComputeGPU(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize) override;
+	void ComputeCPU() override;
+	bool ValidateResults() override;
 
 protected:
     using Parameters = AlgorithmParameters<DataType>;
