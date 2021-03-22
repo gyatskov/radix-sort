@@ -28,8 +28,16 @@ public:
 	// IComputeTask
 	bool InitResources(cl_device_id Device, cl_context Context) override;
 	void ReleaseResources() override;
-	void ComputeGPU(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize) override;
+	void ComputeGPU(
+        cl_context Context,
+        cl_command_queue CommandQueue,
+        const std::array<size_t,3>& LocalWorkSize
+    ) override;
+
+    /** Sorts data on CPU **/
 	void ComputeCPU() override;
+
+    /** Tests results validity **/
 	bool ValidateResults() override;
 
 protected:
@@ -51,8 +59,11 @@ protected:
 	void Reorder(cl_command_queue CommandQueue, int pass);
 
 	void ExecuteTask(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, const std::string& kernel);
+
+    /** Measures task performance **/
 	void TestPerformance(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, unsigned int task);
 
+    /** Writes performance to stream **/
     template <typename Stream>
     void writePerformance(Stream&& stream);
 
