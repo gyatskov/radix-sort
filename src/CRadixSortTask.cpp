@@ -88,7 +88,9 @@ std::string CRadixSortTask<DataType>::BuildOptions()
 }
 
 template <typename DataType>
-bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Context)
+bool CRadixSortTask<DataType>::InitResources(
+    cl_device_id Device,
+    cl_context Context)
 {
     // CPU resources
 
@@ -160,7 +162,7 @@ void CRadixSortTask<DataType>::ComputeGPU(
 	padGPUData(CommandQueue);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
 
-	TestPerformance(Context, CommandQueue, LocalWorkSize, 0);
+	TestPerformance(Context, CommandQueue, LocalWorkSize);
 }
 
 template <typename DataType>
@@ -461,6 +463,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 	//	__local int* loc_histo,
 	//	const int n
 
+    // TODO: Use
 	struct ReorderKernelParams {
 		cl_mem inKeys;
 		cl_mem outKeys;
@@ -537,6 +540,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 }
 
 /// Check divisibility of works to assign correct amounts of work to groups/work-items.
+// @TODO: Move to class declaration
 template <typename DataType>
 void CRadixSortTask<DataType>::CheckDivisibility()
 {
@@ -776,7 +780,11 @@ void CRadixSortTask<DataType>::writePerformance(Stream&& stream)
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, unsigned int Task)
+void CRadixSortTask<DataType>::TestPerformance(
+        cl_context Context,
+        cl_command_queue CommandQueue,
+        const std::array<size_t,3>& LocalWorkSize
+        )
 {
     if (options.perf_to_stdout) {
         std::cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / cpu_radix_time.avg << " Gelem/s" << std::endl;
@@ -784,7 +792,7 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     }
 
     if (options.perf_to_stdout) {
-        std::cout << "Testing performance of GPU task " << mDeviceData->kernelNames[Task] << std::endl;
+        std::cout << "Testing performance of GPU task " << mDeviceData->kernelNames[0U] << std::endl;
     }
 
     //finish all before we start measuring the time
@@ -796,13 +804,9 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
     //run the kernel N times
 	for (auto i = 0U; i < Parameters::_NUM_PERFORMANCE_ITERATIONS; i++) {
         //run selected task
-        switch (Task) {
-        case 0:
-            CopyDataToDevice(CommandQueue);
-            RadixSort(Context, CommandQueue, LocalWorkSize);
-            CopyDataFromDevice(CommandQueue);
-            break;
-        }
+        CopyDataToDevice(CommandQueue);
+        RadixSort(Context, CommandQueue, LocalWorkSize);
+        CopyDataFromDevice(CommandQueue);
     }
 
     //wait until the command queue is empty again
