@@ -7,9 +7,6 @@ Arguments::Arguments(int argc, char* argv[])
     }
 }
 
-Arguments::Arguments()
-{}
-
 std::vector<std::string> Arguments::getArguments()
 {
     return arguments;
