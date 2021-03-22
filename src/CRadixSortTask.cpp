@@ -218,8 +218,8 @@ bool CRadixSortTask<DataType>::ValidateResults()
 template <typename DataType>
 void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass)
 {
-    size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
-    size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
+    const size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
+    const size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
 
 	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -345,8 +345,17 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
     // second scan for the globsum
     // Set kernel arguments
     {
-        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 0, sizeof(cl_mem), &deviceData->m_dGlobsum), "Could not set global sum parameter");
-        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, 2, sizeof(cl_mem), &deviceData->m_dTemp), "Could not set temporary parameter");
+        V_RETURN_CL(
+            clSetKernelArg(scanHistogramKernel,
+            0,
+            sizeof(cl_mem),
+            &deviceData->m_dGlobsum),
+            "Could not set global sum parameter");
+        V_RETURN_CL(clSetKernelArg(scanHistogramKernel,
+                    2,
+                    sizeof(cl_mem),
+                    &deviceData->m_dTemp),
+                "Could not set temporary parameter");
     }
 
     // global work size
@@ -362,7 +371,8 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
         globalWorkOffset,
         &nbitems,
         &nblocitems,
-        0, NULL, &eve), "Could not execute 2nd instance of scanHistogram kernel.");
+        0, NULL, &eve),
+    "Could not execute 2nd instance of scanHistogram kernel.");
 
     clFinish(CommandQueue);
     timer.Stop();
@@ -432,8 +442,8 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 template <typename DataType>
 void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 {
-	size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
-    size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
+	const size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
+    const size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
 
 	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 
