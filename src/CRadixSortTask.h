@@ -71,9 +71,9 @@ protected:
 	//to avoid confusions: 'h' - host, 'd' - device
 
     // list of keys
-    uint32_t nkeys; // actual number of keys
-    uint32_t nkeys_rounded; // next multiple of _ITEMS*_GROUPS
-	uint32_t nkeys_rest; // rest to fit to number of gpu processors
+    uint32_t mNumberKeys; // actual number of keys
+    uint32_t mNumberKeysRounded; // next multiple of _ITEMS*_GROUPS
+	uint32_t mNumberKeysRest; // rest to fit to number of gpu processors
 
     HostData<DataType>							 hostData;
     std::shared_ptr<ComputeDeviceData<DataType>> deviceData;

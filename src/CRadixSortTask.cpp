@@ -1,4 +1,4 @@
-﻿#include "CRadixSortTask.h"
+#include "CRadixSortTask.h"
 #include "CRadixSortCPU.h"
 #include "RadixSortOptions.h"
 
@@ -24,10 +24,12 @@
 
 //#define MORE_PROFILING
 template <typename DataType>
-CRadixSortTask<DataType>::CRadixSortTask(const RadixSortOptions& options, std::shared_ptr<Dataset<DataType>> dataset)
+CRadixSortTask<DataType>::CRadixSortTask(
+    const RadixSortOptions& options,
+    std::shared_ptr<Dataset<DataType>> dataset)
 	:
-    nkeys(static_cast<decltype(nkeys)>(options.num_elements)),
-	nkeys_rounded(Parameters::_NUM_MAX_INPUT_ELEMS),
+    mNumberKeys(static_cast<decltype(mNumberKeys)>(options.num_elements)),
+	mNumberKeysRounded(Parameters::_NUM_MAX_INPUT_ELEMS),
 	hostData(dataset),
     options(options)
 {}
@@ -130,7 +132,7 @@ bool CRadixSortTask<DataType>::InitResources(cl_device_id Device, cl_context Con
 
 	cl_int clError;
 	// Create each kernel in global kernel list
-	hostData.m_hResultGPUMap["RadixSort_01"] = std::vector<DataType>(nkeys_rounded);
+	hostData.m_hResultGPUMap["RadixSort_01"] = std::vector<DataType>(mNumberKeysRounded);
     for (const auto& kernelName : deviceData->kernelNames) {
 		// Input data stays the same for each kernel
         deviceData->m_kernelMap[kernelName] = clCreateKernel(deviceData->m_Program, kernelName.c_str(), &clError);
@@ -169,19 +171,19 @@ void CRadixSortTask<DataType>::ComputeCPU()
 	CTimer timer;
 	timer.Start();
 	for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
-		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultSTLCPU.begin());
+		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + mNumberKeysRounded, hostData.m_resultSTLCPU.begin());
 
 		// Reference sorting (STL quicksort):
-		std::sort(hostData.m_resultSTLCPU.begin(), hostData.m_resultSTLCPU.begin() + nkeys_rounded);
+		std::sort(hostData.m_resultSTLCPU.begin(), hostData.m_resultSTLCPU.begin() + mNumberKeysRounded);
 	}
 	timer.Stop();
 	cpu_stl_time.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
 
-	hostData.m_resultRadixSortCPU.resize(nkeys_rounded);
+	hostData.m_resultRadixSortCPU.resize(mNumberKeysRounded);
 
 	timer.Start();
 	for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
-		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + nkeys_rounded, hostData.m_resultRadixSortCPU.begin());
+		std::copy(hostData.m_hKeys.begin(), hostData.m_hKeys.begin() + mNumberKeysRounded, hostData.m_resultRadixSortCPU.begin());
 
 		// Reference sorting implementation on CPU (radixsort):
 		RadixSortCPU<DataType>::sort(hostData.m_resultRadixSortCPU);
@@ -198,8 +200,8 @@ bool CRadixSortTask<DataType>::ValidateResults()
 
 	for (const auto& alternative : deviceData->alternatives)
 	{
-		const bool validCPURadixSort = memcmp(hostData.m_resultRadixSortCPU.data(), hostData.m_resultSTLCPU.data(), sizeof(DataType) * nkeys) == 0;
-		const bool validGPURadixSort = memcmp(hostData.m_hResultGPUMap[alternative].data(), hostData.m_resultSTLCPU.data(), sizeof(DataType) * nkeys) == 0;
+		const bool validCPURadixSort = memcmp(hostData.m_resultRadixSortCPU.data(), hostData.m_resultSTLCPU.data(), sizeof(DataType) * mNumberKeys) == 0;
+		const bool validGPURadixSort = memcmp(hostData.m_hResultGPUMap[alternative].data(), hostData.m_resultSTLCPU.data(), sizeof(DataType) * mNumberKeys) == 0;
 
 		const std::string hasPassedCPU = validCPURadixSort ? "passed" : "FAILED";
 		const std::string hasPassedGPU = validGPURadixSort ? "passed" : "FAILED";
@@ -221,8 +223,8 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
     const size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
     const size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
 
-	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
-	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+	assert(mNumberKeysRounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
+	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
 	const auto histogramKernelHandle = deviceData->m_kernelMap["histogram"];
 
@@ -233,7 +235,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &deviceData->m_dHistograms), "Could not set input histograms");
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(pass), &pass), "Could not set pass argument");
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP, NULL), "Could not set local cache");
-		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(int), &nkeys_rounded), "Could not set key count");
+		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(int), &mNumberKeysRounded), "Could not set key count");
 	}
 
     cl_event eve;
@@ -445,7 +447,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 	const size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
     const size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
 
-	assert(nkeys_rounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
+	assert(mNumberKeysRounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 
     clFinish(CommandQueue);
     auto reorderKernel = deviceData->m_kernelMap["reorder"];
@@ -483,7 +485,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 			sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP,
             NULL), "Could not set local memory for reorder kernel."); // mem cache
 
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(nkeys_rounded), &nkeys_rounded), "Could not set number of input keys for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(mNumberKeysRounded), &mNumberKeysRounded), "Could not set number of input keys for reorder kernel.");
 	}
 
 	assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
@@ -570,33 +572,33 @@ void CRadixSortTask<DataType>::Resize(uint32_t nn)
     if (options.verbose){
         std::cout << "Resize to  " << nn << std::endl;
     }
-    nkeys = nn;
+    mNumberKeys = nn;
 
     // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
-    int rest = nkeys % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
-    nkeys_rounded = nkeys;
+    const int32_t rest = mNumberKeys % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+    mNumberKeysRounded = mNumberKeys;
 
     if (rest != 0) {
-		nkeys_rounded = nkeys - rest + (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+		mNumberKeysRounded = mNumberKeys - rest + (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
     }
-	nkeys_rest = rest;
+	mNumberKeysRest = rest;
 }
 
 template <typename DataType>
 void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
 {
-	if (nkeys_rest != 0) {
+	if (mNumberKeysRest != 0) {
 		const auto MAX_INT = std::numeric_limits<DataType>::max();
 		// pad the vector with big values
 		const std::vector<DataType> pad(
             Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
             MAX_INT - 1);
 
-		assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+		assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
 		const auto blocking = CL_TRUE;
-		const auto offset = sizeof(DataType) * nkeys;
-		const auto size = sizeof(DataType) * (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - nkeys_rest);
+		const auto offset = sizeof(DataType) * mNumberKeys;
+		const auto size = sizeof(DataType) * (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - mNumberKeysRest);
 		V_RETURN_CL(clEnqueueWriteBuffer(
             CommandQueue,
 			deviceData->m_dInKeys,
@@ -617,11 +619,11 @@ void CRadixSortTask<DataType>::RadixSort(cl_context Context, cl_command_queue Co
     static_cast<void>(Context);
     static_cast<void>(LocalWorkSize);
 
-	assert(nkeys_rounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
-    assert(nkeys <= nkeys_rounded);
+	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+    assert(mNumberKeys <= mNumberKeysRounded);
 
     if (options.verbose) {
-        std::cout << "Start sorting " << nkeys << " keys." << std::endl;
+        std::cout << "Start sorting " << mNumberKeys << " keys." << std::endl;
     }
 
     for (uint32_t pass = 0; pass < Parameters::_NUM_PASSES; pass++){
@@ -660,8 +662,8 @@ template <typename DataType>
 void CRadixSortTask<DataType>::AllocateDeviceMemory(cl_context Context)
 {
 	// Done in constructor of ComputeDeviceData :)
-	Resize(nkeys);
-	deviceData = std::make_shared<ComputeDeviceData<DataType>>(Context, nkeys_rounded);
+	Resize(mNumberKeys);
+	deviceData = std::make_shared<ComputeDeviceData<DataType>>(Context, mNumberKeysRounded);
 }
 
 template <typename DataType>
@@ -670,7 +672,7 @@ void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
         deviceData->m_dInKeys,
         CL_TRUE, 0,
-        sizeof(DataType) * nkeys_rounded,
+        sizeof(DataType) * mNumberKeysRounded,
         hostData.m_hKeys.data(),
         0, NULL, NULL),
 		"Could not initialize input keys device buffer");
@@ -680,7 +682,7 @@ void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
         deviceData->m_dInPermut,
         CL_TRUE, 0,
-        sizeof(uint32_t) * nkeys_rounded,
+        sizeof(uint32_t) * mNumberKeysRounded,
         hostData.h_Permut.data(),
         0, NULL, NULL),
 		"Could not initialize input permutation device buffer");
@@ -694,7 +696,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dInKeys,
 		CL_TRUE, 0,
-		sizeof(DataType) * nkeys_rounded,
+		sizeof(DataType) * mNumberKeysRounded,
         hostData.m_hResultGPUMap["RadixSort_01"].data(),
 		0, NULL, NULL),
 		"Could not read result data");
@@ -704,7 +706,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         deviceData->m_dInPermut,
 		CL_TRUE, 0,
-		sizeof(uint32_t)  * nkeys_rounded,
+		sizeof(uint32_t)  * mNumberKeysRounded,
         hostData.h_Permut.data(),
 		0, NULL, NULL),
 		"Could not read result permutation");
@@ -757,7 +759,7 @@ void CRadixSortTask<DataType>::writePerformance(Stream&& stream)
     }
 
     stream << std::endl;
-    stream << nkeys << ",";
+    stream << mNumberKeys << ",";
     stream << TypeNameString<DataType>::stdint_name << ",";
     stream << hostData.m_selectedDataset->name() << ",";
     stream << histo_time.avg << ",";
@@ -774,8 +776,8 @@ template <typename DataType>
 void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize, unsigned int Task)
 {
     if (options.perf_to_stdout) {
-        std::cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_radix_time.avg << " Gelem/s" << std::endl;
-        std::cout << " stl cpu avg time: " << cpu_stl_time.avg << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / cpu_stl_time.avg << " Gelem/s" << std::endl;
+        std::cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / cpu_radix_time.avg << " Gelem/s" << std::endl;
+        std::cout << " stl cpu avg time: " << cpu_stl_time.avg << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / cpu_stl_time.avg << " Gelem/s" << std::endl;
     }
 
     if (options.perf_to_stdout) {
@@ -815,7 +817,7 @@ void CRadixSortTask<DataType>::TestPerformance(cl_context Context, cl_command_qu
         std::cout << "  paste:     " << std::setw(8) << paste_time.avg << " | " << paste_time.min << " | " << paste_time.max << std::endl;
         std::cout << "  reorder:   " << std::setw(8) << reorder_time.avg << " | " << reorder_time.min << " | " << reorder_time.max << std::endl;
         std::cout << " -----------------------------------------------" << std::endl;
-        std::cout << "  total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)nkeys_rounded / ms << " Gelem/s" << std::endl;
+        std::cout << "  total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / ms << " Gelem/s" << std::endl;
     }
 
     using std::chrono::system_clock;
