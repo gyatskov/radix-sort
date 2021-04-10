@@ -14,6 +14,19 @@
 template <typename DataType>
 struct ComputeDeviceData;
 
+struct RuntimesGPU {
+    Statistics timeHisto,
+               timeScan,
+               timeReorder,
+               timePaste,
+               timeTotal;
+};
+
+struct RuntimesCPU {
+    Statistics timeRadix,
+               timeSTL;
+};
+
 /// Parallel radix sort
 template <typename _DataType>
 class CRadixSortTask : public IComputeTask
@@ -66,15 +79,8 @@ protected:
         const std::array<size_t,3>& LocalWorkSize,
         const std::string& kernel);
 
-    /** Measures task performance **/
-	void TestPerformance(
-        cl_context Context,
-        cl_command_queue CommandQueue,
-        const std::array<size_t,3>& LocalWorkSize);
 
     /** Writes performance to stream **/
-    template <typename Stream>
-    void writePerformance(Stream&& stream);
 
 	//NOTE: we have two memory address spaces, so we mark pointers with a prefix
 	//to avoid confusions: 'h' - host, 'd' - device
@@ -87,9 +93,35 @@ protected:
     HostData<DataType>							 mHostData;
     std::shared_ptr<ComputeDeviceData<DataType>> mDeviceData;
 
-	// timers
-	Statistics histo_time, scan_time, reorder_time, paste_time, sort_time;
-    Statistics cpu_radix_time, cpu_stl_time;
+	// Runtime statistics GPU
+    RuntimesGPU mRuntimesGPU;
+
+	// Runtime statistics CPU
+    RuntimesCPU mRuntimesCPU;
 
     RadixSortOptions mOptions;
 };
+
+/** Measures task performance **/
+template<class Callable>
+void TestPerformance(
+    cl_command_queue CommandQueue,
+    Callable&& fun,
+    const RadixSortOptions& options,
+    const size_t numIterations,
+    size_t numberKeys,
+    const std::string& datasetName,
+    const std::string& datatype
+);
+
+template <typename Stream>
+void writePerformance(
+    Stream&& stream,
+    const RuntimesGPU& runtimesGPU,
+    const RuntimesCPU& runtimesCPU,
+    size_t numberKeys,
+    const std::string& datasetName,
+    const std::string& datatype
+
+);
+

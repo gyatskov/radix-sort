@@ -162,37 +162,88 @@ void CRadixSortTask<DataType>::ComputeGPU(
 	padGPUData(CommandQueue);
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
 
-	TestPerformance(Context, CommandQueue, LocalWorkSize);
+    // TODO: Extract
+    {
+        //finish all before we start measuring the time
+        V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
+        if (mOptions.perf_to_stdout) {
+            const auto& timesCPU {mRuntimesCPU};
+            std::cout << " radixsort cpu avg time: "
+                      << timesCPU.timeRadix.avg
+                      << " ms, throughput: "
+                      << 1.0e-6 * (double)mNumberKeysRounded / timesCPU.timeRadix.avg << " Gelem/s"
+                      << std::endl;
+
+            std::cout << " stl cpu avg time: "
+                      << timesCPU.timeSTL.avg
+                      << " ms, throughput: "
+                      << 1.0e-6 * (double)mNumberKeysRounded / timesCPU.timeSTL.avg  << " Gelem/s"
+                      << std::endl;
+
+            std::cout << "Testing performance of GPU task "
+                << mDeviceData->kernelNames[0U] << std::endl;
+        }
+
+        TestPerformance(
+            CommandQueue,
+            [&]() {
+                CopyDataToDevice(CommandQueue);
+                RadixSort(Context, CommandQueue, LocalWorkSize);
+                CopyDataFromDevice(CommandQueue);
+
+                return std::make_pair(mRuntimesGPU, mRuntimesCPU);
+            },
+            mOptions,
+            Parameters::_NUM_PERFORMANCE_ITERATIONS,
+            mNumberKeysRounded,
+            mHostData.m_selectedDataset->name(),
+            TypeNameString<DataType>::stdint_name
+        );
+    }
 }
 
 template <typename DataType>
 void CRadixSortTask<DataType>::ComputeCPU()
 {
-	std::copy(mHostData.m_hKeys.begin(), mHostData.m_hKeys.end(), mHostData.m_resultSTLCPU.begin());
+    {
+        std::copy(
+            mHostData.m_hKeys.begin(),
+            mHostData.m_hKeys.end(),
+            mHostData.m_resultSTLCPU.begin());
 
-	CTimer timer;
-	timer.Start();
-	for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
-		std::copy(mHostData.m_hKeys.begin(), mHostData.m_hKeys.begin() + mNumberKeysRounded, mHostData.m_resultSTLCPU.begin());
+        CTimer timer;
+        timer.Start();
+        for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
+            std::copy(
+                mHostData.m_hKeys.begin(),
+                mHostData.m_hKeys.begin() + mNumberKeysRounded,
+                mHostData.m_resultSTLCPU.begin());
 
-		// Reference sorting (STL quicksort):
-		std::sort(mHostData.m_resultSTLCPU.begin(), mHostData.m_resultSTLCPU.begin() + mNumberKeysRounded);
-	}
-	timer.Stop();
-	cpu_stl_time.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
-
-	mHostData.m_resultRadixSortCPU.resize(mNumberKeysRounded);
-
-	timer.Start();
-	for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
-		std::copy(mHostData.m_hKeys.begin(), mHostData.m_hKeys.begin() + mNumberKeysRounded, mHostData.m_resultRadixSortCPU.begin());
-
-		// Reference sorting implementation on CPU (radixsort):
-		RadixSortCPU<DataType>::sort(mHostData.m_resultRadixSortCPU);
+            // Reference sorting (STL quicksort):
+            std::sort(mHostData.m_resultSTLCPU.begin(), mHostData.m_resultSTLCPU.begin() + mNumberKeysRounded);
+        }
+        timer.Stop();
+        mRuntimesCPU.timeSTL.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
     }
-	timer.Stop();
 
-    cpu_radix_time.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+
+    {
+        mHostData.m_resultRadixSortCPU.resize(mNumberKeysRounded);
+        CTimer timer;
+        timer.Start();
+        for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
+            std::copy(
+                mHostData.m_hKeys.begin(),
+                mHostData.m_hKeys.begin() + mNumberKeysRounded,
+                mHostData.m_resultRadixSortCPU.begin());
+
+            // Reference sorting implementation on CPU (radixsort):
+            RadixSortCPU<DataType>::sort(mHostData.m_resultRadixSortCPU);
+        }
+        timer.Stop();
+
+        mRuntimesCPU.timeRadix.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+    }
 }
 
 template <typename DataType>
@@ -255,7 +306,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 
     clFinish(CommandQueue);
     timer.Stop();
-    histo_time.update(timer.GetElapsedMilliseconds());
+    mRuntimesGPU.timeHisto.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
     cl_ulong debut, fin;
@@ -275,7 +326,7 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
         NULL);
     assert(err == CL_SUCCESS);
 
-    histo_time += (float)(fin - debut) / 1e9f;
+    mRuntimesGPU.timeHisto += (float)(fin - debut) / 1e9f;
 #endif
 }
 
@@ -323,7 +374,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 
     clFinish(CommandQueue);
     timer.Stop();
-    scan_time.update(timer.GetElapsedMilliseconds());
+    mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
     cl_int err = CL_SUCCESS;
@@ -343,7 +394,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
         NULL);
     assert(err == CL_SUCCESS);
 
-    scan_time += (float)(fin - debut) / 1e9f;
+    mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
 #endif
 
     // second scan for the globsum
@@ -380,7 +431,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 
     clFinish(CommandQueue);
     timer.Stop();
-    scan_time.update(timer.GetElapsedMilliseconds());
+    mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
 
 
 #ifdef MORE_PROFILING
@@ -398,7 +449,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
         NULL);
     assert(err == CL_SUCCESS);
 
-    scan_time += static_cast<float>(fin - debut) / 1e9f;
+    mRuntimesGPU.timeScan += static_cast<float>(fin - debut) / 1e9f;
 #endif
 
     // loops again in order to paste together the local histograms
@@ -422,7 +473,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
 
     clFinish(CommandQueue);
     timer.Stop();
-    paste_time.update(timer.GetElapsedMilliseconds());
+    mRuntimesGPU.timePaste.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
     err = clGetEventProfilingInfo(eve,
@@ -439,7 +490,7 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
         NULL);
     assert(err == CL_SUCCESS);
 
-    scan_time += (float)(fin - debut) / 1e9f;
+    mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
 #endif
 }
 
@@ -509,7 +560,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 		0, NULL, &eve), "Could not execute reorder kernel");
     clFinish(CommandQueue);
     timer.Stop();
-    reorder_time.update(timer.GetElapsedMilliseconds());
+    mRuntimesGPU.timeReorder.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
     cl_int err = CL_SUCCESS;
@@ -529,7 +580,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
         NULL);
     assert(err == CL_SUCCESS);
 
-    reorder_time += (float)(fin - debut) / 1e9f;
+    mRuntimesGPU.timeReorder += (float)(fin - debut) / 1e9f;
 #endif
 
     // swap the old and new vectors of keys
@@ -574,16 +625,17 @@ void CRadixSortTask<DataType>::Resize(uint32_t nn)
 	assert(nn <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
     if (mOptions.verbose){
-        std::cout << "Resize to  " << nn << std::endl;
+        std::cout << "Resizing to  " << nn << std::endl;
     }
     mNumberKeys = nn;
 
-    // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
-    const int32_t rest = mNumberKeys % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
     mNumberKeysRounded = mNumberKeys;
+    // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
+    constexpr auto NumItems = (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+    const int32_t rest = mNumberKeys % NumItems;
 
     if (rest != 0) {
-		mNumberKeysRounded = mNumberKeys - rest + (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+		mNumberKeysRounded = mNumberKeys - rest + NumItems;
     }
 	mNumberKeysRest = rest;
 }
@@ -594,15 +646,16 @@ void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
 	if (mNumberKeysRest != 0) {
 		constexpr auto MAX_INT = std::numeric_limits<DataType>::max();
 		// pad the vector with big values
+        constexpr auto NumItems = (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
 		const std::vector<DataType> pad(
-            Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
+            NumItems,
             MAX_INT - 1);
 
 		assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
-		const auto blocking = CL_TRUE;
+		constexpr auto blocking = CL_TRUE;
 		const auto offset = sizeof(DataType) * mNumberKeys;
-		const auto size = sizeof(DataType) * (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP - mNumberKeysRest);
+		const auto size = sizeof(DataType) * (NumItems - mNumberKeysRest);
 		V_RETURN_CL(clEnqueueWriteBuffer(
             CommandQueue,
 			mDeviceData->m_dInKeys,
@@ -658,8 +711,13 @@ void CRadixSortTask<DataType>::RadixSort(
         }
     }
 
-    sort_time.avg = histo_time.avg + scan_time.avg + reorder_time.avg + paste_time.avg;
-    sort_time.n = histo_time.n;
+    mRuntimesGPU.timeTotal.avg =
+        mRuntimesGPU.timeHisto.avg
+        + mRuntimesGPU.timeScan.avg
+        + mRuntimesGPU.timeReorder.avg
+        + mRuntimesGPU.timePaste.avg;
+
+    mRuntimesGPU.timeTotal.n = mRuntimesGPU.timeHisto.n;
     if (mOptions.verbose){
         std::cout << "End sorting" << std::endl;
     }
@@ -752,9 +810,16 @@ void CRadixSortTask<DataType>::ExecuteTask(cl_context Context, cl_command_queue 
 	}
 }
 
-template <typename DataType>
 template <typename Stream>
-void CRadixSortTask<DataType>::writePerformance(Stream&& stream)
+void writePerformance(
+    Stream&& stream,
+    const RuntimesGPU& runtimesGPU,
+    const RuntimesCPU& runtimesCPU,
+    size_t numberKeys,
+    const std::string& datasetName,
+    const std::string& datatype
+
+)
 {
     const std::vector<std::string> columns {
         "NumElements", "Datatype", "Dataset", "avgHistogram", "avgScan", "avgPaste", "avgReorder", "avgTotalGPU", "avgTotalSTLCPU", "avgTotalRDXCPU"
@@ -765,66 +830,61 @@ void CRadixSortTask<DataType>::writePerformance(Stream&& stream)
         stream << "," << columns[i];
     }
 
+    const auto& timesGPU {runtimesGPU};
+    const auto& timesCPU {runtimesCPU};
+
     stream << std::endl;
-    stream << mNumberKeys << ",";
-    stream << TypeNameString<DataType>::stdint_name << ",";
-    stream << mHostData.m_selectedDataset->name() << ",";
-    stream << histo_time.avg << ",";
-    stream << scan_time.avg << ",";
-    stream << paste_time.avg << ",";
-    stream << reorder_time.avg << ",";
-    stream << sort_time.avg << ",";
-    stream << cpu_stl_time.avg << ",";
-    stream << cpu_radix_time.avg;
+    stream << numberKeys << ",";
+    stream << datatype << ",";
+    stream << datasetName << ",";
+
+    stream << timesGPU.timeHisto.avg << ",";
+    stream << timesGPU.timeScan.avg << ",";
+    stream << timesGPU.timePaste.avg << ",";
+    stream << timesGPU.timeReorder.avg << ",";
+    stream << timesGPU.timeTotal.avg << ",";
+
+    stream << timesCPU.timeSTL.avg << ",";
+    stream << timesCPU.timeRadix.avg;
     stream << std::endl;
 }
 
-template <typename DataType>
-void CRadixSortTask<DataType>::TestPerformance(
-        cl_context Context,
+template<class Callable>
+void TestPerformance(
         cl_command_queue CommandQueue,
-        const std::array<size_t,3>& LocalWorkSize
-        )
+        Callable&& fun,
+        const RadixSortOptions& options,
+        const size_t numIterations,
+        size_t numberKeys,
+        const std::string& datasetName,
+        const std::string& datatype
+    )
 {
-    if (mOptions.perf_to_stdout) {
-        std::cout << " radixsort cpu avg time: " << cpu_radix_time.avg << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / cpu_radix_time.avg << " Gelem/s" << std::endl;
-        std::cout << " stl cpu avg time: " << cpu_stl_time.avg << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / cpu_stl_time.avg << " Gelem/s" << std::endl;
-    }
-
-    if (mOptions.perf_to_stdout) {
-        std::cout << "Testing performance of GPU task " << mDeviceData->kernelNames[0U] << std::endl;
-    }
-
-    //finish all before we start measuring the time
-    V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
-
     CTimer timer;
     timer.Start();
 
-    //run the kernel N times
-	for (auto i = 0U; i < Parameters::_NUM_PERFORMANCE_ITERATIONS; i++) {
-        //run selected task
-        CopyDataToDevice(CommandQueue);
-        RadixSort(Context, CommandQueue, LocalWorkSize);
-        CopyDataFromDevice(CommandQueue);
+    decltype(fun()) lastMeasurements;
+
+	for (auto i { 0U }; i < numIterations; i++) {
+        lastMeasurements = fun();
     }
 
     //wait until the command queue is empty again
     V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
 
     timer.Stop();
-	double ms = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
-    sort_time.avg = ms;
-    if (mOptions.perf_to_stdout) {
+	double averageTimeTotal_ms = timer.GetElapsedMilliseconds() / double(numIterations);
+    if (options.perf_to_stdout) {
+        const auto& t{lastMeasurements.first};
 
         std::cout << " kernel |    avg      |     min     |    max " << std::endl;
         std::cout << " -----------------------------------------------" << std::endl;
-        std::cout << "  histogram: " << std::setw(8) << histo_time.avg << " | " << histo_time.min << " | " << histo_time.max << std::endl;
-        std::cout << "  scan:      " << std::setw(8) << scan_time.avg << " | " << scan_time.min << " | " << scan_time.max << std::endl;
-        std::cout << "  paste:     " << std::setw(8) << paste_time.avg << " | " << paste_time.min << " | " << paste_time.max << std::endl;
-        std::cout << "  reorder:   " << std::setw(8) << reorder_time.avg << " | " << reorder_time.min << " | " << reorder_time.max << std::endl;
+        std::cout << "  histogram: " << std::setw(8) << t.timeHisto.avg << " | " << t.timeHisto.min << " | " << t.timeHisto.max << std::endl;
+        std::cout << "  scan:      " << std::setw(8) << t.timeScan.avg << " | " << t.timeScan.min << " | " << t.timeScan.max << std::endl;
+        std::cout << "  paste:     " << std::setw(8) << t.timePaste.avg << " | " << t.timePaste.min << " | " << t.timePaste.max << std::endl;
+        std::cout << "  reorder:   " << std::setw(8) << t.timeReorder.avg << " | " << t.timeReorder.min << " | " << t.timeReorder.max << std::endl;
         std::cout << " -----------------------------------------------" << std::endl;
-        std::cout << "  total:     " << ms << " ms, throughput: " << 1.0e-6 * (double)mNumberKeysRounded / ms << " Gelem/s" << std::endl;
+        std::cout << "  total:     " << averageTimeTotal_ms << " ms, throughput: " << 1.0e-6 * (double)numberKeys / averageTimeTotal_ms << " Gelem/s" << std::endl;
     }
 
     using std::chrono::system_clock;
@@ -835,7 +895,7 @@ void CRadixSortTask<DataType>::TestPerformance(
 
     fileNameBuilder << "radix_" << std::put_time(ptm, dateFormat.c_str()) << ".csv";
 
-    if (mOptions.perf_to_csv) {
+    if (options.perf_to_csv) {
         const auto filename = fileNameBuilder.str();
         bool file_exists = false;
 
@@ -850,11 +910,25 @@ void CRadixSortTask<DataType>::TestPerformance(
             std::cout << "File " << filename << " already exists, not overwriting!" << std::endl;
         } else {
             std::ofstream outstream(filename, std::ofstream::out | std::ofstream::app);
-            writePerformance(outstream);
+            writePerformance(
+                outstream,
+                lastMeasurements.first,
+                lastMeasurements.second,
+                numberKeys,
+                datasetName,
+                datatype
+            );
         }
     }
-    if (mOptions.perf_csv_to_stdout) {
-        writePerformance(std::cout);
+    if (options.perf_csv_to_stdout) {
+        writePerformance(
+            std::cout,
+            lastMeasurements.first,
+            lastMeasurements.second,
+            numberKeys,
+            datasetName,
+            datatype
+        );
     }
 }
 
