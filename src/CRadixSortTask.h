@@ -34,7 +34,7 @@ class CRadixSortTask : public IComputeTask
 public:
 	using DataType = _DataType;
 
-	CRadixSortTask(
+    CRadixSortTask(
         const RadixSortOptions& options,
         std::shared_ptr<Dataset<DataType>> dataset);
 
@@ -49,11 +49,15 @@ public:
         const std::array<size_t,3>& LocalWorkSize
     ) override;
 
-    /** Sorts data on CPU **/
+    /** Sorts data on CPU
+     *
+     * @todo Factor out completely, especially performance iterations
+     **/
 	void ComputeCPU() override;
 
     /** Tests results validity **/
 	bool ValidateResults() override;
+
 
 protected:
     using Parameters = AlgorithmParameters<DataType>;

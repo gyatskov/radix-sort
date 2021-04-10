@@ -89,7 +89,7 @@ public:
 	{
 		// Find the maximum number to know number of digits
 		// in O(nkeys)
-		const auto max_elem = *std::max_element(arr.begin(), arr.end());
+		const auto max_elem { *std::max_element(arr.begin(), arr.end()) };
 
 		// Do counting sort for every digit. Note that instead
 		// of passing digit number, exp is passed. exp is 10^i

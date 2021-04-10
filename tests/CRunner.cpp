@@ -72,7 +72,12 @@ bool CRunner::DoCompute()
 	const std::array<size_t,3> LocalWorkSize { 1, 1, 1 };
 	const auto problemSize = options.num_elements;
 
-    return runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(*this, options, LocalWorkSize);
+    // TODO: Use type list
+    return runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(
+        *this,
+        options,
+        LocalWorkSize
+    );
 }
 
 ///////////////////////////////////////////////////////////////////////////////
