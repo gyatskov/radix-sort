@@ -650,31 +650,29 @@ void CRadixSortTask<DataType>::Resize(uint32_t nn)
 template <typename DataType>
 void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
 {
-    constexpr auto MAX_INT = std::numeric_limits<DataType>::max();
+    constexpr auto MaxValue = std::numeric_limits<DataType>::max();
     // pad the vector with big values
     constexpr auto NumItems = (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
-    // Create dummy vector with max value
-    // @todo Consider using fill method
-    const std::vector<DataType> pad(
-        NumItems,
-        MAX_INT - 1
-    );
 
-    assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+    assert(
+        mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
-    constexpr auto blocking = CL_TRUE;
+    const auto pattern {MaxValue-1};
+
     const auto paddingOffset = sizeof(DataType) * mNumberKeys;
     const auto size =
-        sizeof(DataType) * (NumItems - mNumberKeysRest);
-    V_RETURN_CL(clEnqueueWriteBuffer(
+        sizeof(DataType)
+        * (NumItems - mNumberKeysRest);
+
+    V_RETURN_CL(clEnqueueFillBuffer(
         CommandQueue,
         mDeviceData->m_dMemoryMap["inputKeys"],
-        blocking,
+        &pattern,
+        sizeof(pattern),
         paddingOffset,
         size,
-        pad.data(),
         0, NULL, NULL),
-    "Could not write input data");
+    "Could not pad input keys");
 }
 
 template <typename DataType>
