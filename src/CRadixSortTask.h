@@ -73,7 +73,7 @@ protected:
 
 	void RadixSort(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize);
 	void Histogram(cl_command_queue CommandQueue, int pass);
-	void ScanHistogram(cl_command_queue CommandQueue, int pass);
+	void ScanHistogram(cl_command_queue CommandQueue);
 	void Reorder(cl_command_queue CommandQueue, int pass);
 
 	void ExecuteTask(

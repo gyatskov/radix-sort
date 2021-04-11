@@ -331,9 +331,8 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int pass)
+void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue)
 {
-    static_cast<void>(pass);
     // numbers of processors for the local scan
     // = half the size of the local histograms
     // global work size
@@ -690,7 +689,7 @@ void CRadixSortTask<DataType>::RadixSort(
         if (mOptions.verbose) {
             std::cout << "Scanning histograms" << std::endl;
         }
-        ScanHistogram(CommandQueue, pass);
+        ScanHistogram(CommandQueue);
 
         if (mOptions.verbose) {
             std::cout << "Reordering " << std::endl;
