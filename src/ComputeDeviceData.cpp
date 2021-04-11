@@ -36,30 +36,50 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
         V_RETURN_CL(clError, ERROR_STRING);
     };
 
-    createBufferAndCheck(m_dInKeys, sizeof(DataType) * buffer_size);
+    createBufferAndCheck(
+        m_dMemoryMap["inputKeys"],
+        sizeof(DataType) * buffer_size
+    );
 
-	createBufferAndCheck(m_dOutKeys, sizeof(DataType) * buffer_size);
+	createBufferAndCheck(
+        m_dMemoryMap["outputKeys"],
+        sizeof(DataType) * buffer_size
+    );
 
-	createBufferAndCheck(m_dInPermut, sizeof(uint32_t) * buffer_size);
-	createBufferAndCheck(m_dOutPermut, sizeof(uint32_t) * buffer_size);
+	createBufferAndCheck(
+        m_dMemoryMap["inputPermutations"],
+        sizeof(uint32_t) * buffer_size
+    );
+	createBufferAndCheck(
+        m_dMemoryMap["outputPermutations"],
+        sizeof(uint32_t) * buffer_size
+    );
 
 	// allocate the histogram on the GPU
-	createBufferAndCheck(m_dHistograms, sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+	createBufferAndCheck(
+        m_dMemoryMap["histograms"],
+        sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP
+    );
 
 	// allocate the auxiliary histogram on GPU
-	createBufferAndCheck(m_dGlobsum, sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT);
+	createBufferAndCheck(
+        m_dMemoryMap["globsum"],
+        sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT
+    );
 
 	// temporary vector when the sum is not needed
-	createBufferAndCheck(m_dTemp, sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT);
+	createBufferAndCheck(
+        m_dMemoryMap["temp"],
+        sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT
+    );
 }
 
 template <typename DataType>
 ComputeDeviceData<DataType>::~ComputeDeviceData()
 {
-    SAFE_RELEASE_MEMOBJECT(m_dInKeys);
-    SAFE_RELEASE_MEMOBJECT(m_dOutKeys);
-    SAFE_RELEASE_MEMOBJECT(m_dInPermut);
-    SAFE_RELEASE_MEMOBJECT(m_dOutPermut);
+    for (auto& memory : m_dMemoryMap) {
+        SAFE_RELEASE_MEMOBJECT(memory.second);
+    }
 
     for (auto& kernel : m_kernelMap) {
         SAFE_RELEASE_KERNEL(kernel.second);

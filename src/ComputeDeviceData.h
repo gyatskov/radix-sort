@@ -24,17 +24,5 @@ struct ComputeDeviceData
 
     /// Maps kernel names to their low-level handles
     std::map<std::string, cl_kernel> m_kernelMap;
-    std::map<std::string, cl_mem>    m_dMemoryMap; // NOTE: not used yet
-
-    // Histograms on the GPU
-    cl_mem m_dHistograms;
-
-    cl_mem m_dGlobsum;
-    cl_mem m_dTemp;  // in case where the sum is not needed
-
-    cl_mem m_dInKeys;
-    cl_mem m_dOutKeys;
-
-    cl_mem m_dInPermut;
-    cl_mem m_dOutPermut;
+    std::map<std::string, cl_mem>    m_dMemoryMap;
 };
