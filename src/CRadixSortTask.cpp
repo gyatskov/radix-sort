@@ -605,7 +605,7 @@ template <typename DataType>
 void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device)
 {
     // check that the local mem is sufficient (suggestion of Jose Luis Cerc\F3s Pita)
-    cl_ulong localMem;
+    cl_ulong localMem{0};
 	clGetDeviceInfo(Device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(localMem), &localMem, NULL);
     if (mOptions.verbose) {
         std::cout << "Cache size   = " << localMem << " Bytes." << std::endl;

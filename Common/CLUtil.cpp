@@ -81,7 +81,7 @@ void CLUtil::PrintBuildLog(cl_program Program, cl_device_id Device)
     }
 
     // first, query size
-	size_t logSize;
+	size_t logSize{0U};
 	clGetProgramBuildInfo(Program, Device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
 
     // then, allocate actual memory
