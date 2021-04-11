@@ -284,8 +284,8 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 	// Set kernel arguments
 	{
         cl_uint argIdx = 0U;
-		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &mDeviceData->m_dInKeys), "Could not set input elements argument");
-		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &mDeviceData->m_dHistograms), "Could not set input histograms");
+		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["inputKeys"]), "Could not set input elements argument");
+		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set input histograms");
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(pass), &pass), "Could not set pass argument");
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP, NULL), "Could not set local cache");
 		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(int), &mNumberKeysRounded), "Could not set key count");
@@ -350,9 +350,9 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue)
     // Set kernel arguments
     {
         cl_uint argIdx = 0U;
-        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dHistograms), "Could not set histogram argument");
+        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histogram argument");
         V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(uint32_t) * maxmemcache, NULL), "Could not set histogram cache size"); // mem cache
-        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dGlobsum), "Could not set global histogram argument");
+        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["globsum"]), "Could not set global histogram argument");
     }
     cl_event eve;
 
@@ -402,12 +402,12 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue)
             clSetKernelArg(scanHistogramKernel,
             0,
             sizeof(cl_mem),
-            &mDeviceData->m_dGlobsum),
+            &mDeviceData->m_dMemoryMap["globsum"]),
             "Could not set global sum parameter");
         V_RETURN_CL(clSetKernelArg(scanHistogramKernel,
                     2,
                     sizeof(cl_mem),
-                    &mDeviceData->m_dTemp),
+                    &mDeviceData->m_dMemoryMap["temp"]),
                 "Could not set temporary parameter");
     }
 
@@ -460,8 +460,8 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue)
     // Set kernel arguments
     {
         cl_uint argIdx = 0U;
-        V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dHistograms), "Could not set histograms argument");
-        V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dGlobsum), "Could not set globsum argument");
+        V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histograms argument");
+        V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["globsum"]), "Could not set globsum argument");
     }
 
 	// Execute paste histogram kernel
@@ -532,12 +532,12 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 	// set kernel arguments
 	{
         cl_uint argIdx = 0U;
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dInKeys), "Could not set input keys for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dOutKeys), "Could not set output keys for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dHistograms), "Could not set histograms for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["inputKeys"]), "Could not set input keys for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["outputKeys"]), "Could not set output keys for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histograms for reorder kernel.");
         V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(pass),   &pass), "Could not set pass for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dInPermut), "Could not set input permutation for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dOutPermut), "Could not set output permutation for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["inputPermutations"]), "Could not set input permutation for reorder kernel.");
+        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["outputPermutations"]), "Could not set output permutation for reorder kernel.");
 		V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++,
 			sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP,
             NULL), "Could not set local memory for reorder kernel."); // mem cache
@@ -587,10 +587,10 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 #endif
 
     // swap the old and new vectors of keys
-    std::swap(mDeviceData->m_dInKeys, mDeviceData->m_dOutKeys);
+    std::swap(mDeviceData->m_dMemoryMap["inputKeys"], mDeviceData->m_dMemoryMap["outputKeys"]);
 
     // swap the old and new permutations
-    std::swap(mDeviceData->m_dInPermut, mDeviceData->m_dOutPermut);
+    std::swap(mDeviceData->m_dMemoryMap["inputPermutations"], mDeviceData->m_dMemoryMap["outputPermutations"]);
 }
 
 template <typename DataType>
@@ -650,7 +650,7 @@ void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
 		const auto size = sizeof(DataType) * (NumItems - mNumberKeysRest);
 		V_RETURN_CL(clEnqueueWriteBuffer(
             CommandQueue,
-			mDeviceData->m_dInKeys,
+			mDeviceData->m_dMemoryMap["inputKeys"],
 			blocking,
 			offset,
 			size,
@@ -725,7 +725,7 @@ template <typename DataType>
 void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 {
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
-        mDeviceData->m_dInKeys,
+        mDeviceData->m_dMemoryMap["inputKeys"],
         CL_TRUE, 0,
         sizeof(DataType) * mNumberKeysRounded,
         mHostData.m_hKeys.data(),
@@ -735,7 +735,7 @@ void CRadixSortTask<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
     clFinish(CommandQueue);  // wait end of read
 
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
-        mDeviceData->m_dInPermut,
+        mDeviceData->m_dMemoryMap["inputPermutations"],
         CL_TRUE, 0,
         sizeof(uint32_t) * mNumberKeysRounded,
         mHostData.h_Permut.data(),
@@ -749,7 +749,7 @@ template <typename DataType>
 void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 {
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
-        mDeviceData->m_dInKeys,
+        mDeviceData->m_dMemoryMap["inputKeys"],
 		CL_TRUE, 0,
 		sizeof(DataType) * mNumberKeysRounded,
         mHostData.m_hResultGPUMap["RadixSort_01"].data(),
@@ -759,7 +759,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 	clFinish(CommandQueue);  // wait end of read
 
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
-        mDeviceData->m_dInPermut,
+        mDeviceData->m_dMemoryMap["inputPermutations"],
 		CL_TRUE, 0,
 		sizeof(uint32_t)  * mNumberKeysRounded,
         mHostData.h_Permut.data(),
@@ -769,7 +769,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 	clFinish(CommandQueue);  // wait end of read
 
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
-        mDeviceData->m_dHistograms,
+        mDeviceData->m_dMemoryMap["histograms"],
 		CL_TRUE, 0,
 		sizeof(uint32_t)  * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
         mHostData.m_hHistograms.data(),
@@ -777,7 +777,7 @@ void CRadixSortTask<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 		"Could not read result histograms");
 
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
-        mDeviceData->m_dGlobsum,
+        mDeviceData->m_dMemoryMap["globsum"],
 		CL_TRUE, 0,
 		sizeof(uint32_t)  * Parameters::_NUM_HISTOSPLIT,
 		mHostData.m_hGlobsum.data(),
