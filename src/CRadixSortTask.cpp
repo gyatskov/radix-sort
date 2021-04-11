@@ -253,18 +253,26 @@ bool CRadixSortTask<DataType>::ValidateResults()
 
 	for (const auto& alternative : mDeviceData->alternatives)
 	{
-		const bool validCPURadixSort = memcmp(mHostData.m_resultRadixSortCPU.data(), mHostData.m_resultSTLCPU.data(), sizeof(DataType) * mNumberKeys) == 0;
-		const bool validGPURadixSort = memcmp(mHostData.m_hResultGPUMap[alternative].data(), mHostData.m_resultSTLCPU.data(), sizeof(DataType) * mNumberKeys) == 0;
+        const bool sortedCPU =
+            memcmp(
+                mHostData.m_resultRadixSortCPU.data(),
+                mHostData.m_resultSTLCPU.data(),
+                sizeof(DataType) * mNumberKeys) == 0;
+		const bool sortedGPU =
+            memcmp(
+                mHostData.m_hResultGPUMap[alternative].data(),
+                mHostData.m_resultSTLCPU.data(),
+                sizeof(DataType) * mNumberKeys) == 0;
 
-		const std::string hasPassedCPU = validCPURadixSort ? "passed" : "FAILED";
-		const std::string hasPassedGPU = validGPURadixSort ? "passed" : "FAILED";
+		const std::string hasPassedCPU = sortedCPU ? "passed" : "FAILED";
+		const std::string hasPassedGPU = sortedGPU ? "passed" : "FAILED";
 
 		std::cout << "Data set: " << mHostData.m_selectedDataset->name() << std::endl;
 		std::cout << "Data type: " << TypeNameString<DataType>::stdint_name << std::endl;
 		std::cout << "Validation of CPU RadixSort has " + hasPassedCPU << std::endl;
 		std::cout << "Validation of GPU RadixSort has " + hasPassedGPU << std::endl;
 
-		success = success && validCPURadixSort && validGPURadixSort;
+		success = success && sortedCPU && sortedGPU;
 	}
 
 	return success;
