@@ -26,3 +26,4 @@ struct ComputeDeviceData
     std::map<std::string, cl_kernel> m_kernelMap;
     std::map<std::string, cl_mem>    m_dMemoryMap;
 };
+

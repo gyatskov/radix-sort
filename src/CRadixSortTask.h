@@ -71,7 +71,11 @@ protected:
 	void Resize(uint32_t nn);
 	void padGPUData(cl_command_queue CommandQueue);
 
-	void RadixSort(cl_context Context, cl_command_queue CommandQueue, const std::array<size_t,3>& LocalWorkSize);
+	void RadixSort(
+        cl_context Context,
+        cl_command_queue CommandQueue,
+        const std::array<size_t,3>& LocalWorkSize
+    );
 	void Histogram(cl_command_queue CommandQueue, int pass);
 	void ScanHistogram(cl_command_queue CommandQueue);
 	void Reorder(cl_command_queue CommandQueue, int pass);
@@ -81,12 +85,6 @@ protected:
         cl_command_queue CommandQueue,
         const std::array<size_t,3>& LocalWorkSize,
         const std::string& kernel);
-
-
-    /** Writes performance to stream **/
-
-	//NOTE: we have two memory address spaces, so we mark pointers with a prefix
-	//to avoid confusions: 'h' - host, 'd' - device
 
     // list of keys
     uint32_t mNumberKeys; // actual number of keys
@@ -117,6 +115,7 @@ void TestPerformance(
     const std::string& datatype
 );
 
+/** Writes performance to stream **/
 template <typename Stream>
 void writePerformance(
     Stream&& stream,

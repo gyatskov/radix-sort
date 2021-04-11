@@ -616,8 +616,11 @@ void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device)
     }
 	assert(localMem > sizeof(DataType) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP);
 
-	unsigned int maxmemcache = std::max(Parameters::_NUM_HISTOSPLIT,
-		Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT);
+	constexpr uint32_t maxmemcache =
+        std::max(
+            Parameters::_NUM_HISTOSPLIT,
+		    Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT
+        );
 	assert(localMem > sizeof(DataType)*maxmemcache);
 }
 
@@ -634,7 +637,8 @@ void CRadixSortTask<DataType>::Resize(uint32_t nn)
 
     mNumberKeysRounded = mNumberKeys;
     // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
-    constexpr auto NumItems = (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+    constexpr auto NumItems =
+        (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
     const int32_t rest = mNumberKeys % NumItems;
 
     if (rest != 0) {
