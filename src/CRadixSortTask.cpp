@@ -343,169 +343,176 @@ void CRadixSortTask<DataType>::Histogram(cl_command_queue CommandQueue, int pass
 template <typename DataType>
 void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue)
 {
-    // numbers of processors for the local scan
-    // = half the size of the local histograms
-    // global work size
-	size_t nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
-    // local work size
-	size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
-
-	const uint32_t maxmemcache = std::max(Parameters::_NUM_HISTOSPLIT,
-		Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT);
-
-    // scan locally the histogram (the histogram is split into several
-    // parts that fit into the local memory)
-
-	const auto scanHistogramKernel  = mDeviceData->m_kernelMap["scanhistograms"];
-    // Set kernel arguments
-    {
-        cl_uint argIdx = 0U;
-        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histogram argument");
-        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(uint32_t) * maxmemcache, NULL), "Could not set histogram cache size"); // mem cache
-        V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["globsum"]), "Could not set global histogram argument");
-    }
-    cl_event eve;
-
-	// Execute kernel for first scan (local)
     const cl_uint workDimension = 1;
     size_t* globalWorkOffset = nullptr;
 
-    CTimer timer;
-    timer.Start();
-    V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
-		scanHistogramKernel,
-        workDimension,
-        globalWorkOffset,
-        &nbitems,
-        &nblocitems,
-        0, NULL, &eve), "Could not execute 1st instance of scanHistogram kernel.");
+    {
+        // numbers of processors for the local scan
+        // = half the size of the local histograms
+        // global work size
+        size_t nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+        // local work size
+        size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
 
-    clFinish(CommandQueue);
-    timer.Stop();
-    mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
+        const uint32_t maxmemcache = std::max(Parameters::_NUM_HISTOSPLIT,
+            Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT);
+
+        // scan locally the histogram (the histogram is split into several
+        // parts that fit into the local memory)
+
+        const auto scanHistogramKernel  = mDeviceData->m_kernelMap["scanhistograms"];
+        // Set kernel arguments
+        {
+            cl_uint argIdx = 0U;
+            V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histogram argument");
+            V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(uint32_t) * maxmemcache, NULL), "Could not set histogram cache size"); // mem cache
+            V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["globsum"]), "Could not set global histogram argument");
+        }
+        cl_event eve;
+        CTimer timer;
+        timer.Start();
+        V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
+            scanHistogramKernel,
+            workDimension,
+            globalWorkOffset,
+            &nbitems,
+            &nblocitems,
+            0, NULL, &eve), "Could not execute 1st instance of scanHistogram kernel.");
+
+        clFinish(CommandQueue);
+        timer.Stop();
+        mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-    cl_int err = CL_SUCCESS;
-    cl_ulong debut{0};
-    cl_ulong fin{0};
+        cl_int err = CL_SUCCESS;
+        cl_ulong debut{0};
+        cl_ulong fin{0};
 
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_QUEUED,
-        sizeof(cl_ulong),
-        (void*)&debut,
-        NULL);
-    assert(err == CL_SUCCESS);
+        err = clGetEventProfilingInfo(eve,
+            CL_PROFILING_COMMAND_QUEUED,
+            sizeof(cl_ulong),
+            (void*)&debut,
+            NULL);
+        assert(err == CL_SUCCESS);
 
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_END,
-        sizeof(cl_ulong),
-        (void*)&fin,
-        NULL);
-    assert(err == CL_SUCCESS);
+        err = clGetEventProfilingInfo(eve,
+            CL_PROFILING_COMMAND_END,
+            sizeof(cl_ulong),
+            (void*)&fin,
+            NULL);
+        assert(err == CL_SUCCESS);
 
-    mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
+        mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
 #endif
 
-    // second scan for the globsum
-    // Set kernel arguments
-    {
-        V_RETURN_CL(
-            clSetKernelArg(scanHistogramKernel,
-            0,
-            sizeof(cl_mem),
-            &mDeviceData->m_dMemoryMap["globsum"]),
-            "Could not set global sum parameter");
-        V_RETURN_CL(clSetKernelArg(scanHistogramKernel,
-                    2,
-                    sizeof(cl_mem),
-                    &mDeviceData->m_dMemoryMap["temp"]),
-                "Could not set temporary parameter");
+        // second scan for the globsum
+        // Set kernel arguments
+        {
+            V_RETURN_CL(
+                clSetKernelArg(scanHistogramKernel,
+                0,
+                sizeof(cl_mem),
+                &mDeviceData->m_dMemoryMap["globsum"]),
+                "Could not set global sum parameter");
+            V_RETURN_CL(clSetKernelArg(scanHistogramKernel,
+                        2,
+                        sizeof(cl_mem),
+                        &mDeviceData->m_dMemoryMap["temp"]),
+                    "Could not set temporary parameter");
+        }
+
+        {
+            // global work size
+            const size_t nbitems    = Parameters::_NUM_HISTOSPLIT / 2;
+            // local work size
+            const size_t nblocitems = nbitems;
+
+            CTimer timer;
+            timer.Start();
+            // Execute kernel for second scan (global)
+            V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
+                scanHistogramKernel,
+                workDimension,
+                globalWorkOffset,
+                &nbitems,
+                &nblocitems,
+                0, NULL, &eve),
+            "Could not execute 2nd instance of scanHistogram kernel.");
+
+            clFinish(CommandQueue);
+            timer.Stop();
+            mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
+
+
+#ifdef MORE_PROFILING
+            err = clGetEventProfilingInfo(eve,
+                CL_PROFILING_COMMAND_QUEUED,
+                sizeof(cl_ulong),
+                (void*)&debut,
+                NULL);
+            assert(err == CL_SUCCESS);
+
+            err = clGetEventProfilingInfo(eve,
+                CL_PROFILING_COMMAND_END,
+                sizeof(cl_ulong),
+                (void*)&fin,
+                NULL);
+            assert(err == CL_SUCCESS);
+
+            mRuntimesGPU.timeScan += static_cast<float>(fin - debut) / 1e9f;
+#endif
+        }
     }
 
-    // global work size
-	nbitems    = Parameters::_NUM_HISTOSPLIT / 2;
-    // local work size
-    nblocitems = nbitems;
-
-    timer.Start();
-	// Execute kernel for second scan (global)
-    V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
-		scanHistogramKernel,
-        workDimension,
-        globalWorkOffset,
-        &nbitems,
-        &nblocitems,
-        0, NULL, &eve),
-    "Could not execute 2nd instance of scanHistogram kernel.");
-
-    clFinish(CommandQueue);
-    timer.Stop();
-    mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
-
-
-#ifdef MORE_PROFILING
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_QUEUED,
-        sizeof(cl_ulong),
-        (void*)&debut,
-        NULL);
-    assert(err == CL_SUCCESS);
-
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_END,
-        sizeof(cl_ulong),
-        (void*)&fin,
-        NULL);
-    assert(err == CL_SUCCESS);
-
-    mRuntimesGPU.timeScan += static_cast<float>(fin - debut) / 1e9f;
-#endif
-
-    // loops again in order to paste together the local histograms
-    // global
-	nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
-    // local work size
-	nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
-
-    const auto pasteHistogramKernel = mDeviceData->m_kernelMap["pastehistograms"];
-    // Set kernel arguments
     {
-        cl_uint argIdx = 0U;
-        V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histograms argument");
-        V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["globsum"]), "Could not set globsum argument");
-    }
+        // loops again in order to paste together the local histograms
+        // global
+        size_t nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+        // local work size
+        size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
 
-	// Execute paste histogram kernel
-    timer.Start();
-    V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
-		pasteHistogramKernel,
-        workDimension,
-        globalWorkOffset,
-        &nbitems,
-        &nblocitems,
-        0, NULL, &eve), "Could not execute paste histograms kernel");
+        const auto pasteHistogramKernel = mDeviceData->m_kernelMap["pastehistograms"];
+        // Set kernel arguments
+        {
+            cl_uint argIdx = 0U;
+            V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histograms argument");
+            V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["globsum"]), "Could not set globsum argument");
+        }
 
-    clFinish(CommandQueue);
-    timer.Stop();
-    mRuntimesGPU.timePaste.update(timer.GetElapsedMilliseconds());
+        // Execute paste histogram kernel
+        cl_event eve;
+        CTimer timer;
+        timer.Start();
+        V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
+            pasteHistogramKernel,
+            workDimension,
+            globalWorkOffset,
+            &nbitems,
+            &nblocitems,
+            0, NULL, &eve), "Could not execute paste histograms kernel");
+
+        clFinish(CommandQueue);
+        timer.Stop();
+        mRuntimesGPU.timePaste.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_QUEUED,
-        sizeof(cl_ulong),
-        (void*)&debut,
-        NULL);
-    assert(err == CL_SUCCESS);
+        err = clGetEventProfilingInfo(eve,
+            CL_PROFILING_COMMAND_QUEUED,
+            sizeof(cl_ulong),
+            (void*)&debut,
+            NULL);
+        assert(err == CL_SUCCESS);
 
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_END,
-        sizeof(cl_ulong),
-        (void*)&fin,
-        NULL);
-    assert(err == CL_SUCCESS);
+        err = clGetEventProfilingInfo(eve,
+            CL_PROFILING_COMMAND_END,
+            sizeof(cl_ulong),
+            (void*)&fin,
+            NULL);
+        assert(err == CL_SUCCESS);
 
-    mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
+        mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
 #endif
+    }
 }
 
 template <typename DataType>
@@ -560,7 +567,7 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 
     cl_event eve;
 
-    const cl_uint workDimension = 1;
+    constexpr cl_uint workDimension = 1;
     const size_t* globalWorkOffset = nullptr;
 	// Execute kernel
     CTimer timer;
