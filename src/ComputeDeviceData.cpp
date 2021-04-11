@@ -8,8 +8,8 @@ template <typename DataType>
 ComputeDeviceData<DataType>::ComputeDeviceData(
     cl_context Context,
     size_t buffer_size
-    )
-    : m_Program(nullptr)
+)
+: m_Program(nullptr)
 {
     kernelNames.emplace_back("histogram");
     kernelNames.emplace_back("scanhistograms");
@@ -19,11 +19,19 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
     alternatives.emplace_back("RadixSort_01");
 
 	// allocate device resources
-    const auto createBufferAndCheck = [Context](auto& target, auto sizeInBytes) {
+    const auto createBufferAndCheck = [Context](
+            auto& target,
+            auto sizeInBytes) {
         cl_int clError;
 
         TODO("Consider using CL_MEM_USE_HOST_PTR for user-provided memory")
-        target = clCreateBuffer(Context, CL_MEM_READ_WRITE, sizeInBytes, nullptr, &clError);
+        target = clCreateBuffer(
+            Context,
+            CL_MEM_READ_WRITE,
+            sizeInBytes,
+            nullptr,
+            &clError
+        );
         constexpr auto ERROR_STRING = "Error allocating device array";
         V_RETURN_CL(clError, ERROR_STRING);
     };
