@@ -590,17 +590,6 @@ void CRadixSortTask<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
     std::swap(mDeviceData->m_dInPermut, mDeviceData->m_dOutPermut);
 }
 
-/// Check divisibility of works to assign correct amounts of work to groups/work-items.
-// @TODO: Move to class declaration
-template <typename DataType>
-void CRadixSortTask<DataType>::CheckDivisibility()
-{
-    static_assert(Parameters::_RADIX == 1 << Parameters::_NUM_BITS_PER_RADIX);
-    static_assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
-    static_assert(Parameters::_NUM_MAX_INPUT_ELEMS % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
-    static_assert((Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_RADIX) % Parameters::_NUM_HISTOSPLIT == 0);
-}
-
 template <typename DataType>
 void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device)
 {
@@ -674,8 +663,6 @@ void CRadixSortTask<DataType>::RadixSort(
         cl_command_queue CommandQueue,
         const std::array<size_t,3>& LocalWorkSize)
 {
-    CheckDivisibility();
-
     static_cast<void>(Context);
     static_cast<void>(LocalWorkSize);
 

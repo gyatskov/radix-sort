@@ -49,5 +49,11 @@ struct AlgorithmParameters
     /// @TODO: Make configurable at runtime
 	inline static constexpr auto _NUM_PERFORMANCE_ITERATIONS = 5U;
 	////////////////////////////////////////////////////////
+
+    /// Check divisibility of works to assign correct amounts of work to groups/work-items.
+    static_assert(_RADIX == 1 << _NUM_BITS_PER_RADIX);
+    static_assert(_TOTALBITS % _NUM_BITS_PER_RADIX == 0);
+    static_assert(_NUM_MAX_INPUT_ELEMS % (_NUM_GROUPS * _NUM_ITEMS_PER_GROUP) == 0);
+    static_assert((_NUM_GROUPS * _NUM_ITEMS_PER_GROUP * _RADIX) % _NUM_HISTOSPLIT == 0);
 };
 

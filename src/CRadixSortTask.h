@@ -66,7 +66,6 @@ protected:
     static std::string BuildOptions();
 	void AllocateDeviceMemory(cl_context Context);
 	void CheckLocalMemory(cl_device_id Device);
-	void CheckDivisibility();
 	void CopyDataToDevice(cl_command_queue CommandQueue);
 	void CopyDataFromDevice(cl_command_queue CommandQueue);
 	void Resize(uint32_t nn);
