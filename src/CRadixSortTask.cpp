@@ -376,7 +376,8 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue)
 
 #ifdef MORE_PROFILING
     cl_int err = CL_SUCCESS;
-    cl_ulong debut, fin;
+    cl_ulong debut{0};
+    cl_ulong fin{0};
 
     err = clGetEventProfilingInfo(eve,
         CL_PROFILING_COMMAND_QUEUED,
