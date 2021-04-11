@@ -159,7 +159,9 @@ void CRadixSortTask<DataType>::ComputeGPU(
     cl_command_queue CommandQueue,
     const std::array<size_t,3>& LocalWorkSize)
 {
-	padGPUData(CommandQueue);
+	if (mNumberKeysRest != 0) {
+        padGPUData(CommandQueue);
+    }
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
 
     // TODO: Extract
@@ -644,29 +646,31 @@ void CRadixSortTask<DataType>::Resize(uint32_t nn)
 template <typename DataType>
 void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
 {
-	if (mNumberKeysRest != 0) {
-		constexpr auto MAX_INT = std::numeric_limits<DataType>::max();
-		// pad the vector with big values
-        constexpr auto NumItems = (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
-		const std::vector<DataType> pad(
-            NumItems,
-            MAX_INT - 1);
+    constexpr auto MAX_INT = std::numeric_limits<DataType>::max();
+    // pad the vector with big values
+    constexpr auto NumItems = (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP);
+    // Create dummy vector with max value
+    // @todo Consider using fill method
+    const std::vector<DataType> pad(
+        NumItems,
+        MAX_INT - 1
+    );
 
-		assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+    assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
-		constexpr auto blocking = CL_TRUE;
-		const auto offset = sizeof(DataType) * mNumberKeys;
-		const auto size = sizeof(DataType) * (NumItems - mNumberKeysRest);
-		V_RETURN_CL(clEnqueueWriteBuffer(
-            CommandQueue,
-			mDeviceData->m_dMemoryMap["inputKeys"],
-			blocking,
-			offset,
-			size,
-			pad.data(),
-			0, NULL, NULL),
-        "Could not write input data");
-	}
+    constexpr auto blocking = CL_TRUE;
+    const auto paddingOffset = sizeof(DataType) * mNumberKeys;
+    const auto size =
+        sizeof(DataType) * (NumItems - mNumberKeysRest);
+    V_RETURN_CL(clEnqueueWriteBuffer(
+        CommandQueue,
+        mDeviceData->m_dMemoryMap["inputKeys"],
+        blocking,
+        paddingOffset,
+        size,
+        pad.data(),
+        0, NULL, NULL),
+    "Could not write input data");
 }
 
 template <typename DataType>
