@@ -348,7 +348,6 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
     // parts that fit into the local memory)
 
 	const auto scanHistogramKernel  = mDeviceData->m_kernelMap["scanhistograms"];
-    const auto pasteHistogramKernel = mDeviceData->m_kernelMap["pastehistograms"];
     // Set kernel arguments
     {
         cl_uint argIdx = 0U;
@@ -458,8 +457,13 @@ void CRadixSortTask<DataType>::ScanHistogram(cl_command_queue CommandQueue, int 
     // local work size
 	nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
 
-	V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, 0, sizeof(cl_mem), &mDeviceData->m_dHistograms), "Could not set histograms argument");
-	V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, 1, sizeof(cl_mem), &mDeviceData->m_dGlobsum), "Could not set globsum argument");
+    const auto pasteHistogramKernel = mDeviceData->m_kernelMap["pastehistograms"];
+    // Set kernel arguments
+    {
+        cl_uint argIdx = 0U;
+        V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dHistograms), "Could not set histograms argument");
+        V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dGlobsum), "Could not set globsum argument");
+    }
 
 	// Execute paste histogram kernel
     timer.Start();
