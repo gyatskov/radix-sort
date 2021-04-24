@@ -71,6 +71,10 @@ protected:
 	void Resize(uint32_t nn);
 	void padGPUData(cl_command_queue CommandQueue);
 
+    /// Perform radix sort algorithm on previously provided data
+    /// @param Context OpenCL Context
+    /// @param CommandQueue OpenCL Command Queue
+    /// @param LocalWorkSize OpenCL Local work size
 	void RadixSort(
         cl_context Context,
         cl_command_queue CommandQueue,

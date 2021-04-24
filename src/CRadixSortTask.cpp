@@ -41,14 +41,14 @@ CRadixSortTask<DataType>::~CRadixSortTask()
 }
 
 template <typename T>
-typename std::enable_if<!std::is_integral<T>::value>::type
+typename std::enable_if_t<!std::is_integral<T>::value>
 appendToOptions(std::string& dst, const std::string& key, const T& obj)
 {
     dst += " -D" + key + "=" + "'" + std::string(obj) + "'";
 }
 
 template<typename T>
-typename std::enable_if<std::is_integral<T>::value>::type
+typename std::enable_if_t<std::is_integral<T>::value>
 appendToOptions(std::string& dst, const std::string& key, const T& value)
 {
     dst += " -D" + key + "=" + "'" + std::to_string(value) + "'";
@@ -120,13 +120,19 @@ bool CRadixSortTask<DataType>::InitResources(
 		const auto OFFSET { -std::numeric_limits<DataType>::min() };
         std::stringstream ss;
         ss << "#define DataType " << TypeNameString<DataType>::open_cl_name << std::endl
-           << "#define UnsignedDataType " << TypeNameString< UnsignedType >::open_cl_name << std::endl
+           << "#define UnsignedDataType " << TypeNameString<UnsignedType>::open_cl_name << std::endl
            << "#define OFFSET " << OFFSET << std::endl
            << programCode << std::endl;
 
         const auto completeCode = ss.str();
         const auto options { BuildOptions() };
-        mDeviceData->m_Program = CLUtil::BuildCLProgramFromMemory(Device, Context, completeCode, options);
+        mDeviceData->m_Program =
+            CLUtil::BuildCLProgramFromMemory(
+                Device,
+                Context,
+                completeCode,
+                options
+            );
         if (mDeviceData->m_Program == nullptr) {
             return false;
         }
@@ -207,6 +213,7 @@ void CRadixSortTask<DataType>::ComputeGPU(
 template <typename DataType>
 void CRadixSortTask<DataType>::ComputeCPU()
 {
+    // compute STL result
     {
         std::copy(
             mHostData.m_hKeys.begin(),
@@ -229,6 +236,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
     }
 
 
+    // compute CPU Radix Sort result
     {
         mHostData.m_resultRadixSortCPU.resize(mNumberKeysRounded);
         CTimer timer;
@@ -243,7 +251,6 @@ void CRadixSortTask<DataType>::ComputeCPU()
             RadixSortCPU<DataType>::sort(mHostData.m_resultRadixSortCPU);
         }
         timer.Stop();
-
         mRuntimesCPU.timeRadix.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
     }
 }

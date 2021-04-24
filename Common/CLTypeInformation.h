@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+/// String translations of types
+/// @tparam T Type to be translated
 template <typename T>
 struct TypeNameString
 {};
