@@ -215,11 +215,6 @@ void CRadixSortTask<DataType>::ComputeCPU()
 {
     // compute STL result
     {
-        std::copy(
-            mHostData.m_hKeys.begin(),
-            mHostData.m_hKeys.end(),
-            mHostData.m_resultSTLCPU.begin());
-
         CTimer timer;
         timer.Start();
         for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
@@ -232,7 +227,8 @@ void CRadixSortTask<DataType>::ComputeCPU()
             std::sort(mHostData.m_resultSTLCPU.begin(), mHostData.m_resultSTLCPU.begin() + mNumberKeysRounded);
         }
         timer.Stop();
-        mRuntimesCPU.timeSTL.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+        mRuntimesCPU.timeSTL.avg =
+            timer.GetElapsedMilliseconds() / Parameters::_NUM_PERFORMANCE_ITERATIONS;
     }
 
 
@@ -251,7 +247,8 @@ void CRadixSortTask<DataType>::ComputeCPU()
             RadixSortCPU<DataType>::sort(mHostData.m_resultRadixSortCPU);
         }
         timer.Stop();
-        mRuntimesCPU.timeRadix.avg = timer.GetElapsedMilliseconds() / double(Parameters::_NUM_PERFORMANCE_ITERATIONS);
+        mRuntimesCPU.timeRadix.avg =
+            timer.GetElapsedMilliseconds() / Parameters::_NUM_PERFORMANCE_ITERATIONS;
     }
 }
 
