@@ -215,6 +215,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
 {
     // compute STL result
     {
+        mHostData.m_resultSTLCPU.resize(mNumberKeysRounded);
         CTimer timer;
         timer.Start();
         for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
@@ -224,7 +225,10 @@ void CRadixSortTask<DataType>::ComputeCPU()
                 mHostData.m_resultSTLCPU.begin());
 
             // Reference sorting (STL quicksort):
-            std::sort(mHostData.m_resultSTLCPU.begin(), mHostData.m_resultSTLCPU.begin() + mNumberKeysRounded);
+            std::sort(
+                mHostData.m_resultSTLCPU.begin(),
+                mHostData.m_resultSTLCPU.begin() + mNumberKeysRounded
+            );
         }
         timer.Stop();
         mRuntimesCPU.timeSTL.avg =
@@ -241,7 +245,8 @@ void CRadixSortTask<DataType>::ComputeCPU()
             std::copy(
                 mHostData.m_hKeys.begin(),
                 mHostData.m_hKeys.begin() + mNumberKeysRounded,
-                mHostData.m_resultRadixSortCPU.begin());
+                mHostData.m_resultRadixSortCPU.begin()
+            );
 
             // Reference sorting implementation on CPU (radixsort):
             RadixSortCPU<DataType>::sort(mHostData.m_resultRadixSortCPU);
