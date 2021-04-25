@@ -10,8 +10,13 @@
 
 namespace {
 
+/// Returns unsigned absolute value
+/// @tparam ElemType Element type
+/// @param val Value
+/// @return unsigned absolute of val
 template <typename ElemType>
-inline typename std::make_unsigned<ElemType>::type abs(ElemType val)
+inline constexpr
+typename std::make_unsigned<ElemType>::type abs(ElemType val)
 {
     return (val < 0) ? (-val) : (val);
 }
@@ -22,28 +27,33 @@ inline typename std::make_unsigned<ElemType>::type abs(ElemType val)
 template <typename DataType>
 class RadixSortCPU {
 public:
-	using Parameters = AlgorithmParameters < DataType > ;
+	using Parameters = AlgorithmParameters<DataType>;
 
+    static_assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
 	inline static constexpr auto NUM_BINS = Parameters::_TOTALBITS / Parameters::_NUM_BITS_PER_RADIX;
 
 	// A function to do counting sort of arr[] according to
 	// the digit represented by exp.
+    /// @param arr Vector to be sorted
+    /// @param exp Exponent
+    ///
+    /// @note Allocates memory
 	template <typename ElemType>
 	static void countSort(std::vector<ElemType>& arr, uint64_t exp)
 	{
-		using UnsignedElemType = typename std::make_unsigned<ElemType>::type;
+		using UnsignedElemType = typename std::make_unsigned_t<ElemType>;
 
-		const auto n = static_cast<int64_t>(arr.size());
+		const auto n = arr.size();
 		std::vector<ElemType> output(n, 0); // output array
-		int64_t i = 0;
+		size_t i = 0;
 		std::vector<size_t> count(NUM_BINS, 0);
 
-		/// If operating on signed integers, the minimum value (which is negative) will be added
-		UnsignedElemType offset = -std::numeric_limits<ElemType>::min();
+		/// Offset to shift signed integers into unsigned region
+		constexpr auto offset = std::numeric_limits<ElemType>::min();
 
 		// Store count of occurrences in count[]
 		for (i = 0; i < n; i++) {
-			const auto elem_value = static_cast<UnsignedElemType>(arr[i] + offset);
+			const auto elem_value = static_cast<UnsignedElemType>(arr[i] - offset);
 			count[(elem_value / exp) % NUM_BINS]++;
 		}
 
@@ -54,10 +64,11 @@ public:
 		}
 
 		// Build the output array
-		for (i = n - 1; i >= 0; i--) {
-			const auto elem_value = static_cast<UnsignedElemType>(arr[i] + offset);
-			output[count[( elem_value / exp) % NUM_BINS] - 1] = arr[i];
-			count[(elem_value / exp) % NUM_BINS]--;
+		for (int64_t i = n-1; i >= 0; i--) {
+			const auto elem_value = static_cast<UnsignedElemType>(arr[i] - offset);
+            const auto countIdx {(elem_value / exp) % NUM_BINS};
+			output[count[countIdx] - 1] = arr[i];
+			count[countIdx]--;
 		}
 
 		// Copy the output array to arr[], so that arr[] now

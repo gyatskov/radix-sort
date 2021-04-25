@@ -6,7 +6,6 @@
 #include "RadixSortOptions.h"
 #include "Statistics.h"
 
-#include <vector>
 #include <map>
 #include <memory>
 #include <cstdint>
@@ -14,6 +13,7 @@
 template <typename DataType>
 struct ComputeDeviceData;
 
+/// Runtime statistics of GPU implementation algorithms
 struct RuntimesGPU {
     Statistics timeHisto,
                timeScan,
@@ -22,6 +22,7 @@ struct RuntimesGPU {
                timeTotal;
 };
 
+/// Runtime statistics of CPU implementation algorithms
 struct RuntimesCPU {
     Statistics timeRadix,
                timeSTL;
@@ -49,11 +50,7 @@ public:
         const std::array<size_t,3>& LocalWorkSize
     ) override;
 
-    /** Sorts data on CPU
-     *
-     * @todo Factor out completely, especially performance iterations
-     **/
-	void ComputeCPU() override;
+    void ComputeCPU() override;
 
     /** Tests results validity **/
 	bool ValidateResults() override;
@@ -69,9 +66,11 @@ protected:
 	void CopyDataToDevice(cl_command_queue CommandQueue);
 	void CopyDataFromDevice(cl_command_queue CommandQueue);
 	void Resize(uint32_t nn);
+    /// Pads GPU data buffers
+    /// @param CommandQueue OpenCL Command Queue
 	void padGPUData(cl_command_queue CommandQueue);
 
-    /// Perform radix sort algorithm on previously provided data
+    /// Performs radix sort algorithm on previously provided data
     /// @param Context OpenCL Context
     /// @param CommandQueue OpenCL Command Queue
     /// @param LocalWorkSize OpenCL Local work size
@@ -80,8 +79,11 @@ protected:
         cl_command_queue CommandQueue,
         const std::array<size_t,3>& LocalWorkSize
     );
+    /// Performs histogram calculation
 	void Histogram(cl_command_queue CommandQueue, int pass);
+    /// Performs histogram scan
 	void ScanHistogram(cl_command_queue CommandQueue);
+    /// Performs reorder step
 	void Reorder(cl_command_queue CommandQueue, int pass);
 
 	void ExecuteTask(

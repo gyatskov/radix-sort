@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(catch2)
 add_executable(tests
     tests.cpp
     CRunner.cpp
+    CTestBase.cpp
 )
 
 target_compile_features(tests

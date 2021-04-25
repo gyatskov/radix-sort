@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../Common/CTestBase.h"
+#include "CTestBase.h"
+#include "../Common/CArguments.h"
 
 #include <array>
 
@@ -15,5 +16,8 @@ public:
 	virtual bool DoCompute();
 
     template <typename DataType>
-    bool runTask(const RadixSortOptions& options, const std::array<size_t,3>& LocalWorkSize);
+    bool runTask(
+        const RadixSortOptions& options,
+        const std::array<size_t,3>& LocalWorkSize
+    );
 };
