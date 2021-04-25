@@ -32,6 +32,45 @@ public:
     static_assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
 	inline static constexpr auto NUM_BINS = Parameters::_TOTALBITS / Parameters::_NUM_BITS_PER_RADIX;
 
+
+	///
+	/// ░░░░░▄▄▄▄▀▀▀▀▀▀▀▀▄▄▄▄▄▄░░░░░░░
+	/// ░░░░░█░░░░▒▒▒▒▒▒▒▒▒▒▒▒░░▀▀▄░░░░
+	/// ░░░░█░░░▒▒▒▒▒▒░░░░░░░░▒▒▒░░█░░░
+	/// ░░░█░░░░░░▄██▀▄▄░░░░░▄▄▄░░░░█░░
+	/// ░▄▀▒▄▄▄▒░█▀▀▀▀▄▄█░░░██▄▄█░░░░█░
+	/// █░▒█▒▄░▀▄▄▄▀░░░░░░░░█░░░▒▒▒▒▒░█
+	/// █░▒█░█▀▄▄░░░░░█▀░░░░▀▄░░▄▀▀▀▄▒█
+	/// ░█░▀▄░█▄░█▀▄▄░▀░▀▀░▄▄▀░░░░█░░█░
+	/// ░░█░░░▀▄▀█▄▄░█▀▀▀▄▄▄▄▀▀█▀██░█░░
+	/// ░░░█░░░░██░░▀█▄▄▄█▄▄█▄████░█░░░
+	/// ░░░░█░░░░▀▀▄░█░░░█░█▀██████░█░░
+	/// ░░░░░▀▄░░░░░▀▀▄▄▄█▄█▄█▄█▄▀░░█░░
+	/// ░░░░░░░▀▄▄░▒▒▒▒░░░░░░░░░░▒░░░█░
+	/// ░░░░░░░░░░▀▀▄▄░▒▒▒▒▒▒▒▒▒▒░░░░█░
+	/// ░░░░░░░░░░░░░░▀▄▄▄▄▄░░░░░░░░█░░
+    ///
+	/// The main function to that sorts arr[] of size n using
+	/// Radix Sort
+    /// @tparam ElemType Element type of vector to be sorted
+	template<typename ElemType>
+	static void sort(std::vector<ElemType>& arr)
+	{
+		// Find the maximum number to know number of digits
+		// in O(nkeys)
+		const auto max_elem { *std::max_element(arr.begin(), arr.end()) };
+
+		// Do counting sort for every digit. Note that instead
+		// of passing digit number, exp is passed. exp is 10^i
+		// where i is current digit number
+		const auto numDigits = max_elem ? static_cast<uint64_t>(std::ceil(std::log(abs(max_elem)) / std::log(NUM_BINS))) : 1;
+		//for (uint64_t exp = 1ULL; std::abs(m) > exp; exp *= Radix) {
+		for (uint64_t exp = 0ULL; exp < numDigits; exp++) {
+			countSort(arr, static_cast<uint64_t>(std::pow(NUM_BINS, exp)));
+		}
+	}
+
+private:
 	// A function to do counting sort of arr[] according to
 	// the digit represented by exp.
     /// @param arr Vector to be sorted
@@ -74,42 +113,6 @@ public:
 		// Copy the output array to arr[], so that arr[] now
 		// contains sorted numbers according to current digit
 		std::copy(output.begin(), output.end(), arr.begin());
-	}
-
-
-	//
-	//░░░░░▄▄▄▄▀▀▀▀▀▀▀▀▄▄▄▄▄▄░░░░░░░
-	//░░░░░█░░░░▒▒▒▒▒▒▒▒▒▒▒▒░░▀▀▄░░░░
-	//░░░░█░░░▒▒▒▒▒▒░░░░░░░░▒▒▒░░█░░░
-	//░░░█░░░░░░▄██▀▄▄░░░░░▄▄▄░░░░█░░
-	//░▄▀▒▄▄▄▒░█▀▀▀▀▄▄█░░░██▄▄█░░░░█░
-	//█░▒█▒▄░▀▄▄▄▀░░░░░░░░█░░░▒▒▒▒▒░█
-	//█░▒█░█▀▄▄░░░░░█▀░░░░▀▄░░▄▀▀▀▄▒█
-	//░█░▀▄░█▄░█▀▄▄░▀░▀▀░▄▄▀░░░░█░░█░
-	//░░█░░░▀▄▀█▄▄░█▀▀▀▄▄▄▄▀▀█▀██░█░░
-	//░░░█░░░░██░░▀█▄▄▄█▄▄█▄████░█░░░
-	//░░░░█░░░░▀▀▄░█░░░█░█▀██████░█░░
-	//░░░░░▀▄░░░░░▀▀▄▄▄█▄█▄█▄█▄▀░░█░░
-	//░░░░░░░▀▄▄░▒▒▒▒░░░░░░░░░░▒░░░█░
-	//░░░░░░░░░░▀▀▄▄░▒▒▒▒▒▒▒▒▒▒░░░░█░
-	//░░░░░░░░░░░░░░▀▄▄▄▄▄░░░░░░░░█░░
-	// The main function to that sorts arr[] of size n using
-	// Radix Sort
-	template<typename ElemType>
-	static void sort(std::vector<ElemType>& arr)
-	{
-		// Find the maximum number to know number of digits
-		// in O(nkeys)
-		const auto max_elem { *std::max_element(arr.begin(), arr.end()) };
-
-		// Do counting sort for every digit. Note that instead
-		// of passing digit number, exp is passed. exp is 10^i
-		// where i is current digit number
-		const auto numDigits = max_elem ? static_cast<uint64_t>(std::ceil(std::log(abs(max_elem)) / std::log(NUM_BINS))) : 1;
-		//for (uint64_t exp = 1ULL; std::abs(m) > exp; exp *= Radix) {
-		for (uint64_t exp = 0ULL; exp < numDigits; exp++) {
-			countSort(arr, static_cast<uint64_t>(std::pow(NUM_BINS, exp)));
-		}
 	}
 };
 
