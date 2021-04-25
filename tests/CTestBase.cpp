@@ -16,19 +16,6 @@ CTestBase::~CTestBase()
 	ReleaseCLContext();
 }
 
-bool CTestBase::EnterMainLoop()
-{
-	if(!InitCLContext())
-		return false;
-
-	bool success = DoCompute();
-
-	ReleaseCLContext();
-
-	return success;
-}
-
-
 bool CTestBase::InitCLContext()
 {
     return m_computeState.init();

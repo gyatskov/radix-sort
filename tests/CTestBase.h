@@ -15,19 +15,16 @@ public:
 
 	virtual ~CTestBase();
 
-	//! Main loop. Only to be overridden if something is rendered.
-	virtual bool EnterMainLoop();
-
 	//! To be overridden
 	virtual bool DoCompute() = 0;
 
-protected:
 	virtual bool InitCLContext();
 
 	virtual void ReleaseCLContext();
 
 	virtual bool RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize);
 
+protected:
     ComputeState m_computeState;
 
     Arguments m_arguments;

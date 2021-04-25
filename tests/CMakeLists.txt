@@ -9,7 +9,6 @@ FetchContent_MakeAvailable(catch2)
 # Tests need to be added as executables first
 add_executable(tests
     tests.cpp
-    CRunner.cpp
     CTestBase.cpp
 )
 
