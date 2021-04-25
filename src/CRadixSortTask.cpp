@@ -201,7 +201,8 @@ void CRadixSortTask<DataType>::ComputeGPU(
     cl_command_queue CommandQueue,
     const std::array<size_t,3>& LocalWorkSize)
 {
-	if (mNumberKeysRest != 0) {
+    const auto isRounded = mNumberKeys != mNumberKeysRounded;
+	if (isRounded) {
         padGPUData(CommandQueue);
     }
 	ExecuteTask(Context, CommandQueue, LocalWorkSize, "RadixSort_01");
@@ -683,7 +684,6 @@ void CRadixSortTask<DataType>::Resize(uint32_t nn)
     if (rest != 0) {
 		mNumberKeysRounded = mNumberKeys - rest + NumItems;
     }
-	mNumberKeysRest = rest;
 }
 
 template <typename DataType>
@@ -699,9 +699,10 @@ void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
     const auto pattern {MaxValue-1};
 
     const auto paddingOffset = sizeof(DataType) * mNumberKeys;
-    const auto size =
+    const auto rest = mNumberKeys % NumItems;
+    const auto size_bytes =
         sizeof(DataType)
-        * (NumItems - mNumberKeysRest);
+        * (NumItems - rest);
 
     V_RETURN_CL(clEnqueueFillBuffer(
         CommandQueue,
@@ -709,7 +710,7 @@ void CRadixSortTask<DataType>::padGPUData(cl_command_queue CommandQueue)
         &pattern,
         sizeof(pattern),
         paddingOffset,
-        size,
+        size_bytes,
         0, NULL, NULL),
     "Could not pad input keys");
 }

@@ -28,6 +28,36 @@ struct RuntimesCPU {
                timeSTL;
 };
 
+template <typename DataType>
+class RadixSortGPU
+{
+public:
+    enum class OperationStatus {
+        OK,
+        HOST_BUFFERS_FAILED,
+        INITIALIZATION_FAILED,
+        CALCULATION_FAILED,
+        CLEANUP_FAILED,
+    };
+
+    OperationStatus setHostBuffers(
+        const DataType* input,
+        size_t length,
+        DataType* output
+    );
+    OperationStatus initialize(cl_context Context, cl_command_queue CommandQueue);
+    OperationStatus calculate();
+    OperationStatus cleanup();
+
+private:
+    /// Performs histogram calculation
+	void Histogram(cl_command_queue CommandQueue, int pass);
+    /// Performs histogram scan
+	void ScanHistogram(cl_command_queue CommandQueue);
+    /// Performs reorder step
+	void Reorder(cl_command_queue CommandQueue, int pass);
+};
+
 /// Parallel radix sort
 template <typename _DataType>
 class CRadixSortTask : public IComputeTask
@@ -70,6 +100,8 @@ protected:
     /// @param CommandQueue OpenCL Command Queue
 	void padGPUData(cl_command_queue CommandQueue);
 
+    ///////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////
     /// Performs radix sort algorithm on previously provided data
     /// @param Context OpenCL Context
     /// @param CommandQueue OpenCL Command Queue
@@ -85,6 +117,8 @@ protected:
 	void ScanHistogram(cl_command_queue CommandQueue);
     /// Performs reorder step
 	void Reorder(cl_command_queue CommandQueue, int pass);
+    ///////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////
 
 	void ExecuteTask(
         cl_context Context,
@@ -95,7 +129,6 @@ protected:
     // list of keys
     uint32_t mNumberKeys; // actual number of keys
     uint32_t mNumberKeysRounded; // next multiple of _ITEMS*_GROUPS
-	uint32_t mNumberKeysRest; // rest to fit to number of gpu processors
 
     HostData<DataType>							 mHostData;
     std::shared_ptr<ComputeDeviceData<DataType>> mDeviceData;
