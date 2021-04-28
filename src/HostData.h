@@ -10,6 +10,20 @@
 template <typename DataType>
 struct Dataset;
 
+/// Non-owning reference to memory
+template <typename DataType>
+struct CheapSpan
+{
+    using pointer = DataType*;
+    using size_type = size_t;
+
+    // Start location of memory
+    pointer begin{nullptr};
+
+    // length in elements of DataType
+    size_type length{0U};
+};
+
 /**
  * @TODO: Change to span
  *        User should allocate (host) memory
@@ -22,6 +36,7 @@ using HostBuffer = std::vector<DataType>;
 ///       but pointers or a span.
 ///       Users of the Radix Sort algorithm should provide
 ///       their own memory for use.
+/// @note Radix sort specific
 template<typename DataType>
 struct HostBuffers
 {
