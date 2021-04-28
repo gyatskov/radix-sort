@@ -689,6 +689,7 @@ OperationStatus RadixSortGPU<DataType>::calculate(
         cl_command_queue CommandQueue)
 {
     CopyDataToDevice(CommandQueue);
+    clFinish(CommandQueue);  // wait end of read
 
     for (uint32_t pass = 0; pass < Parameters::_NUM_PASSES; pass++){
         if (mOutStream) {
@@ -720,6 +721,7 @@ OperationStatus RadixSortGPU<DataType>::calculate(
 
     mRuntimesGPU.timeTotal.n = mRuntimesGPU.timeHisto.n;
     CopyDataFromDevice(CommandQueue);
+	clFinish(CommandQueue);  // wait end of read
 
     //TODO: Use individual statuses
     return OperationStatus::OK;
@@ -734,7 +736,6 @@ void RadixSortGPU<DataType>::setLogStream(std::ostream* out) noexcept
 template <typename DataType>
 void RadixSortGPU<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
 {
-    // TODO: Use host buffer
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
         mDeviceData->m_dMemoryMap["inputKeys"],
         CL_TRUE, 0,
@@ -743,9 +744,6 @@ void RadixSortGPU<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
         0, NULL, NULL),
 		"Could not initialize input keys device buffer");
 
-    clFinish(CommandQueue);  // wait end of read
-
-    // TODO: Use host buffer
 	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
         mDeviceData->m_dMemoryMap["inputPermutations"],
         CL_TRUE, 0,
@@ -753,8 +751,6 @@ void RadixSortGPU<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
         mHostData->h_Permut.data(),
         0, NULL, NULL),
 		"Could not initialize input permutation device buffer");
-
-    clFinish(CommandQueue);  // wait end of read
 }
 
 template <typename DataType>
@@ -768,8 +764,6 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 		0, NULL, NULL),
 		"Could not read result data");
 
-	clFinish(CommandQueue);  // wait end of read
-
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         mDeviceData->m_dMemoryMap["inputPermutations"],
 		CL_TRUE, 0,
@@ -777,8 +771,6 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
         mHostData->h_Permut.data(),
 		0, NULL, NULL),
 		"Could not read result permutation");
-
-	clFinish(CommandQueue);  // wait end of read
 
 	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
         mDeviceData->m_dMemoryMap["histograms"],
@@ -795,8 +787,6 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
 		mHostData->m_hGlobsum.data(),
 		0, NULL, NULL),
 		"Could not read result global sum");
-
-	clFinish(CommandQueue);  // wait end of read
 }
 
 template <typename DataType>

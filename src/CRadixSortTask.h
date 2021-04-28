@@ -14,6 +14,7 @@ template <typename DataType>
 struct ComputeDeviceData;
 
 /// Runtime statistics of GPU implementation algorithms
+/// @note Radix sort specific
 struct RuntimesGPU {
     Statistics timeHisto{};
     Statistics timeScan{};
@@ -28,6 +29,7 @@ struct RuntimesCPU {
     Statistics timeSTL{};
 };
 
+/// @note Radix sort specific
 enum class OperationStatus {
     OK,
     HOST_BUFFERS_FAILED,
@@ -40,6 +42,11 @@ enum class OperationStatus {
     LOADING_SOURCE_FAILED,
 };
 
+/// TODO: Split into different file
+/// @note Radix sort specific
+/// TODO: Avoid clFinish calls
+///       For profiling use clGetEventProfilingInfo api
+/// TODO: Replace clUtil with cl.hpp API
 template <typename DataType>
 class RadixSortGPU
 {
