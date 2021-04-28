@@ -3,6 +3,7 @@
 #include "../Common/CLUtil.h"
 
 #include <cstdint>
+#include <string>
 
 template <typename DataType>
 ComputeDeviceData<DataType>::ComputeDeviceData(
@@ -15,8 +16,6 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
     kernelNames.emplace_back("scanhistograms");
     kernelNames.emplace_back("pastehistograms");
     kernelNames.emplace_back("reorder");
-
-    alternatives.emplace_back("RadixSort_01");
 
 	// allocate device resources
     const auto createBufferAndCheck = [Context](
@@ -58,7 +57,7 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
 	// allocate the histogram on the GPU
 	createBufferAndCheck(
         m_dMemoryMap["histograms"],
-        sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP
+        sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_ITEMS
     );
 
 	// allocate the auxiliary histogram on GPU

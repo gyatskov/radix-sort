@@ -52,7 +52,10 @@ bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& L
     std::cout << "Computing GPU result..." << std::endl;
 
 	// Runing the kernel N times. This make the measurement of the execution time more accurate.
-	Task.ComputeGPU(m_computeState.m_CLContext, m_computeState.m_CLCommandQueue, LocalWorkSize);
+	Task.ComputeGPU(
+            m_computeState.m_CLContext,
+            m_computeState.m_CLCommandQueue,
+            LocalWorkSize);
     std::cout << "DONE" << std::endl;
 
 	// Validating results.

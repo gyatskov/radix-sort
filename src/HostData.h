@@ -1,46 +1,67 @@
 #pragma once
 
 #include <vector>
-#include <map>
 #include <string>
-#include <functional>
 #include <cstdint>
-#include <algorithm>
 #include <memory>
 
-#include "Dataset.h"
 #include "Parameters.h"
 
 template <typename DataType>
+struct Dataset;
+
+/**
+ * @TODO: Change to span
+ *        User should allocate (host) memory
+ */
+template <typename DataType>
 using HostBuffer = std::vector<DataType>;
+
+/// Host buffers passed to the OpenCL kernel
+/// @note This should not be owning containers
+///       but pointers or a span.
+///       Users of the Radix Sort algorithm should provide
+///       their own memory for use.
+template<typename DataType>
+struct HostBuffers
+{
+	using Parameters = AlgorithmParameters<DataType>;
+    using BufferData = HostBuffer<DataType>;
+    using BufferAux  = HostBuffer<uint32_t>;
+
+    HostBuffers();
+    ~HostBuffers() = default;
+
+    /// Input values
+	BufferData m_hKeys;
+    /// histograms on the CPU
+	BufferAux m_hHistograms;
+	/// sum of the local histograms
+	BufferAux m_hGlobsum;
+	/// permutation
+	BufferAux h_Permut;
+    /// Output values
+	BufferData m_hResultFromGPU;
+};
 
 template <typename _DataType>
 struct HostData
 {
 	using DataType      = _DataType;
 	using Parameters    = AlgorithmParameters<DataType>;
-    using TypedDataset  = Dataset<DataType>;
     using DataBuffer    = HostBuffer<DataType>;
+    using DataBuffers   = HostBuffers<DataType>;
 
-    explicit HostData(std::shared_ptr<TypedDataset> selectedDataset);
+    explicit HostData(std::shared_ptr<Dataset<DataType>> dataset);
+    HostData() = delete;
+    ~HostData() = default;
 
-	// results
+	// Buffers for reference results
 	DataBuffer m_resultSTLCPU;
 	DataBuffer m_resultRadixSortCPU;
 
-	// data sets
-	std::shared_ptr<TypedDataset> m_selectedDataset;
-
-	// collector of data sets
-	//std::map<std::string, std::vector<DataType>> m_dataSets;
-
-	std::vector<DataType> m_hKeys;
-	std::vector<DataType> m_hCheckKeys; // a copy for check
-	std::vector<uint32_t> m_hHistograms; // histograms on the CPU
-    /// string to Results
-	std::map<std::string, DataBuffer> m_hResultGPUMap;
-	// sum of the local histograms
-	std::vector<uint32_t> m_hGlobsum;
-	// permutation
-	std::vector<uint32_t> h_Permut;
+    /// memory buffers for readbacks of intermediate data
+    /// TODO: Make normal object as soon  HostBuffers uses span
+    std::shared_ptr<DataBuffers> mHostBuffers;
 };
+

@@ -9,6 +9,7 @@
 
 struct RadixSortOptions
 {
+    /// Number of actual elements
     std::size_t num_elements;
     bool perf_to_stdout;
     bool perf_to_csv;

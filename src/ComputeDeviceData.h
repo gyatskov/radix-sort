@@ -20,7 +20,6 @@ struct ComputeDeviceData
     //OpenCL program and kernels
     cl_program			     m_Program;
     std::vector<std::string> kernelNames;
-    std::vector<std::string> alternatives;
 
     /// Maps kernel names to their low-level handles
     std::map<std::string, cl_kernel> m_kernelMap;

@@ -106,6 +106,7 @@ public:
 #define V_RETURN_FALSE_CL(expr, errmsg) {cl_int e=(expr);if(CL_SUCCESS!=e){std::cerr<<"Error: "<<errmsg<<" ["<<CLUtil::GetCLErrorString(e)<<"]"<<std::endl; return false; }}
 #define V_RETURN_0_CL(expr, errmsg) {cl_int e=(expr);if(CL_SUCCESS!=e){std::cerr<<"Error: "<<errmsg<<" ["<<CLUtil::GetCLErrorString(e)<<"]"<<std::endl; return 0; }}
 #define V_RETURN_CL(expr, errmsg) {cl_int e=(expr);if(CL_SUCCESS!=e){std::cerr<<"Error: "<<errmsg<<" ["<<CLUtil::GetCLErrorString(e)<<"]"<<std::endl; return; }}
+#define V_RETURN_CUSTOM_CL(expr, errmsg, retval) {cl_int e=(expr);if(CL_SUCCESS!=e){std::cerr<<"Error: "<<errmsg<<" ["<<CLUtil::GetCLErrorString(e)<<"]"<<std::endl; return retval; }}
 
 #define SAFE_DELETE(ptr) {if(ptr){ delete ptr; ptr = NULL; }}
 #define SAFE_DELETE_ARRAY(x) {if(x){delete [] x; x = NULL;}}

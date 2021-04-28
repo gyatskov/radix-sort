@@ -17,6 +17,8 @@ struct AlgorithmParameters
 	inline static constexpr auto _NUM_ITEMS_PER_GROUP = 64U;
     /// Number of virtual processors is _NUM_ITEMS_PER_GROUP * _NUM_GROUPS
 	inline static constexpr auto _NUM_GROUPS = 16U;
+    /// Total number of items
+	inline static constexpr auto _NUM_ITEMS = _NUM_ITEMS_PER_GROUP * _NUM_GROUPS;
     /// number of splits of the histogram
 	inline static constexpr auto _NUM_HISTOSPLIT = 512U;
     /// Number of bits in the radix
