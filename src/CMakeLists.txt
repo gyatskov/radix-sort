@@ -8,10 +8,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
 
 # Define source files
-file(GLOB Sources   *.cpp)
+set(Sources
+    RadixSortGPU.cpp
+    CRadixSortTask.cpp
+    ComputeDeviceData.cpp
+    Dataset.cpp
+    HostData.cpp
+)
 #file(GLOB Headers   *.h)
 file(GLOB CLSources *.cl)
-
 
 add_library(radixsortcl
 	${Sources}

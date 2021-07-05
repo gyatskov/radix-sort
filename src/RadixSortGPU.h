@@ -6,7 +6,11 @@
 #include "HostData.h"
 #include "Statistics.h"
 #include "OperationStatus.h"
+
 #include <memory>
+#include <iostream>
+#include <cstdint>
+#include <string>
 
 /// Runtime statistics of GPU implementation algorithms
 /// @note Radix sort specific
@@ -38,8 +42,11 @@ public:
     );
 
     /// Performs radix sort algorithm on previously provided data
+    /// 1. Copies host data to device
+    /// 2. Sorts data
+    /// 3. Copies device data back to host
     /// @param CommandQueue OpenCL Command Queue
-	OperationStatus calculate( cl_command_queue CommandQueue);
+	OperationStatus calculate(cl_command_queue CommandQueue);
 
     /// Frees device buffers
     OperationStatus cleanup();
