@@ -3,25 +3,15 @@
 #include "../Common/IComputeTask.h"
 #include "Parameters.h"
 #include "HostData.h"
+#include "RadixSortGPU.h"
 #include "RadixSortOptions.h"
+#include "OperationStatus.h"
 #include "Statistics.h"
 
 #include <map>
 #include <memory>
 #include <cstdint>
 
-template <typename DataType>
-struct ComputeDeviceData;
-
-/// Runtime statistics of GPU implementation algorithms
-/// @note Radix sort specific
-struct RuntimesGPU {
-    Statistics timeHisto{};
-    Statistics timeScan{};
-    Statistics timeReorder{};
-    Statistics timePaste{};
-    Statistics timeTotal{};
-};
 
 /// Runtime statistics of CPU implementation algorithms
 struct RuntimesCPU {
@@ -29,110 +19,24 @@ struct RuntimesCPU {
     Statistics timeSTL{};
 };
 
-/// @note Radix sort specific
-enum class OperationStatus {
-    OK,
-    HOST_BUFFERS_FAILED,
-    INITIALIZATION_FAILED,
-    CALCULATION_FAILED,
-    CLEANUP_FAILED,
-    RESIZE_FAILED,
-    KERNEL_CREATION_FAILED,
-    PROGRAM_CREATION_FAILED,
-    LOADING_SOURCE_FAILED,
-};
-
-/// TODO: Split into different file
-/// @note Radix sort specific
-/// TODO: Avoid clFinish calls
-///       For profiling use clGetEventProfilingInfo api
-/// TODO: Replace clUtil with cl.hpp API
-template <typename DataType>
-class RadixSortGPU
-{
-public:
-    /// 1. Creates program and kernel
-    /// 2. Initializes host and device memory
-    OperationStatus initialize(
-        cl_device_id Device,
-        cl_context Context,
-        uint32_t nn,
-        const HostSpans<DataType>& hostSpans
-    );
-
-    /// Performs radix sort algorithm on previously provided data
-    /// @param CommandQueue OpenCL Command Queue
-	OperationStatus calculate( cl_command_queue CommandQueue);
-
-    /// Frees device buffers
-    OperationStatus cleanup();
-
-    /// Sets output log stream
-    /// @param[in,out] out Log text stream
-    void setLogStream(std::ostream* out) noexcept;
-
-    /// Rounds argument to next multiple of NumItems.
-    /// @return Possibly rounded up number of elements
-	uint32_t Resize(uint32_t nn) const noexcept;
-
-    /// Pads GPU data buffers
-    /// @param CommandQueue OpenCL Command Queue
-    /// @param paddingOffset Padding offset in bytes
-	void padGPUData(
-        cl_command_queue CommandQueue,
-        size_t paddingOffset);
-
-    /// Returns runtimes of individual algorithm steps
-    /// @return runtimes of individual algorithm steps
-    RuntimesGPU getRuntimes() const;
-
-    /// TODO: Add methods to inspect intermediate buffers
-    //        between runs.
-    //        E.g. providing each step a public API
-
-private:
-    using Parameters = AlgorithmParameters<DataType>;
-
-    static std::string BuildPreamble();
-    /// Compiles build options for OpenCL kernel
-    static std::string BuildOptions();
-    /// Performs histogram calculation
-	void Histogram(cl_command_queue CommandQueue, int pass);
-    /// Performs histogram scan
-	void ScanHistogram(cl_command_queue CommandQueue);
-    /// Performs reorder step
-	void Reorder(cl_command_queue CommandQueue, int pass);
-
-	void CopyDataToDevice(cl_command_queue CommandQueue);
-	void CopyDataFromDevice(cl_command_queue CommandQueue);
-
-    std::shared_ptr<ComputeDeviceData<DataType>> mDeviceData;
-    HostSpans<DataType> mHostSpans;
-
-	// Runtime statistics GPU
-    RuntimesGPU mRuntimesGPU{};
-
-    // list of keys
-    uint32_t mNumberKeysRounded{0U}; // next multiple of _ITEMS*_GROUPS
-
-    /// log stream used for debugging
-    std::ostream* mOutStream{nullptr};
-};
-
-/// Parallel radix sort
-template <typename _DataType>
+/// Parallel radix sort orchestrator
+/// @tparam T Type of data to be sorted
+/// @TODO: Turn into a test class
+template <typename T>
 class CRadixSortTask : public IComputeTask
 {
 public:
-	using DataType = _DataType;
+	using DataType = T;
 
     CRadixSortTask(
         const RadixSortOptions& options,
-        std::shared_ptr<Dataset<DataType>> dataset);
+        std::shared_ptr<Dataset<DataType>> dataset
+    );
 
 	virtual ~CRadixSortTask();
 
-	// IComputeTask
+    ///////////////////////////////////////////////////////////////
+	// IComputeTask realization
 	bool InitResources(cl_device_id Device, cl_context Context) override;
 	void ReleaseResources() override;
 	void ComputeGPU(
@@ -141,15 +45,11 @@ public:
         const std::array<size_t,3>& LocalWorkSize
     ) override;
 
-    ///////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////
     void ComputeCPU() override;
 
     /** Tests results validity **/
 	bool ValidateResults() override;
     ///////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////
-
 
 protected:
     using Parameters = AlgorithmParameters<DataType>;
@@ -167,14 +67,14 @@ protected:
         cl_context Context,
         cl_command_queue CommandQueue,
         const std::array<size_t,3>& LocalWorkSize
-        );
+    );
 
 
     uint32_t mNumberKeys{0U}; // actual number of keys
     uint32_t mNumberKeysRounded{0U}; // next multiple of _ITEMS*_GROUPS
 
     // Actual host data:
-    // * host buffers for algorithm
+    // * intermediate algorithm buffers
     // * reference results
     HostDataWithReference<DataType> mHostData;
 
@@ -212,6 +112,5 @@ void writePerformance(
     size_t numberKeys,
     const std::string& datasetName,
     const std::string& datatype
-
 );
 
