@@ -6,77 +6,60 @@
 #include <memory>
 
 #include "Parameters.h"
+#include "../Common/CheapSpan.h"
 
 template <typename DataType>
 struct Dataset;
 
-/// Non-owning reference to memory
-template <typename DataType>
-struct CheapSpan
-{
-    using pointer = DataType*;
-    using size_type = size_t;
-
-    // Start location of memory
-    pointer begin{nullptr};
-
-    // length in elements of DataType
-    size_type length{0U};
-};
-
-/**
- * @TODO: Change to span
- *        User should allocate (host) memory
- */
-template <typename DataType>
-using HostBuffer = std::vector<DataType>;
-
 /// Host buffers passed to the OpenCL kernel
-/// @note This should not be owning containers
-///       but pointers or a span.
-///       Users of the Radix Sort algorithm should provide
-///       their own memory for use.
 /// @note Radix sort specific
-template<typename DataType>
+template<
+    typename BufferData,
+    typename BufferAux
+>
 struct HostBuffers
 {
-	using Parameters = AlgorithmParameters<DataType>;
-    using BufferData = HostBuffer<DataType>;
-    using BufferAux  = HostBuffer<uint32_t>;
-
-    HostBuffers();
-    ~HostBuffers() = default;
-
     /// Input values
 	BufferData m_hKeys;
-    /// histograms on the CPU
+    /// Internal histograms on the CPU
 	BufferAux m_hHistograms;
-	/// sum of the local histograms
+	/// Internal sum of the local histograms
 	BufferAux m_hGlobsum;
-	/// permutation
+	/// Internal permutations
 	BufferAux h_Permut;
     /// Output values
 	BufferData m_hResultFromGPU;
 };
 
-template <typename _DataType>
-struct HostData
+template<typename DataType>
+using HostData = HostBuffers<
+    std::vector<DataType>,
+    std::vector<uint32_t>
+>;
+
+template<typename DataType>
+using HostSpans = HostBuffers<
+    CheapSpan<DataType>,
+    CheapSpan<uint32_t>
+>;
+
+/// @note Only used for tests
+template <typename T>
+struct HostDataWithReference
 {
-	using DataType      = _DataType;
+	using DataType      = T;
 	using Parameters    = AlgorithmParameters<DataType>;
-    using DataBuffer    = HostBuffer<DataType>;
-    using DataBuffers   = HostBuffers<DataType>;
+    using ResultBuffer  = std::vector<DataType>;
 
-    explicit HostData(std::shared_ptr<Dataset<DataType>> dataset);
-    HostData() = delete;
-    ~HostData() = default;
+    explicit HostDataWithReference(std::shared_ptr<Dataset<DataType>> dataset);
+    HostDataWithReference() = delete;
+    ~HostDataWithReference() = default;
 
-	// Buffers for reference results
-	DataBuffer m_resultSTLCPU;
-	DataBuffer m_resultRadixSortCPU;
+	// Real buffers for reference results
+	ResultBuffer m_resultSTLCPU;
+	ResultBuffer m_resultRadixSortCPU;
 
-    /// memory buffers for readbacks of intermediate data
-    /// TODO: Make normal object as soon  HostBuffers uses span
-    std::shared_ptr<DataBuffers> mHostBuffers;
+    /// Real buffers for readbacks of intermediate data
+    HostData<DataType> mHostBuffers;
 };
 

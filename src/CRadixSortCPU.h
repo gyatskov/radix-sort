@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Parameters.h"
+#include "../Common/CheapSpan.h"
 
 #include <cstdint>
 #include <vector>
@@ -54,11 +55,13 @@ public:
 	/// Radix Sort
     /// @tparam ElemType Element type of vector to be sorted
 	template<typename ElemType>
-	static void sort(std::vector<ElemType>& arr)
+	static void sort(CheapSpan<ElemType>& arr)
 	{
 		// Find the maximum number to know number of digits
 		// in O(nkeys)
-		const auto max_elem { *std::max_element(arr.begin(), arr.end()) };
+        auto start = arr.data;
+        auto end = start + arr.length;
+		const auto max_elem { *std::max_element(start, end) };
 
 		// Do counting sort for every digit. Note that instead
 		// of passing digit number, exp is passed. exp is 10^i
@@ -78,11 +81,12 @@ private:
     ///
     /// @note Allocates memory
 	template <typename ElemType>
-	static void countSort(std::vector<ElemType>& arr, uint64_t exp)
+	static void countSort(CheapSpan<ElemType>& arr, uint64_t exp)
 	{
 		using UnsignedElemType = typename std::make_unsigned_t<ElemType>;
 
-		const auto n = arr.size();
+		const auto n = arr.length;
+        const auto inputData = arr.data;
 		std::vector<ElemType> output(n, 0); // output array
 		size_t i = 0;
 		std::vector<size_t> count(NUM_BINS, 0);
@@ -92,7 +96,7 @@ private:
 
 		// Store count of occurrences in count[]
 		for (i = 0; i < n; i++) {
-			const auto elem_value = static_cast<UnsignedElemType>(arr[i] - offset);
+			const auto elem_value = static_cast<UnsignedElemType>(inputData[i] - offset);
 			count[(elem_value / exp) % NUM_BINS]++;
 		}
 
@@ -104,15 +108,19 @@ private:
 
 		// Build the output array
 		for (int64_t i = n-1; i >= 0; i--) {
-			const auto elem_value = static_cast<UnsignedElemType>(arr[i] - offset);
+			const auto elem_value = static_cast<UnsignedElemType>(inputData[i] - offset);
             const auto countIdx {(elem_value / exp) % NUM_BINS};
-			output[count[countIdx] - 1] = arr[i];
+			output[count[countIdx] - 1] = inputData[i];
 			count[countIdx]--;
 		}
 
 		// Copy the output array to arr[], so that arr[] now
 		// contains sorted numbers according to current digit
-		std::copy(output.begin(), output.end(), arr.begin());
+		std::copy(
+            output.begin(),
+            output.end(),
+            inputData
+        );
 	}
 };
 

@@ -51,23 +51,29 @@ template <typename DataType>
 class RadixSortGPU
 {
 public:
+    /// 1. Creates program and kernel
+    /// 2. Initializes host and device memory
     OperationStatus initialize(
         cl_device_id Device,
         cl_context Context,
         uint32_t nn,
-        std::shared_ptr<HostBuffers<DataType>> hostBuffers);
-    ///////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////
+        const HostSpans<DataType>& hostSpans
+    );
+
     /// Performs radix sort algorithm on previously provided data
     /// @param CommandQueue OpenCL Command Queue
 	OperationStatus calculate( cl_command_queue CommandQueue);
+
+    /// Frees device buffers
     OperationStatus cleanup();
 
+    /// Sets output log stream
+    /// @param[in,out] out Log text stream
     void setLogStream(std::ostream* out) noexcept;
 
-    ///
+    /// Rounds argument to next multiple of NumItems.
     /// @return Possibly rounded up number of elements
-	uint32_t Resize(uint32_t nn);
+	uint32_t Resize(uint32_t nn) const noexcept;
 
     /// Pads GPU data buffers
     /// @param CommandQueue OpenCL Command Queue
@@ -76,11 +82,16 @@ public:
         cl_command_queue CommandQueue,
         size_t paddingOffset);
 
+    /// Returns runtimes of individual algorithm steps
+    /// @return runtimes of individual algorithm steps
     RuntimesGPU getRuntimes() const;
+
+    /// TODO: Add methods to inspect intermediate buffers
+    //        between runs.
+    //        E.g. providing each step a public API
 
 private:
     using Parameters = AlgorithmParameters<DataType>;
-
 
     static std::string BuildPreamble();
     /// Compiles build options for OpenCL kernel
@@ -96,7 +107,7 @@ private:
 	void CopyDataFromDevice(cl_command_queue CommandQueue);
 
     std::shared_ptr<ComputeDeviceData<DataType>> mDeviceData;
-    std::shared_ptr<HostBuffers<DataType>> mHostData;
+    HostSpans<DataType> mHostSpans;
 
 	// Runtime statistics GPU
     RuntimesGPU mRuntimesGPU{};
@@ -162,9 +173,12 @@ protected:
     uint32_t mNumberKeys{0U}; // actual number of keys
     uint32_t mNumberKeysRounded{0U}; // next multiple of _ITEMS*_GROUPS
 
-    HostData<DataType> mHostData;
+    // Actual host data:
+    // * host buffers for algorithm
+    // * reference results
+    HostDataWithReference<DataType> mHostData;
 
-	// data set
+	// data set used for tests
     using TypedDataset = Dataset<DataType>;
 	std::shared_ptr<TypedDataset> m_selectedDataset;
 

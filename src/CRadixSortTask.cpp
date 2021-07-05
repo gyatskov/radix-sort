@@ -25,22 +25,25 @@
 
 //#define MORE_PROFILING
 
-/**
- * Sorts data on CPU using algorithm provided by std
- **/
+///
+/// Sorts data on CPU using algorithm provided by stdlib
+/// @tparam DataType Type of data to be sorted
+///
 template<typename DataType>
-void SortDataSTL(const HostBuffer<DataType>& input, HostBuffer<DataType>& output)
+void SortDataSTL(
+    const CheapSpan<DataType>& input,
+    CheapSpan<DataType>& output)
 {
     std::copy(
-        input.begin(),
-        input.end(),
-        output.begin()
+        input.data,
+        input.data + input.length,
+        output.data
     );
 
-    // Reference sorting (STL quicksort):
+    // Inplace reference sorting (STL quicksort):
     std::sort(
-        output.begin(),
-        output.end()
+        output.data,
+        output.data + output.length
     );
 }
 
@@ -48,12 +51,14 @@ void SortDataSTL(const HostBuffer<DataType>& input, HostBuffer<DataType>& output
  * Sorts data on CPU using radix sort
  **/
 template<typename DataType>
-void SortDataRadix(const HostBuffer<DataType>& input, HostBuffer<DataType>& output)
+void SortDataRadix(
+    const CheapSpan<DataType>& input,
+    CheapSpan<DataType>& output)
 {
     std::copy(
-        input.begin(),
-        input.end(),
-        output.begin()
+        input.data,
+        input.data + input.length,
+        output.data
     );
 
     // Reference sorting implementation on CPU (radixsort):
@@ -147,14 +152,26 @@ bool CRadixSortTask<DataType>::InitResources(
 
     CheckLocalMemory(Device);
 	mNumberKeysRounded = Resize(mNumberKeys);
-    mHostData.mHostBuffers->m_hResultFromGPU.resize(mNumberKeysRounded);
+    auto& hostBuffers {mHostData.mHostBuffers};
+    hostBuffers.m_hResultFromGPU.resize(
+        mNumberKeysRounded
+    );
 
+    // Collect pointers to host memory
+    HostSpans<DataType> hostSpans {
+        {hostBuffers.m_hKeys.data(), hostBuffers.m_hKeys.size()},
+        {hostBuffers.m_hHistograms.data(), hostBuffers.m_hKeys.size()},
+        {hostBuffers.m_hGlobsum.data(), hostBuffers.m_hKeys.size()},
+        {hostBuffers.h_Permut.data(), hostBuffers.m_hKeys.size()},
+        {hostBuffers.m_hResultFromGPU.data(), hostBuffers.m_hKeys.size()},
+    };
     // Initialize actual GPU algorithms and memory
     mRadixSortGPU.initialize(
         Device,
         Context,
         mNumberKeys,
-        mHostData.mHostBuffers);
+        hostSpans
+    );
 
 	return true;
 }
@@ -222,17 +239,27 @@ void CRadixSortTask<DataType>::ComputeGPU(
 template <typename DataType>
 void CRadixSortTask<DataType>::ComputeCPU()
 {
-    mHostData.mHostBuffers->m_hKeys.resize(mNumberKeysRounded);
+    auto& hostBuffers {mHostData.mHostBuffers};
+    hostBuffers.m_hKeys.resize(mNumberKeysRounded);
 
+    CheapSpan<DataType> dataInput {
+        hostBuffers.m_hKeys.data(),
+        hostBuffers.m_hKeys.size(),
+    };
     // compute STL result
     {
+        CheapSpan<DataType> dataOutput {
+            mHostData.m_resultSTLCPU.data(),
+            mHostData.m_resultSTLCPU.size(),
+        };
         mHostData.m_resultSTLCPU.resize(mNumberKeysRounded);
         CTimer timer;
         timer.Start();
         for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
             SortDataSTL(
-                mHostData.mHostBuffers->m_hKeys,
-                mHostData.m_resultSTLCPU);
+                dataInput,
+                dataOutput
+            );
         }
         timer.Stop();
         mRuntimesCPU.timeSTL.avg =
@@ -242,13 +269,18 @@ void CRadixSortTask<DataType>::ComputeCPU()
 
     // compute CPU Radix Sort result
     {
+        CheapSpan<DataType> dataOutput {
+            mHostData.m_resultRadixSortCPU.data(),
+            mHostData.m_resultRadixSortCPU.size(),
+        };
         mHostData.m_resultRadixSortCPU.resize(mNumberKeysRounded);
         CTimer timer;
         timer.Start();
         for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
             SortDataRadix(
-                mHostData.mHostBuffers->m_hKeys,
-                mHostData.m_resultRadixSortCPU);
+                dataInput,
+                dataOutput
+            );
         }
         timer.Stop();
         mRuntimesCPU.timeRadix.avg =
@@ -274,7 +306,7 @@ bool CRadixSortTask<DataType>::ValidateResults()
     success = success && sortedCPU;
     const bool sortedGPU =
         std::memcmp(
-            mHostData.mHostBuffers->m_hResultFromGPU.data(),
+            mHostData.mHostBuffers.m_hResultFromGPU.data(),
             mHostData.m_resultSTLCPU.data(),
             sizeof(DataType) * mNumberKeys) == 0;
 
@@ -383,7 +415,8 @@ void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
             globalWorkOffset,
             &nbitems,
             &nblocitems,
-            0, NULL, &eve), "Could not execute 1st instance of scanHistogram kernel.");
+            0, NULL, &eve
+        ), "Could not execute 1st instance of scanHistogram kernel.");
 
         clFinish(CommandQueue);
         timer.Stop();
@@ -419,12 +452,15 @@ void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
                 0,
                 sizeof(cl_mem),
                 &mDeviceData->m_dMemoryMap["globsum"]),
-                "Could not set global sum parameter");
-            V_RETURN_CL(clSetKernelArg(scanHistogramKernel,
-                        2,
-                        sizeof(cl_mem),
-                        &mDeviceData->m_dMemoryMap["temp"]),
-                    "Could not set temporary parameter");
+                "Could not set global sum parameter"
+            );
+            V_RETURN_CL(
+                clSetKernelArg(scanHistogramKernel,
+                2,
+                sizeof(cl_mem),
+                &mDeviceData->m_dMemoryMap["temp"]),
+                "Could not set temporary parameter"
+            );
         }
 
         {
@@ -443,7 +479,8 @@ void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
                 &nbitems,
                 &nblocitems,
                 0, NULL, &eve),
-            "Could not execute 2nd instance of scanHistogram kernel.");
+                "Could not execute 2nd instance of scanHistogram kernel."
+            );
 
             clFinish(CommandQueue);
             timer.Stop();
@@ -481,8 +518,16 @@ void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
         // Set kernel arguments
         {
             cl_uint argIdx = 0U;
-            V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histograms argument");
-            V_RETURN_CL(clSetKernelArg(pasteHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["globsum"]), "Could not set globsum argument");
+            V_RETURN_CL(clSetKernelArg(pasteHistogramKernel,
+                        argIdx++,
+                        sizeof(cl_mem),
+                        &mDeviceData->m_dMemoryMap["histograms"]),
+                    "Could not set histograms argument");
+            V_RETURN_CL(clSetKernelArg(pasteHistogramKernel,
+                        argIdx++,
+                        sizeof(cl_mem),
+                        &mDeviceData->m_dMemoryMap["globsum"]),
+                    "Could not set globsum argument");
         }
 
         // Execute paste histogram kernel
@@ -495,7 +540,9 @@ void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
             globalWorkOffset,
             &nbitems,
             &nblocitems,
-            0, NULL, &eve), "Could not execute paste histograms kernel");
+            0, NULL, &eve),
+            "Could not execute paste histograms kernel"
+        );
 
         clFinish(CommandQueue);
         timer.Stop();
@@ -656,8 +703,7 @@ void RadixSortGPU<DataType>::padGPUData(
         size_t paddingOffset)
 {
     constexpr auto MaxValue = std::numeric_limits<DataType>::max();
-    // pad the vector with big values
-
+    // pads the vector with big values
     const auto pattern {MaxValue-1};
     const auto size_bytes = mNumberKeysRounded * sizeof(DataType) - paddingOffset;
 
@@ -673,7 +719,7 @@ void RadixSortGPU<DataType>::padGPUData(
 }
 
 template <typename DataType>
-uint32_t RadixSortGPU<DataType>::Resize(uint32_t nn)
+uint32_t RadixSortGPU<DataType>::Resize(uint32_t nn) const noexcept
 {
     // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
     constexpr auto NumItems
@@ -740,7 +786,7 @@ void RadixSortGPU<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
         mDeviceData->m_dMemoryMap["inputKeys"],
         CL_TRUE, 0,
         sizeof(DataType) * mNumberKeysRounded,
-        mHostData->m_hKeys.data(),
+        mHostSpans.m_hKeys.data,
         0, NULL, NULL),
 		"Could not initialize input keys device buffer");
 
@@ -748,7 +794,7 @@ void RadixSortGPU<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
         mDeviceData->m_dMemoryMap["inputPermutations"],
         CL_TRUE, 0,
         sizeof(uint32_t) * mNumberKeysRounded,
-        mHostData->h_Permut.data(),
+        mHostSpans.h_Permut.data,
         0, NULL, NULL),
 		"Could not initialize input permutation device buffer");
 }
@@ -760,7 +806,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
         mDeviceData->m_dMemoryMap["inputKeys"],
 		CL_TRUE, 0,
 		sizeof(DataType) * mNumberKeysRounded,
-        mHostData->m_hResultFromGPU.data(),
+        mHostSpans.m_hResultFromGPU.data,
 		0, NULL, NULL),
 		"Could not read result data");
 
@@ -768,7 +814,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
         mDeviceData->m_dMemoryMap["inputPermutations"],
 		CL_TRUE, 0,
 		sizeof(uint32_t)  * mNumberKeysRounded,
-        mHostData->h_Permut.data(),
+        mHostSpans.h_Permut.data,
 		0, NULL, NULL),
 		"Could not read result permutation");
 
@@ -776,7 +822,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
         mDeviceData->m_dMemoryMap["histograms"],
 		CL_TRUE, 0,
 		sizeof(uint32_t)  * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
-        mHostData->m_hHistograms.data(),
+        mHostSpans.m_hHistograms.data,
 		0, NULL, NULL),
 		"Could not read result histograms");
 
@@ -784,7 +830,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
         mDeviceData->m_dMemoryMap["globsum"],
 		CL_TRUE, 0,
 		sizeof(uint32_t)  * Parameters::_NUM_HISTOSPLIT,
-		mHostData->m_hGlobsum.data(),
+		mHostSpans.m_hGlobsum.data,
 		0, NULL, NULL),
 		"Could not read result global sum");
 }
@@ -797,11 +843,11 @@ void CRadixSortTask<DataType>::ExecuteTask(
 {
 	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
     if (mOptions.verbose) {
-        std::cout << "Start sorting " << mNumberKeys << " keys..." << std::endl;
+        std::cout << "Starting sorting " << mNumberKeys << " keys..." << std::endl;
     }
     mRadixSortGPU.calculate(CommandQueue);
     if (mOptions.verbose){
-        std::cout << "End sorting" << std::endl;
+        std::cout << "Finished sorting." << std::endl;
     }
 }
 
@@ -947,7 +993,7 @@ OperationStatus RadixSortGPU<DataType>::initialize(
     cl_device_id Device,
     cl_context Context,
     uint32_t nn,
-    std::shared_ptr<HostBuffers<DataType>> hostBuffers
+    const HostSpans<DataType>& hostSpans
 )
 {
     using S = OperationStatus;
@@ -955,7 +1001,7 @@ OperationStatus RadixSortGPU<DataType>::initialize(
     // handle host buffers and init context
     {
         mNumberKeysRounded = Resize(nn);
-        mHostData = hostBuffers;
+        mHostSpans = hostSpans;
         mDeviceData =
             std::make_shared<ComputeDeviceData<DataType>>(
                     Context,

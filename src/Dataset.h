@@ -15,19 +15,21 @@
 template <typename DataType>
 using Parameters = AlgorithmParameters<DataType>;
 
-template <typename _DataType>
+/// Default owning dataset template
+/// @tparam T Data type
+template <typename T>
 struct Dataset
 {
-	using DataType = _DataType;
+	using DataType = T;
 
 	virtual const char* name() const {return "UNKNOWN";}
-
-	std::vector<DataType> dataset;
 
     Dataset(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS) : dataset(size)
 	{}
 
     virtual ~Dataset() = default;
+
+	std::vector<DataType> dataset;
 };
 
 
