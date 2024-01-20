@@ -64,7 +64,7 @@ cl_program CLUtil::BuildCLProgramFromMemory(
 	}
 
 	// program created, now build it:
-	clError = clBuildProgram(prog, 1, &Device, options.c_str(), NULL, NULL);
+	clError = clBuildProgram(prog, 1, &Device, options.c_str(), nullptr, nullptr);
 	PrintBuildLog(prog, Device);
 	if(CL_SUCCESS != clError)
 	{
@@ -83,7 +83,7 @@ void CLUtil::PrintBuildLog(
 {
     {
         cl_build_status buildStatus;
-        clGetProgramBuildInfo(Program, Device, CL_PROGRAM_BUILD_STATUS, sizeof(cl_build_status), &buildStatus, NULL);
+        clGetProgramBuildInfo(Program, Device, CL_PROGRAM_BUILD_STATUS, sizeof(cl_build_status), &buildStatus, nullptr);
         if(buildStatus != CL_SUCCESS) {
             std::cout<<"OpenCL kernel build failed!\n";
         }
