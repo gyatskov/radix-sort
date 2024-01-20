@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.12.0)
+cmake_minimum_required (VERSION 3.17.0)
 project (radixsort
     VERSION 0.1
     DESCRIPTION "OpenCL 1.2 optimized radix sort implementation"
@@ -16,9 +16,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-include(CTest)
-include(FetchContent)
+include(cmake/CPM.cmake)
 
 add_subdirectory(src)
 add_subdirectory(Common ${CMAKE_BINARY_DIR}/Common)

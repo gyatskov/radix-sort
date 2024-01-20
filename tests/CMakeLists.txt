@@ -1,10 +1,6 @@
 # Testing library
-FetchContent_Declare(
-  catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG v2.9.1)
-FetchContent_MakeAvailable(catch2)
-# Adds Catch2::Catch2
+include(CTest)
+CPMAddPackage("gh:catchorg/Catch2@3.4.0")
 
 # Tests need to be added as executables first
 add_executable(tests
@@ -21,13 +17,12 @@ PRIVATE
 target_link_libraries(tests
 PRIVATE
     radixsortcl
-    Catch2::Catch2
+    Catch2::Catch2WithMain
 )
 
-# If you register a test, then ctest and make test will run it. You can also run
-# examples and check the output, as well.
+# Register tests for invocation via ctest
 add_test(
     NAME tests
     COMMAND tests
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
+    WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}/bin"
 ) # Command can be a target

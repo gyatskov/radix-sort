@@ -27,6 +27,10 @@ struct ComputeDeviceData;
 
 /// TODO: Avoid clFinish calls
 ///       For profiling use clGetEventProfilingInfo api
+///       Provide more granular API:
+///        +writeData()
+///        +sort()
+///        +readData()
 /// TODO: Replace clUtil with cl.hpp API
 template <typename DataType>
 class RadixSortGPU
@@ -46,7 +50,9 @@ public:
     /// 2. Sorts data
     /// 3. Copies device data back to host
     /// @param CommandQueue OpenCL Command Queue
-	OperationStatus calculate(cl_command_queue CommandQueue);
+	OperationStatus calculate(
+        cl_command_queue CommandQueue
+    );
 
     /// Frees device buffers
     OperationStatus cleanup();
@@ -64,15 +70,18 @@ public:
     /// @param paddingOffset Padding offset in bytes
 	void padGPUData(
         cl_command_queue CommandQueue,
-        size_t paddingOffset);
+        size_t paddingOffset
+    );
 
     /// Returns runtimes of individual algorithm steps
     /// @return runtimes of individual algorithm steps
     RuntimesGPU getRuntimes() const;
 
     /// TODO: Add methods to inspect intermediate buffers
-    //        between runs.
-    //        E.g. providing each step a public API
+    ///       between runs:
+    ///        +histogram
+    ///        +scanHistogram
+    ///        +reorder
 
 private:
     using Parameters = AlgorithmParameters<DataType>;
@@ -90,7 +99,9 @@ private:
 	void CopyDataToDevice(cl_command_queue CommandQueue);
 	void CopyDataFromDevice(cl_command_queue CommandQueue);
 
+    /// Device program, kernels and buffers
     std::shared_ptr<ComputeDeviceData<DataType>> mDeviceData;
+    /// Pointers to host memory buffers
     HostSpans<DataType> mHostSpans;
 
 	// Runtime statistics GPU

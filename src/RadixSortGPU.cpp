@@ -397,7 +397,7 @@ OperationStatus RadixSortGPU<DataType>::calculate(
     CopyDataToDevice(CommandQueue);
     clFinish(CommandQueue);  // wait end of read
 
-    for (uint32_t pass = 0; pass < Parameters::_NUM_PASSES; pass++){
+    for (uint32_t pass = 0U; pass < Parameters::_NUM_PASSES; pass++){
         if (mOutStream) {
             *mOutStream << "Pass " << pass << ":" << std::endl;
             *mOutStream << "Building histograms" << std::endl;

@@ -119,14 +119,14 @@ bool CRadixSortTask<DataType>::InitResources(
         {hostBuffers.m_hResultFromGPU.data(), hostBuffers.m_hKeys.size()},
     };
     // Initialize actual GPU algorithms and memory
-    mRadixSortGPU.initialize(
+    const auto status = mRadixSortGPU.initialize(
         Device,
         Context,
         mNumberKeys,
         hostSpans
     );
 
-	return true;
+	return status == OperationStatus::OK;
 }
 
 template <typename DataType>
@@ -313,7 +313,7 @@ void CRadixSortTask<DataType>::ExecuteTask(
 {
 	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
     if (mOptions.verbose) {
-        std::cout << "Starting sorting " << mNumberKeys << " keys..." << std::endl;
+        std::cout << "Sorting " << mNumberKeys << " keys..." << std::endl;
     }
     mRadixSortGPU.calculate(CommandQueue);
     if (mOptions.verbose){
