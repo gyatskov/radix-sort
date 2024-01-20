@@ -47,6 +47,16 @@ PRIVATE
     ${compile_options}
 )
 
-# TODO: Check if this makes sense at all
-install(TARGETS radixsortcl RUNTIME DESTINATION bin)
-install(FILES RadixSort.cl DESTINATION bin)
+install(
+TARGETS
+    radixsortcl
+RUNTIME
+DESTINATION
+    bin
+)
+install(
+FILES
+    kernels/RadixSort.cl
+DESTINATION
+    bin
+)
