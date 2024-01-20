@@ -4,8 +4,6 @@
 #include <iostream>
 #include <fstream>
 
-using namespace std;
-
 ///////////////////////////////////////////////////////////////////////////////
 // CLUtil
 
@@ -18,21 +16,24 @@ size_t CLUtil::GetGlobalWorkSize(size_t DataElemCount, size_t LocalWorkSize)
 		return DataElemCount + LocalWorkSize - r;
 }
 
-bool CLUtil::LoadProgramSourceToMemory(const std::string& Path, std::string& SourceCode)
+bool CLUtil::LoadProgramSourceToMemory(
+        const std::string& Path,
+        std::string& SourceCode
+        )
 {
-	ifstream sourceFile;
+    std::ifstream sourceFile;
 
 	sourceFile.open(Path.c_str());
 	if (!sourceFile.is_open())
 	{
-		cerr << "Failed to open file '" << Path << "'." << endl;
+        std::cerr << "Failed to open file '" << Path << "'." << std::endl;
 		return false;
 	}
 
 	// read the entire file into a string
-	sourceFile.seekg(0, ios::end);
-	ifstream::pos_type fileSize = sourceFile.tellg();
-	sourceFile.seekg(0, ios::beg);
+	sourceFile.seekg(0, std::ios::end);
+    std::ifstream::pos_type fileSize = sourceFile.tellg();
+	sourceFile.seekg(0, std::ios::beg);
 
 	SourceCode.resize((size_t)fileSize);
 	sourceFile.read(&SourceCode[0], fileSize);
@@ -40,12 +41,17 @@ bool CLUtil::LoadProgramSourceToMemory(const std::string& Path, std::string& Sou
 	return true;
 }
 
-cl_program CLUtil::BuildCLProgramFromMemory(cl_device_id Device, cl_context Context, const std::string& SourceCode, const std::string& options)
+cl_program CLUtil::BuildCLProgramFromMemory(
+        cl_device_id Device,
+        cl_context Context,
+        const std::string& SourceCode,
+        const std::string& options
+        )
 {
 	cl_program prog;
 
 	// if this macro is defined, we also insert it to all OpenCL kernels
-	const string srcSolution = string("#define GPUC_SOLUTION\n\n") + SourceCode;
+	const auto srcSolution = std::string("#define GPUC_SOLUTION\n\n") + SourceCode;
 	const char* src = srcSolution.c_str();
 	size_t length = srcSolution.size();
 
@@ -53,7 +59,7 @@ cl_program CLUtil::BuildCLProgramFromMemory(cl_device_id Device, cl_context Cont
 	prog = clCreateProgramWithSource(Context, 1, &src, &length, &clError);
 	if(CL_SUCCESS != clError)
 	{
-		cerr<<"Failed to create CL program from source.";
+        std::cerr<<"Failed to create CL program from source.\n";
 		return nullptr;
 	}
 
@@ -62,7 +68,7 @@ cl_program CLUtil::BuildCLProgramFromMemory(cl_device_id Device, cl_context Cont
 	PrintBuildLog(prog, Device);
 	if(CL_SUCCESS != clError)
 	{
-		cerr<<"Failed to build CL program.";
+        std::cerr<<"Failed to build CL program.\n";
 		SAFE_RELEASE_PROGRAM(prog);
 		return nullptr;
 	}
@@ -70,13 +76,16 @@ cl_program CLUtil::BuildCLProgramFromMemory(cl_device_id Device, cl_context Cont
 	return prog;
 }
 
-void CLUtil::PrintBuildLog(cl_program Program, cl_device_id Device)
+void CLUtil::PrintBuildLog(
+        cl_program Program,
+        cl_device_id Device
+)
 {
     {
         cl_build_status buildStatus;
         clGetProgramBuildInfo(Program, Device, CL_PROGRAM_BUILD_STATUS, sizeof(cl_build_status), &buildStatus, NULL);
         if(buildStatus != CL_SUCCESS) {
-            cout<<"OpenCL kernel build failed!"<<endl;
+            std::cout<<"OpenCL kernel build failed!\n";
         }
     }
 
@@ -85,13 +94,13 @@ void CLUtil::PrintBuildLog(cl_program Program, cl_device_id Device)
 	clGetProgramBuildInfo(Program, Device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
 
     // then, allocate actual memory
-	string buildLog(logSize, ' ');
+    std::string buildLog(logSize, ' ');
 
 	clGetProgramBuildInfo(Program, Device, CL_PROGRAM_BUILD_LOG, logSize, &buildLog[0], nullptr);
 	buildLog[logSize] = '\0';
 
-	cout << "Build log:" <<endl;
-	cout << '\'' << buildLog << '\'' << endl;
+    std::cout << "Build log:\n";
+    std::cout << '\'' << buildLog << "\'\n";
 }
 
 double CLUtil::ProfileKernel(
@@ -137,8 +146,8 @@ double CLUtil::ProfileKernel(
 
 	if(clErr != CL_SUCCESS)
 	{
-		const string errorString {GetCLErrorString(clErr)};
-		cerr<<"Kernel execution failure: "<<errorString<<endl;
+		const std::string errorString {GetCLErrorString(clErr)};
+        std::cerr<<"Kernel execution failure: "<<errorString<<'\n';
 	}
 
 	return timer.GetElapsedMilliseconds() / double(NIterations);
