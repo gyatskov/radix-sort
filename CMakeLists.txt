@@ -20,5 +20,6 @@ include(cmake/CPM.cmake)
 
 add_subdirectory(src)
 add_subdirectory(Common ${CMAKE_BINARY_DIR}/Common)
+add_subdirectory(examples)
 add_subdirectory(tests)
 
