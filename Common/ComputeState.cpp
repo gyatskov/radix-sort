@@ -72,7 +72,7 @@ bool ComputeState::init() {
 
     {
         cl_int clError;
-        m_CLCommandQueue = clCreateCommandQueue(m_CLContext, m_CLDevice, 0, &clError);
+        m_CLCommandQueue = clCreateCommandQueue(m_CLContext(), m_CLDevice, 0, &clError);
         V_RETURN_FALSE_CL(clError, "Failed to create the command queue in the context");
     }
 
@@ -88,9 +88,9 @@ void ComputeState::release()
 		m_CLCommandQueue = nullptr;
 	}
 
-	if (m_CLContext != nullptr)
+	if (m_CLContext() != nullptr)
 	{
-		clReleaseContext(m_CLContext);
+		clReleaseContext(m_CLContext());
 		m_CLContext = nullptr;
 	}
 }

@@ -2,6 +2,7 @@
 
 #include "../Common/CLUtil.h"
 #include "../Common/CTimer.h"
+#include <array>
 
 ///////////////////////////////////////////////////////////////////////////////
 // CTestBase
@@ -28,14 +29,14 @@ void CTestBase::ReleaseCLContext()
 
 bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize)
 {
-	if(m_computeState.m_CLContext == nullptr)
+	if(m_computeState.m_CLContext() == nullptr)
 	{
-		std::cerr<<"Error: RunComputeTask() cannot execute because the OpenCL context is null."<<std::endl;
+		std::cerr<<"Error: RunComputeTask() cannot execute because the OpenCL context is null.\n";
 	}
 
 	if(!Task.InitResources(
         m_computeState.m_CLDevice,
-        m_computeState.m_CLContext)
+        m_computeState.m_CLContext())
     )
 	{
 		std::cerr << "Error during resource allocation. Aborting execution." <<std::endl;
@@ -53,7 +54,7 @@ bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& L
 
 	// Runing the kernel N times. This make the measurement of the execution time more accurate.
 	Task.ComputeGPU(
-            m_computeState.m_CLContext,
+            m_computeState.m_CLContext(),
             m_computeState.m_CLCommandQueue,
             LocalWorkSize);
     std::cout << "DONE" << std::endl;
