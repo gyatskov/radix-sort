@@ -1,5 +1,7 @@
 #include "ComputeState.h"
+#include <iostream>
 #include <algorithm>
+#include <CL/Utils/Error.hpp>
 
 cl::Platform ComputeState::platform() {
     return cl::Platform(device().getInfo<CL_DEVICE_PLATFORM>());
@@ -62,7 +64,8 @@ bool ComputeState::init() {
             userData,
             &clError
         );
-        V_RETURN_FALSE_CL(clError, "Failed to create OpenCL context.");
+        std::cerr<<cl::util::Error(clError, "Failed to create OpenCL context.").what()<<"\n";
+        return false;
     }
 
 	// Finally, create a command queue. All the asynchronous commands to the device will be issued
@@ -73,7 +76,8 @@ bool ComputeState::init() {
         cl_int clError{};
         const auto properties = 0;
         m_CLCommandQueue = cl::CommandQueue(m_CLContext, device(), properties, &clError);
-        V_RETURN_FALSE_CL(clError, "Failed to create the command queue in the context");
+        std::cerr<<cl::util::Error(clError, "Failed to create the command queue in the context").what()<<"\n";
+        return false;
     }
 
 	return true;

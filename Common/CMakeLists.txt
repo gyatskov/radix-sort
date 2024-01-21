@@ -16,18 +16,19 @@ add_library(GPUCommon
 target_link_libraries(GPUCommon
 PUBLIC
     OpenCL::OpenCL
+    OpenCL::Utils
+    OpenCL::UtilsCpp
 )
 
 
 string(
     APPEND compile_options
-    "$<IF:$<CXX_COMPILER_ID:MSVC>,"
-        "/W4;$<$<CONFIG:RELEASE>:/O2>,"
-        "-Wall;-Wextra;-Werror;-pedantic;"
-    ">"
+)
+set_source_files_properties("${CommonSources}"
+    PROPERTIES
+        COMPILE_FLAGS
+            "$<IF:$<CXX_COMPILER_ID:MSVC>,\
+            /W4;$<$<CONFIG:RELEASE>:/O2>,\
+            -Wall;-Wextra;-Werror;-pedantic;>"
 )
 
-target_compile_options(GPUCommon
-PRIVATE
-    ${compile_options}
-)

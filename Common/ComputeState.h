@@ -2,8 +2,6 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 120
 #include <CL/opencl.hpp>
 #include <vector>
-// TODO: Get rid of the following:
-#include "CLUtil.h"
 
 struct ComputeState
 {
