@@ -20,8 +20,6 @@ public:
 
 	virtual bool InitCLContext();
 
-	virtual void ReleaseCLContext();
-
 	virtual bool RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize);
 
 protected:

@@ -14,17 +14,11 @@ CTestBase::CTestBase(Arguments arguments /*= Arguments()*/)
 
 CTestBase::~CTestBase()
 {
-	ReleaseCLContext();
 }
 
 bool CTestBase::InitCLContext()
 {
     return m_computeState.init();
-}
-
-void CTestBase::ReleaseCLContext()
-{
-    m_computeState.release();
 }
 
 bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize)
@@ -35,7 +29,7 @@ bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& L
 	}
 
 	if(!Task.InitResources(
-        m_computeState.m_CLDevice,
+        m_computeState.device()(),
         m_computeState.m_CLContext())
     )
 	{
@@ -55,7 +49,7 @@ bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& L
 	// Runing the kernel N times. This make the measurement of the execution time more accurate.
 	Task.ComputeGPU(
             m_computeState.m_CLContext(),
-            m_computeState.m_CLCommandQueue,
+            m_computeState.m_CLCommandQueue(),
             LocalWorkSize);
     std::cout << "DONE" << std::endl;
 

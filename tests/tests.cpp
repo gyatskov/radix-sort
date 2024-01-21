@@ -94,6 +94,4 @@ TEST_CASE( "Main test", "[main]" )
 	REQUIRE(radixSortRunner.InitCLContext());
 
 	REQUIRE(radixSortRunner.DoCompute());
-
-	radixSortRunner.ReleaseCLContext();
 }
