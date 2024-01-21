@@ -1,16 +1,16 @@
 #include "ComputeDeviceData.h"
 
-#include "../Common/CLUtil.h"
+#include <CL/Utils/Error.hpp>
 
 #include <cstdint>
+#include <iostream>
 #include <string>
 
 template <typename DataType>
 ComputeDeviceData<DataType>::ComputeDeviceData(
-    cl_context Context,
+    cl::Context Context,
     size_t buffer_size
 )
-: m_Program(nullptr)
 {
     kernelNames.emplace_back("histogram");
     kernelNames.emplace_back("scanhistograms");
@@ -21,18 +21,22 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
     const auto createBufferAndCheck = [Context](
             auto& target,
             auto sizeInBytes) {
-        cl_int clError;
+        cl_int clError{CL_SUCCESS};
 
-        TODO("Consider using CL_MEM_USE_HOST_PTR for user-provided memory")
-        target = clCreateBuffer(
+#pragma message("Consider using CL_MEM_USE_HOST_PTR for user-provided memory")
+        constexpr auto hostPtr = nullptr;
+        target = cl::Buffer(
             Context,
             CL_MEM_READ_WRITE,
             sizeInBytes,
-            nullptr,
+            hostPtr,
             &clError
         );
-        constexpr auto ERROR_STRING = "Error allocating device array";
-        V_RETURN_CL(clError, ERROR_STRING);
+        if(clError) {
+            constexpr auto ERROR_STRING = "Error allocating device array";
+            std::cerr<<cl::util::Error(clError, ERROR_STRING).what()<<"\n";
+        }
+        return clError;
     };
 
     createBufferAndCheck(
@@ -71,20 +75,6 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
         m_dMemoryMap["temp"],
         sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT
     );
-}
-
-template <typename DataType>
-ComputeDeviceData<DataType>::~ComputeDeviceData()
-{
-    for (auto& memory : m_dMemoryMap) {
-        SAFE_RELEASE_MEMOBJECT(memory.second);
-    }
-
-    for (auto& kernel : m_kernelMap) {
-        SAFE_RELEASE_KERNEL(kernel.second);
-    }
-
-    SAFE_RELEASE_PROGRAM(m_Program);
 }
 
 // Specialize ComputeDeviceData for exactly these four types.

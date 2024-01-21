@@ -6,8 +6,11 @@
 #include "Dataset.h"
 #include "RadixSortOptions.h"
 #include "CRadixSortTask.h"
+#include <exception>
 
 #include "../Common/Util.hpp"
+// TODO: Move
+#include <CL/Utils/Error.hpp>
 
 template <typename DataType>
 auto DatasetCreator(size_t num_elements)
@@ -91,7 +94,22 @@ TEST_CASE( "Main test", "[main]" )
     Arguments arguments(argc, argv);
 	CRunner radixSortRunner(arguments);
 
-	REQUIRE(radixSortRunner.InitCLContext());
-
-	REQUIRE(radixSortRunner.DoCompute());
+    try {
+        const auto initialized = radixSortRunner.InitCLContext();
+        REQUIRE(initialized);
+        const auto status = radixSortRunner.DoCompute();
+        REQUIRE(status == true);
+    } catch(const cl::Error& exc) {
+        INFO("CL Error: " << std::string(exc.what()));
+        INFO(exc.err() << "(" << std::hex << exc.err() << ")");
+        REQUIRE(false);
+    } catch(const cl::util::Error& exc) {
+        const auto str = std::string(exc.what());
+        INFO("CL Util Error: " << str);
+        INFO(exc.err() << "(" << std::hex << exc.err() << ")");
+        REQUIRE(false);
+    } catch(const std::exception& exc) {
+        INFO("Unhandled: " << std::string(exc.what()));
+        REQUIRE(false);
+    }
 }

@@ -11,7 +11,7 @@
 #include <map>
 #include <memory>
 #include <cstdint>
-
+#include <array>
 
 /// Runtime statistics of CPU implementation algorithms
 struct RuntimesCPU {
@@ -33,15 +33,15 @@ public:
         std::shared_ptr<Dataset<DataType>> dataset
     );
 
-	virtual ~CRadixSortTask();
+	virtual ~CRadixSortTask() = default;
 
     ///////////////////////////////////////////////////////////////
 	// IComputeTask realization
-	bool InitResources(cl_device_id Device, cl_context Context) override;
+	bool InitResources(cl::Device Device, cl::Context Context) override;
 	void ReleaseResources() override;
 	void ComputeGPU(
-        cl_context Context,
-        cl_command_queue CommandQueue,
+        cl::Context Context,
+        cl::CommandQueue CommandQueue,
         const std::array<size_t,3>& LocalWorkSize
     ) override;
 
@@ -55,17 +55,20 @@ protected:
     using Parameters = AlgorithmParameters<DataType>;
 
 	// Helper methods
-	void CheckLocalMemory(cl_device_id Device);
+	void CheckLocalMemory(cl::Device Device);
 	uint32_t Resize(uint32_t nn);
 
     /// Performs reorder step
-	void Reorder(cl_command_queue CommandQueue, int pass);
+	void Reorder(
+        cl::CommandQueue CommandQueue,
+        int pass
+    );
     ///////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////
 
 	void ExecuteTask(
-        cl_context Context,
-        cl_command_queue CommandQueue,
+        cl::Context Context,
+        cl::CommandQueue CommandQueue,
         const std::array<size_t,3>& LocalWorkSize
     );
 
@@ -94,7 +97,7 @@ protected:
 /** Measures task performance **/
 template<class Callable>
 void TestPerformance(
-    cl_command_queue CommandQueue,
+    cl::CommandQueue CommandQueue,
     Callable&& fun,
     const RadixSortOptions& options,
     const size_t numIterations,

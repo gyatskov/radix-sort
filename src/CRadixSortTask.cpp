@@ -2,7 +2,7 @@
 #include "CRadixSortCPU.h"
 #include "RadixSortOptions.h"
 
-#include "../Common/CLUtil.h"
+#include <CL/Utils/Error.hpp>
 #include "../Common/CTimer.h"
 #include "../Common/CLTypeInformation.h"
 
@@ -80,29 +80,12 @@ CRadixSortTask<DataType>::CRadixSortTask(
 {}
 
 template <typename DataType>
-CRadixSortTask<DataType>::~CRadixSortTask()
-{
-	ReleaseResources();
-}
-
-template <typename DataType>
 bool CRadixSortTask<DataType>::InitResources(
-    cl_device_id Device,
-    cl_context Context)
+    cl::Device Device,
+    cl::Context Context
+    )
 {
     // CPU resources
-
-    //for (size_t i = 0; i < Parameters::_NUM_MAX_INPUT_ELEMS; i++) {
-    //	//m_hInput[i] = m_N - i;			// Use this for debugging
-    //	// Mersienne twister
-    //	m_hKeys[i] = dis(generator);
-    //	//m_hInput[i] = rand() & 15;
-    //}
-
-    //std::copy(m_hInput.begin(),
-    //	m_hInput.begin() + 100,
-    //	std::ostream_iterator<DataType>(std::cout, "\n"));
-
     CheckLocalMemory(Device);
 	mNumberKeysRounded = Resize(mNumberKeys);
     auto& hostBuffers {mHostData.mHostBuffers};
@@ -126,6 +109,11 @@ bool CRadixSortTask<DataType>::InitResources(
         hostSpans
     );
 
+    // TODO: Use magic_enum
+    if(status != OperationStatus::OK) {
+        std::cerr << "Failed to initialize Radix Sort on GPU: " << static_cast<std::underlying_type_t<decltype(status)>>(status) << "\n";
+    }
+
 	return status == OperationStatus::OK;
 }
 
@@ -133,13 +121,13 @@ template <typename DataType>
 void CRadixSortTask<DataType>::ReleaseResources()
 {
 	// free device resources
-    // implicitly done by destructor of ComputeDeviceData
+    mRadixSortGPU.release();
 }
 
 template <typename DataType>
 void CRadixSortTask<DataType>::ComputeGPU(
-    cl_context Context,
-    cl_command_queue CommandQueue,
+    cl::Context Context,
+    cl::CommandQueue CommandQueue,
     const std::array<size_t,3>& LocalWorkSize)
 {
 	if (const auto paddingRequired = mNumberKeys != mNumberKeysRounded) {
@@ -152,7 +140,7 @@ void CRadixSortTask<DataType>::ComputeGPU(
     // TODO: Extract
     {
         //finish all before we start measuring the time
-        V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
+        CommandQueue.finish();
         if (mOptions.perf_to_stdout) {
             const auto& timesCPU {mRuntimesCPU};
             std::cout << " radixsort cpu avg time: "
@@ -272,11 +260,10 @@ bool CRadixSortTask<DataType>::ValidateResults()
 }
 
 template <typename DataType>
-void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device)
+void CRadixSortTask<DataType>::CheckLocalMemory(cl::Device Device)
 {
-    // check that the local mem is sufficient (suggestion of Jose Luis Cerc\F3s Pita)
     cl_ulong localMem{0};
-	clGetDeviceInfo(Device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(localMem), &localMem, NULL);
+    localMem = Device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>();
     if (mOptions.verbose) {
         std::cout << "Cache size   = " << localMem << " Bytes." << std::endl;
 		std::cout << "Needed cache = " << sizeof(cl_uint) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP << " Bytes." << std::endl;
@@ -308,15 +295,17 @@ uint32_t CRadixSortTask<DataType>::Resize(uint32_t nn)
 
 template <typename DataType>
 void CRadixSortTask<DataType>::ExecuteTask(
-        cl_context ,
-        cl_command_queue CommandQueue,
-        const std::array<size_t,3>& )
+        cl::Context,
+        cl::CommandQueue CommandQueue,
+        const std::array<size_t,3>&
+    )
 {
 	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
     if (mOptions.verbose) {
         std::cout << "Sorting " << mNumberKeys << " keys..." << std::endl;
     }
-    mRadixSortGPU.calculate(CommandQueue);
+    const auto status = mRadixSortGPU.calculate(CommandQueue);
+    assert(status == OperationStatus::OK);
     if (mOptions.verbose){
         std::cout << "Finished sorting." << std::endl;
     }
@@ -363,7 +352,7 @@ void writePerformance(
 
 template<class Callable>
 void TestPerformance(
-        cl_command_queue CommandQueue,
+        cl::CommandQueue CommandQueue,
         Callable&& fun,
         const RadixSortOptions& options,
         const size_t numIterations,
@@ -382,10 +371,10 @@ void TestPerformance(
     }
 
     //wait until the command queue is empty again
-    V_RETURN_CL(clFinish(CommandQueue), "Error finishing the queue!");
+    CommandQueue.finish();
 
     timer.Stop();
-	double averageTimeTotal_ms = timer.GetElapsedMilliseconds() / double(numIterations);
+	const double averageTimeTotal_ms = timer.GetElapsedMilliseconds() / double(numIterations);
     if (options.perf_to_stdout) {
         const auto& t{lastMeasurements.first};
 

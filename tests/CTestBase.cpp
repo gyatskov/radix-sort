@@ -1,18 +1,14 @@
 #include "CTestBase.h"
 
-#include "../Common/CLUtil.h"
 #include "../Common/CTimer.h"
 #include <array>
+#include <iostream>
 
 ///////////////////////////////////////////////////////////////////////////////
 // CTestBase
 
 CTestBase::CTestBase(Arguments arguments /*= Arguments()*/)
-    : m_arguments(arguments)
-{
-}
-
-CTestBase::~CTestBase()
+    : m_arguments(arguments), m_computeState{}
 {
 }
 
@@ -26,11 +22,13 @@ bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& L
 	if(m_computeState.m_CLContext() == nullptr)
 	{
 		std::cerr<<"Error: RunComputeTask() cannot execute because the OpenCL context is null.\n";
+        return false;
 	}
 
 	if(!Task.InitResources(
-        m_computeState.device()(),
-        m_computeState.m_CLContext())
+            m_computeState.device(),
+            m_computeState.m_CLContext
+        )
     )
 	{
 		std::cerr << "Error during resource allocation. Aborting execution." <<std::endl;
@@ -48,20 +46,19 @@ bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& L
 
 	// Runing the kernel N times. This make the measurement of the execution time more accurate.
 	Task.ComputeGPU(
-            m_computeState.m_CLContext(),
-            m_computeState.m_CLCommandQueue(),
-            LocalWorkSize);
+            m_computeState.m_CLContext,
+            m_computeState.m_CLCommandQueue,
+            LocalWorkSize
+    );
     std::cout << "DONE" << std::endl;
 
 	// Validating results.
-	if (Task.ValidateResults())
+    std::string result = "GOLD TEST PASSED!\n";
+	if (!Task.ValidateResults())
 	{
-        std::cout << "GOLD TEST PASSED!" << std::endl;
+        result = "INVALID RESULTS!\n";
 	}
-	else
-	{
-        std::cout << "INVALID RESULTS!" << std::endl;
-	}
+    std::cout << result;
 
 	// Cleaning up.
 	Task.ReleaseResources();

@@ -24,7 +24,7 @@ Linux:
 git clone github.com/gyatskov/radix-sort
 cd radix-sort
 mkdir build
-cmake -DCMAKE_INSTALL_PREFIX="build/" -H. -B build
+cmake -DCMAKE_INSTALL_PREFIX="bin/" -H. -B build
 cmake --build build
 cmake --build build --target install
 ```
@@ -34,16 +34,19 @@ Windows (PowerShell):
 git clone github.com/gyatskov/radix-sort
 cd radix-sort
 mkdir build
-cmake -DCMAKE_INSTALL_PREFIX="$(Get-Location)/build" -B build
+cmake -DCMAKE_INSTALL_PREFIX="$(Get-Location)/bin" -H. -B build
 cmake --build build
 cmake --build build --target install
 ```
 
-Tests will be installed to `build/bin`
+Tests will be installed to `build/tests`.
 
-# Running tests #
+Libraries (static libradixsortcl as well as dynamic libOpenCL) will be installed to `bin`.
+
+# Unit Tests #
+Run
 ```
-(cd build/tests && ctest)
+ctest --test-dir build/tests --output-on-failure
 ```
 
 # Documentation #

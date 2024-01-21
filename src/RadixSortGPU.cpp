@@ -2,16 +2,18 @@
 
 #include "ComputeDeviceData.h"
 
-#include "../Common/CLUtil.h"
 #include "../Common/CTimer.h"
 #include "../Common/CLTypeInformation.h"
+#include "../Common/Util.hpp"
+#include <CL/Utils/Utils.hpp>
 
 #include <sstream>
+#include <fstream>
 #include <cassert>
 #include <cmath>
 
 template<typename DataType>
-void RadixSortGPU<DataType>::Histogram(cl_command_queue CommandQueue, int pass)
+void RadixSortGPU<DataType>::Histogram(cl::CommandQueue CommandQueue, int pass)
 {
     const size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
     const size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
@@ -19,63 +21,58 @@ void RadixSortGPU<DataType>::Histogram(cl_command_queue CommandQueue, int pass)
 	assert(mNumberKeysRounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
 
-	const auto histogramKernelHandle = mDeviceData->m_kernelMap["histogram"];
+	auto histogramKernelHandle = mDeviceData->m_kernelMap["histogram"];
 
 	// Set kernel arguments
 	{
+        const auto localCacheSize = sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP;
         cl_uint argIdx = 0U;
-		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["inputKeys"]), "Could not set input elements argument");
-		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set input histograms");
-		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(pass), &pass), "Could not set pass argument");
-		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP, NULL), "Could not set local cache");
-		V_RETURN_CL(clSetKernelArg(histogramKernelHandle, argIdx++, sizeof(int), &mNumberKeysRounded), "Could not set key count");
+        histogramKernelHandle.setArg(argIdx++, mDeviceData->m_dMemoryMap["inputKeys"]);
+        histogramKernelHandle.setArg(argIdx++, mDeviceData->m_dMemoryMap["histograms"]);
+        histogramKernelHandle.setArg(argIdx++, pass);
+        histogramKernelHandle.setArg(argIdx++, cl::Local(localCacheSize));
+        histogramKernelHandle.setArg(argIdx++, mNumberKeysRounded);
 	}
 
-    cl_event eve;
-
+    cl::Event event;
     CTimer timer;
     timer.Start();
+    const cl::NDRange globalWorkOffset = cl::NullRange;
+    const cl::NDRange globalWork{nbitems};
+    const cl::NDRange localWork{nblocitems};
+    const auto eventWaitList = nullptr;
 	// Execute kernel
-	V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
-		histogramKernelHandle,
-        1, NULL,
-        &nbitems,
-        &nblocitems,
-        0, NULL, &eve),
-		"Could not execute histogram kernel");
-
-    clFinish(CommandQueue);
+    const auto err = CommandQueue.enqueueNDRangeKernel(
+            histogramKernelHandle,
+            globalWorkOffset,
+            globalWork,
+            localWork,
+            eventWaitList,
+            &event
+    );
+    assert(err == CL_SUCCESS);
+    CommandQueue.finish();
     timer.Stop();
     mRuntimesGPU.timeHisto.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-    cl_ulong debut, fin;
-    cl_int err{-1};
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_QUEUED,
-        sizeof(cl_ulong),
-        (void*)&debut,
-        NULL);
-    //std::cout << err<<" , "<<CL_PROFILING_INFO_NOT_AVAILABLE<<std::endl;
-    assert(err == CL_SUCCESS);
+    {
+        cl_int err{CL_SUCCESS};
+        const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
+        //std::cout << err<<" , "<<CL_PROFILING_INFO_NOT_AVAILABLE<<std::endl;
+        assert(err == CL_SUCCESS);
 
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_END,
-        sizeof(cl_ulong),
-        (void*)&fin,
-        NULL);
-    assert(err == CL_SUCCESS);
+        const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
+        assert(err == CL_SUCCESS);
 
-    mRuntimesGPU.timeHisto += (float)(fin - debut) / 1e9f;
+        mRuntimesGPU.timeHisto += (float)(fin - debut) / 1e9f;
+    }
 #endif
 }
 
 template <typename DataType>
-void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
+void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
 {
-    const cl_uint workDimension = 1;
-    size_t* globalWorkOffset = nullptr;
-
     {
         // numbers of processors for the local scan
         // = half the size of the local histograms
@@ -90,69 +87,55 @@ void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
         // scan locally the histogram (the histogram is split into several
         // parts that fit into the local memory)
 
-        const auto scanHistogramKernel  = mDeviceData->m_kernelMap["scanhistograms"];
+        auto scanHistogramKernel  = mDeviceData->m_kernelMap["scanhistograms"];
         // Set kernel arguments
         {
             cl_uint argIdx = 0U;
-            V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histogram argument");
-            V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(uint32_t) * maxmemcache, NULL), "Could not set histogram cache size"); // mem cache
-            V_RETURN_CL(clSetKernelArg(scanHistogramKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["globsum"]), "Could not set global histogram argument");
+
+            scanHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["histograms"]);
+            scanHistogramKernel.setArg(argIdx++, cl::Local(sizeof(uint32_t) * maxmemcache));
+            scanHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["globsum"]);
         }
-        cl_event eve;
+        cl::Event event;
         CTimer timer;
         timer.Start();
-        V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
-            scanHistogramKernel,
-            workDimension,
-            globalWorkOffset,
-            &nbitems,
-            &nblocitems,
-            0, NULL, &eve
-        ), "Could not execute 1st instance of scanHistogram kernel.");
+        const cl::NDRange globalWorkOffset = cl::NullRange;
+        const cl::NDRange globalWork{nbitems};
+        const cl::NDRange localWork{nblocitems};
+        const auto eventWaitList = nullptr;
+        const auto err = CommandQueue.enqueueNDRangeKernel(
+             scanHistogramKernel,
+             globalWorkOffset,
+             globalWork,
+             localWork,
+             eventWaitList,
+             &event
+        );
+        assert(err == CL_SUCCESS);
 
-        clFinish(CommandQueue);
+        CommandQueue.finish();
         timer.Stop();
         mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-        cl_int err = CL_SUCCESS;
-        cl_ulong debut{0};
-        cl_ulong fin{0};
+        {
+            cl_int err{CL_SUCCESS};
 
-        err = clGetEventProfilingInfo(eve,
-            CL_PROFILING_COMMAND_QUEUED,
-            sizeof(cl_ulong),
-            (void*)&debut,
-            NULL);
-        assert(err == CL_SUCCESS);
+            const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
+            assert(err == CL_SUCCESS);
 
-        err = clGetEventProfilingInfo(eve,
-            CL_PROFILING_COMMAND_END,
-            sizeof(cl_ulong),
-            (void*)&fin,
-            NULL);
-        assert(err == CL_SUCCESS);
+            const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
+            assert(err == CL_SUCCESS);
 
-        mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
+            mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
+        }
 #endif
 
         // second scan for the globsum
-        // Set kernel arguments
+        // Set only first and third kernel arguments
         {
-            V_RETURN_CL(
-                clSetKernelArg(scanHistogramKernel,
-                0,
-                sizeof(cl_mem),
-                &mDeviceData->m_dMemoryMap["globsum"]),
-                "Could not set global sum parameter"
-            );
-            V_RETURN_CL(
-                clSetKernelArg(scanHistogramKernel,
-                2,
-                sizeof(cl_mem),
-                &mDeviceData->m_dMemoryMap["temp"]),
-                "Could not set temporary parameter"
-            );
+            scanHistogramKernel.setArg(0,mDeviceData->m_dMemoryMap["globsum"]);
+            scanHistogramKernel.setArg(2,mDeviceData->m_dMemoryMap["temp"]);
         }
 
         {
@@ -163,38 +146,37 @@ void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
 
             CTimer timer;
             timer.Start();
+            const cl::NDRange globalWorkOffset = cl::NullRange;
+            const cl::NDRange globalWork{nbitems};
+            const cl::NDRange localWork{nblocitems};
+            const auto eventWaitList = nullptr;
             // Execute kernel for second scan (global)
-            V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
+            const auto err = CommandQueue.enqueueNDRangeKernel(
                 scanHistogramKernel,
-                workDimension,
                 globalWorkOffset,
-                &nbitems,
-                &nblocitems,
-                0, NULL, &eve),
-                "Could not execute 2nd instance of scanHistogram kernel."
+                globalWork,
+                localWork,
+                eventWaitList,
+                &event
             );
+            assert(err == CL_SUCCESS);
 
-            clFinish(CommandQueue);
+            CommandQueue.finish();
             timer.Stop();
             mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
 
 
 #ifdef MORE_PROFILING
-            err = clGetEventProfilingInfo(eve,
-                CL_PROFILING_COMMAND_QUEUED,
-                sizeof(cl_ulong),
-                (void*)&debut,
-                NULL);
-            assert(err == CL_SUCCESS);
+            {
+                cl_int err{CL_SUCCESS};
+                const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
+                assert(err == CL_SUCCESS);
 
-            err = clGetEventProfilingInfo(eve,
-                CL_PROFILING_COMMAND_END,
-                sizeof(cl_ulong),
-                (void*)&fin,
-                NULL);
-            assert(err == CL_SUCCESS);
+                const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
+                assert(err == CL_SUCCESS);
 
-            mRuntimesGPU.timeScan += static_cast<float>(fin - debut) / 1e9f;
+                mRuntimesGPU.timeScan += static_cast<float>(fin - debut) / 1e9f;
+            }
 #endif
         }
     }
@@ -206,88 +188,71 @@ void RadixSortGPU<DataType>::ScanHistogram(cl_command_queue CommandQueue)
         // local work size
         size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
 
-        const auto pasteHistogramKernel = mDeviceData->m_kernelMap["pastehistograms"];
+        auto pasteHistogramKernel = mDeviceData->m_kernelMap["pastehistograms"];
         // Set kernel arguments
         {
             cl_uint argIdx = 0U;
-            V_RETURN_CL(clSetKernelArg(pasteHistogramKernel,
-                        argIdx++,
-                        sizeof(cl_mem),
-                        &mDeviceData->m_dMemoryMap["histograms"]),
-                    "Could not set histograms argument");
-            V_RETURN_CL(clSetKernelArg(pasteHistogramKernel,
-                        argIdx++,
-                        sizeof(cl_mem),
-                        &mDeviceData->m_dMemoryMap["globsum"]),
-                    "Could not set globsum argument");
+            pasteHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["histograms"]);
+            pasteHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["globsum"]);
         }
 
         // Execute paste histogram kernel
-        cl_event eve;
+        cl::Event event;
         CTimer timer;
         timer.Start();
-        V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
+        const cl::NDRange globalWorkOffset = cl::NullRange;
+        const cl::NDRange globalWork{nbitems};
+        const cl::NDRange localWork{nblocitems};
+        const auto eventWaitList = nullptr;
+        const auto err = CommandQueue.enqueueNDRangeKernel(
             pasteHistogramKernel,
-            workDimension,
             globalWorkOffset,
-            &nbitems,
-            &nblocitems,
-            0, NULL, &eve),
-            "Could not execute paste histograms kernel"
+            globalWork,
+            localWork,
+            eventWaitList,
+            &event
         );
+        assert(err == CL_SUCCESS);
 
-        clFinish(CommandQueue);
+        CommandQueue.finish();
         timer.Stop();
         mRuntimesGPU.timePaste.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-        err = clGetEventProfilingInfo(eve,
-            CL_PROFILING_COMMAND_QUEUED,
-            sizeof(cl_ulong),
-            (void*)&debut,
-            NULL);
-        assert(err == CL_SUCCESS);
+        {
+            cl_int err{CL_SUCCESS};
+            const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
+            assert(err == CL_SUCCESS);
 
-        err = clGetEventProfilingInfo(eve,
-            CL_PROFILING_COMMAND_END,
-            sizeof(cl_ulong),
-            (void*)&fin,
-            NULL);
-        assert(err == CL_SUCCESS);
+            const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
+            assert(err == CL_SUCCESS);
 
-        mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
+            mRuntimesGPU.timePaste += (float)(fin - debut) / 1e9f;
+        }
 #endif
     }
 }
 
 template <typename DataType>
-void RadixSortGPU<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
+void RadixSortGPU<DataType>::Reorder(cl::CommandQueue CommandQueue, int pass)
 {
-	const size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
-    const size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
+	constexpr size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
+    constexpr size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
 
 	assert(mNumberKeysRounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
 
-    clFinish(CommandQueue);
+    CommandQueue.finish();
     auto reorderKernel = mDeviceData->m_kernelMap["reorder"];
-
-	//  const __global int* d_inKeys,
-	//  __global int* d_outKeys,
-	//	__global int* d_Histograms,
-	//	const int pass,
-	//	__global int* d_inPermut,
-	//	__global int* d_outPermut,
-	//	__local int* loc_histo,
-	//	const int n
+	assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
 
     // TODO: Use
 	struct ReorderKernelParams {
-		cl_mem inKeys;
-		cl_mem outKeys;
-		cl_mem histograms;
+        cl::Memory inKeys;
+        cl::Memory outKeys;
+        cl::Memory histograms;
 		int pass;
-		cl_mem inPermutation;
-		cl_mem outPermutation;
+        cl::Memory inPermutation;
+        cl::Memory outPermutation;
 		size_t localHistogramSize;
 		int numElems;
 	};
@@ -295,58 +260,49 @@ void RadixSortGPU<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 	// set kernel arguments
 	{
         cl_uint argIdx = 0U;
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["inputKeys"]), "Could not set input keys for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["outputKeys"]), "Could not set output keys for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["histograms"]), "Could not set histograms for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(pass),   &pass), "Could not set pass for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["inputPermutations"]), "Could not set input permutation for reorder kernel.");
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(cl_mem), &mDeviceData->m_dMemoryMap["outputPermutations"]), "Could not set output permutation for reorder kernel.");
-		V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++,
-			sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP,
-            NULL), "Could not set local memory for reorder kernel."); // mem cache
-
-        V_RETURN_CL(clSetKernelArg(reorderKernel, argIdx++, sizeof(mNumberKeysRounded), &mNumberKeysRounded), "Could not set number of input keys for reorder kernel.");
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["inputKeys"]);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["outputKeys"]);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["histograms"]);
+        reorderKernel.setArg(argIdx++, pass);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["inputPermutations"]);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["outputPermutations"]);
+        reorderKernel.setArg(argIdx++, cl::Local(sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP));
+        reorderKernel.setArg(argIdx++, mNumberKeysRounded);
 	}
 
-	assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
+    cl::Event event;
 
-    cl_event eve;
-
-    constexpr cl_uint workDimension = 1;
-    const size_t* globalWorkOffset = nullptr;
+    const cl::NDRange globalWorkOffset = cl::NullRange;
+    const cl::NDRange globalWork{nbitems};
+    const cl::NDRange localWork{nblocitems};
+    const auto eventWaitList = nullptr;
 	// Execute kernel
     CTimer timer;
     timer.Start();
-	V_RETURN_CL(clEnqueueNDRangeKernel(CommandQueue,
+    const auto err = CommandQueue.enqueueNDRangeKernel(
 		reorderKernel,
-        workDimension,
         globalWorkOffset,
-		&nbitems,
-		&nblocitems,
-		0, NULL, &eve), "Could not execute reorder kernel");
-    clFinish(CommandQueue);
+        globalWork,
+        localWork,
+        eventWaitList,
+        &event
+    );
+    assert(err == CL_SUCCESS);
+    CommandQueue.finish();
     timer.Stop();
     mRuntimesGPU.timeReorder.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-    cl_int err = CL_SUCCESS;
-    cl_ulong debut, fin;
+    {
+        cl_int err = CL_SUCCESS;
+        const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
+        assert(err == CL_SUCCESS);
 
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_QUEUED,
-        sizeof(cl_ulong),
-        (void*)&debut,
-        NULL);
-    assert(err == CL_SUCCESS);
+        const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
+        assert(err == CL_SUCCESS);
 
-    err = clGetEventProfilingInfo(eve,
-        CL_PROFILING_COMMAND_END,
-        sizeof(cl_ulong),
-        (void*)&fin,
-        NULL);
-    assert(err == CL_SUCCESS);
-
-    mRuntimesGPU.timeReorder += (float)(fin - debut) / 1e9f;
+        mRuntimesGPU.timeReorder += (float)(fin - debut) / 1e9f;
+    }
 #endif
 
     // swap the old and new vectors of keys
@@ -358,7 +314,7 @@ void RadixSortGPU<DataType>::Reorder(cl_command_queue CommandQueue, int pass)
 
 template <typename DataType>
 void RadixSortGPU<DataType>::padGPUData(
-        cl_command_queue CommandQueue,
+        cl::CommandQueue CommandQueue,
         size_t paddingOffset)
 {
     constexpr auto MaxValue = std::numeric_limits<DataType>::max();
@@ -366,15 +322,12 @@ void RadixSortGPU<DataType>::padGPUData(
     const auto pattern {MaxValue-1};
     const auto size_bytes = mNumberKeysRounded * sizeof(DataType) - paddingOffset;
 
-    V_RETURN_CL(clEnqueueFillBuffer(
-        CommandQueue,
+    CommandQueue.enqueueFillBuffer(
         mDeviceData->m_dMemoryMap["inputKeys"],
         &pattern,
-        sizeof(pattern),
         paddingOffset,
-        size_bytes,
-        0, NULL, NULL),
-    "Could not pad input keys");
+        size_bytes
+    );
 }
 
 template <typename DataType>
@@ -391,11 +344,11 @@ uint32_t RadixSortGPU<DataType>::Resize(uint32_t nn) const noexcept
 
 template <typename DataType>
 OperationStatus RadixSortGPU<DataType>::calculate(
-    cl_command_queue CommandQueue
+    cl::CommandQueue CommandQueue
 )
 {
     CopyDataToDevice(CommandQueue);
-    clFinish(CommandQueue);  // wait end of read
+    CommandQueue.finish();  // wait end of read
 
     for (uint32_t pass = 0U; pass < Parameters::_NUM_PASSES; pass++){
         if (mOutStream) {
@@ -427,7 +380,7 @@ OperationStatus RadixSortGPU<DataType>::calculate(
 
     mRuntimesGPU.timeTotal.n = mRuntimesGPU.timeHisto.n;
     CopyDataFromDevice(CommandQueue);
-	clFinish(CommandQueue);  // wait end of read
+	CommandQueue.finish();  // wait end of read
 
     return OperationStatus::OK;
 }
@@ -439,59 +392,69 @@ void RadixSortGPU<DataType>::setLogStream(std::ostream* out) noexcept
 }
 
 template <typename DataType>
-void RadixSortGPU<DataType>::CopyDataToDevice(cl_command_queue CommandQueue)
+void RadixSortGPU<DataType>::CopyDataToDevice( cl::CommandQueue CommandQueue)
 {
-	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
+    constexpr auto isBlocking = CL_FALSE;
+    auto error = CL_SUCCESS;
+    error = CommandQueue.enqueueWriteBuffer(
         mDeviceData->m_dMemoryMap["inputKeys"],
-        CL_TRUE, 0,
+        isBlocking,
+        0,
         sizeof(DataType) * mNumberKeysRounded,
-        mHostSpans.m_hKeys.data,
-        0, NULL, NULL),
-		"Could not initialize input keys device buffer");
+        mHostSpans.m_hKeys.data
+    );
+    assert(error == CL_SUCCESS);
 
-	V_RETURN_CL(clEnqueueWriteBuffer(CommandQueue,
+    error = CommandQueue.enqueueWriteBuffer(
         mDeviceData->m_dMemoryMap["inputPermutations"],
-        CL_TRUE, 0,
+        isBlocking,
+        0,
         sizeof(uint32_t) * mNumberKeysRounded,
-        mHostSpans.h_Permut.data,
-        0, NULL, NULL),
-		"Could not initialize input permutation device buffer");
+        mHostSpans.h_Permut.data
+    );
+    assert(error == CL_SUCCESS);
 }
 
 template <typename DataType>
-void RadixSortGPU<DataType>::CopyDataFromDevice(cl_command_queue CommandQueue)
+void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
 {
-	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
+    constexpr auto isBlocking = CL_FALSE;
+    constexpr auto offset = 0U;
+    auto error = CommandQueue.enqueueReadBuffer(
         mDeviceData->m_dMemoryMap["inputKeys"],
-		CL_TRUE, 0,
+		isBlocking,
+        offset,
 		sizeof(DataType) * mNumberKeysRounded,
-        mHostSpans.m_hResultFromGPU.data,
-		0, NULL, NULL),
-		"Could not read result data");
+        mHostSpans.m_hResultFromGPU.data
+    );
+    assert(error == CL_SUCCESS);
 
-	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
+    error = CommandQueue.enqueueReadBuffer(
         mDeviceData->m_dMemoryMap["inputPermutations"],
-		CL_TRUE, 0,
-		sizeof(uint32_t)  * mNumberKeysRounded,
-        mHostSpans.h_Permut.data,
-		0, NULL, NULL),
-		"Could not read result permutation");
+		isBlocking,
+        offset,
+		sizeof(uint32_t) * mNumberKeysRounded,
+        mHostSpans.h_Permut.data
+    );
+    assert(error == CL_SUCCESS);
 
-	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
+    error = CommandQueue.enqueueReadBuffer(
         mDeviceData->m_dMemoryMap["histograms"],
-		CL_TRUE, 0,
-		sizeof(uint32_t)  * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
-        mHostSpans.m_hHistograms.data,
-		0, NULL, NULL),
-		"Could not read result histograms");
+		isBlocking,
+        offset,
+		sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
+        mHostSpans.m_hHistograms.data
+    );
+    assert(error == CL_SUCCESS);
 
-	V_RETURN_CL(clEnqueueReadBuffer(CommandQueue,
+    error = CommandQueue.enqueueReadBuffer(
         mDeviceData->m_dMemoryMap["globsum"],
-		CL_TRUE, 0,
+		isBlocking,
+        offset,
 		sizeof(uint32_t)  * Parameters::_NUM_HISTOSPLIT,
-		mHostSpans.m_hGlobsum.data,
-		0, NULL, NULL),
-		"Could not read result global sum");
+		mHostSpans.m_hGlobsum.data
+    );
+    assert(error == CL_SUCCESS);
 }
 
 template <typename DataType>
@@ -507,11 +470,17 @@ std::string RadixSortGPU<DataType>::BuildPreamble()
     return ss.str();
 }
 
+template <typename DataType>
+OperationStatus RadixSortGPU<DataType>::release()
+{
+    mDeviceData = nullptr;
+    return OperationStatus::OK;
+}
 
 template <typename DataType>
 OperationStatus RadixSortGPU<DataType>::initialize(
-    cl_device_id Device,
-    cl_context Context,
+    cl::Device Device,
+    cl::Context Context,
     uint32_t nn,
     const HostSpans<DataType>& hostSpans
 )
@@ -531,20 +500,40 @@ OperationStatus RadixSortGPU<DataType>::initialize(
     // compile and build program
     {
         const auto preamble = BuildPreamble();
-        std::string programCode;
-        if(!CLUtil::LoadProgramSourceToMemory("RadixSort.cl", programCode)) {
+        std::string programCode = "";
+        const auto checkedPaths = make_array<std::string>(
+            "RadixSort.cl",
+            "kernels/RadixSort.cl"
+        );
+        for(const auto& path : checkedPaths) {
+            // Both methods could throw.
+            try {
+                // First try working directory,
+                programCode = cl::util::read_text_file(path.c_str());
+                if(programCode.length()) {
+                    break;
+                }
+                // then folder relative to executable
+                programCode = cl::util::read_exe_relative_text_file(path.c_str());
+                if(programCode.length()) {
+                    break;
+                }
+            } catch(const cl::util::Error& err) {
+                continue;
+            }
+        }
+
+        if(programCode.length() == 0)
+        {
             return S::LOADING_SOURCE_FAILED;
         }
         const auto completeCode = preamble + programCode;
+
         const auto options { BuildOptions() };
-        mDeviceData->m_Program =
-            CLUtil::BuildCLProgramFromMemory(
-                Device,
-                Context,
-                completeCode,
-                options
-            );
-        if (mDeviceData->m_Program == nullptr) {
+        mDeviceData->m_Program = cl::Program(Context, completeCode);
+        mDeviceData->m_Program.build(Device, options.c_str());
+
+        if (mDeviceData->m_Program() == nullptr) {
             return S::PROGRAM_CREATION_FAILED;
         }
     }
@@ -555,15 +544,18 @@ OperationStatus RadixSortGPU<DataType>::initialize(
         for (const auto& kernelName : mDeviceData->kernelNames) {
             // Input data stays the same for each kernel
             mDeviceData->m_kernelMap[kernelName] =
-                clCreateKernel(
+                cl::Kernel(
                     mDeviceData->m_Program,
                     kernelName.c_str(),
                     &clError
-            );
+                );
 
             // TODO: Use enum->str mapping for errors
             const auto errorMsg { std::string("Failed to create kernel: ") + kernelName };
-            V_RETURN_CUSTOM_CL(clError, errorMsg.c_str(), S::KERNEL_CREATION_FAILED);
+            if(clError) {
+                std::cerr<<cl::util::Error(clError, errorMsg.c_str()).what()<<"\n";
+                return S::KERNEL_CREATION_FAILED;
+            }
         }
     }
     return S::OK;

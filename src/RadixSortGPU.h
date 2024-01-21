@@ -1,7 +1,8 @@
 #pragma once
 
-// @TODO: Replace with only ocl include
-#include "../Common/IComputeTask.h"
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#include <CL/opencl.hpp>
 
 #include "HostData.h"
 #include "Statistics.h"
@@ -31,7 +32,6 @@ struct ComputeDeviceData;
 ///        +writeData()
 ///        +sort()
 ///        +readData()
-/// TODO: Replace clUtil with cl.hpp API
 template <typename DataType>
 class RadixSortGPU
 {
@@ -39,8 +39,8 @@ public:
     /// 1. Creates program and kernel
     /// 2. Initializes host and device memory
     OperationStatus initialize(
-        cl_device_id Device,
-        cl_context Context,
+        cl::Device Device,
+        cl::Context Context,
         uint32_t nn,
         const HostSpans<DataType>& hostSpans
     );
@@ -51,11 +51,11 @@ public:
     /// 3. Copies device data back to host
     /// @param CommandQueue OpenCL Command Queue
 	OperationStatus calculate(
-        cl_command_queue CommandQueue
+        cl::CommandQueue CommandQueue
     );
 
     /// Frees device buffers
-    OperationStatus cleanup();
+    OperationStatus release();
 
     /// Sets output log stream
     /// @param[in,out] out Log text stream
@@ -69,7 +69,7 @@ public:
     /// @param CommandQueue OpenCL Command Queue
     /// @param paddingOffset Padding offset in bytes
 	void padGPUData(
-        cl_command_queue CommandQueue,
+        cl::CommandQueue CommandQueue,
         size_t paddingOffset
     );
 
@@ -90,14 +90,14 @@ private:
     /// Compiles build options for OpenCL kernel
     static std::string BuildOptions();
     /// Performs histogram calculation
-	void Histogram(cl_command_queue CommandQueue, int pass);
+	void Histogram(cl::CommandQueue CommandQueue, int pass);
     /// Performs histogram scan
-	void ScanHistogram(cl_command_queue CommandQueue);
+	void ScanHistogram(cl::CommandQueue CommandQueue);
     /// Performs reorder step
-	void Reorder(cl_command_queue CommandQueue, int pass);
+	void Reorder(cl::CommandQueue CommandQueue, int pass);
 
-	void CopyDataToDevice(cl_command_queue CommandQueue);
-	void CopyDataFromDevice(cl_command_queue CommandQueue);
+	void CopyDataToDevice(cl::CommandQueue CommandQueue);
+	void CopyDataFromDevice(cl::CommandQueue CommandQueue);
 
     /// Device program, kernels and buffers
     std::shared_ptr<ComputeDeviceData<DataType>> mDeviceData;

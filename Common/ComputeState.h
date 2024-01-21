@@ -1,8 +1,9 @@
-#define CL_HPP_MINIMUM_OPENCL_VERSION 120
-#define CL_HPP_TARGET_OPENCL_VERSION 120
-#include <CL/opencl.hpp>
 #include <vector>
+#include <CL/opencl.hpp>
 
+/**
+ * Should exist only once
+ */
 struct ComputeState
 {
     ComputeState() = default;
@@ -13,8 +14,8 @@ struct ComputeState
     cl::Platform platform();
     cl::Device device();
 
-    std::vector<cl::Platform> m_CLPlatforms;
-    std::vector<cl::Device>   m_CLDevices;
     cl::Context			m_CLContext;
     cl::CommandQueue	m_CLCommandQueue;
+    std::vector<cl::Platform> m_CLPlatforms;
+    std::vector<cl::Device>   m_CLDevices;
 };

@@ -6,25 +6,33 @@
 cl::Platform ComputeState::platform() {
     return cl::Platform(device().getInfo<CL_DEVICE_PLATFORM>());
 }
+
 cl::Device ComputeState::device() {
     return m_CLDevices.front();
 }
+
 bool ComputeState::init() {
 	//////////////////////////////////////////////////////
-	// 1. Enumerate OpenCL platforms
-    cl::Platform::get(&m_CLPlatforms);
+    {
+        cl_int clError{-1};
+        // 1. Enumerate OpenCL platforms
+        clError = cl::Platform::get(&m_CLPlatforms);
+        if(clError) {
+            std::cerr << "Failed to enumerate devices: " << clError << "\n";
+            return false;
+        }
 
+        // 2. find all available GPU devices
+        cl_device_type deviceType = CL_DEVICE_TYPE_GPU;
 
-	// 2. find all available GPU devices
-	cl_device_type deviceType = CL_DEVICE_TYPE_GPU;
+        for (auto platform : m_CLPlatforms)
+        {
+            decltype(m_CLDevices) devices;
+            platform.getDevices(deviceType, &devices);
 
-	for (auto platform : m_CLPlatforms)
-	{
-        decltype(m_CLDevices) devices;
-        platform.getDevices(deviceType, &devices);
-
-        std::copy(std::begin(devices), std::end(devices), std::end(m_CLDevices));
-	}
+            std::copy(std::begin(devices), std::end(devices), std::back_inserter(m_CLDevices));
+        }
+    }
 
 	if (m_CLDevices.size() == 0)
 	{
@@ -34,25 +42,25 @@ bool ComputeState::init() {
 
 	// Printing platform and device data.
     {
-        auto p = platform();
-        std::cout << "OpenCL platform:\n\n";
+        auto plat = platform();
+        std::cout << "OpenCL platform:\n\n"
+            << "Name    " << plat.getInfo<CL_PLATFORM_NAME>() << "\n"
+            << "Vendor  " << plat.getInfo<CL_PLATFORM_VENDOR>() << "\n"
+            << "Version " << plat.getInfo<CL_PLATFORM_VERSION>()<< "\n"
+            << "Profile " << plat.getInfo<CL_PLATFORM_PROFILE>() << "\n"
+            << "\n";
 
-        std::cout<< "Name" <<  p.getInfo<CL_PLATFORM_NAME>() << "\n"
-                 << "Vendor" <<  p.getInfo<CL_PLATFORM_VENDOR>() << "\n"
-                 << "Version" <<  p.getInfo<CL_PLATFORM_VERSION>()<< "\n"
-                 << "Profile" <<  p.getInfo<CL_PLATFORM_PROFILE>() << "\n";
-
-        auto d = device();
-        std::cout << std::endl << "Device:\n\n"
-            << "Name" <<d.getInfo< CL_DEVICE_NAME>() << "\n"
-            << "Vendor" <<d.getInfo< CL_DEVICE_VENDOR>() << "\n"
-            << "Version" <<d.getInfo< CL_DRIVER_VERSION>() << "\n"
-            << "Local Memory" <<d.getInfo< CL_DEVICE_LOCAL_MEM_SIZE>() << "\n";
-        std::cout << std::endl << "******************************\n\n";
+        auto dev = device();
+        std::cout << "Device:\n\n"
+            << "Name         " << dev.getInfo<CL_DEVICE_NAME>() << "\n"
+            << "Vendor       " << dev.getInfo<CL_DEVICE_VENDOR>() << "\n"
+            << "Version      " << dev.getInfo<CL_DRIVER_VERSION>() << "\n"
+            << "Local Memory " << dev.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << "\n";
+        std::cout << "\n*********************************\n\n";
     }
 
     {
-        cl_int clError{};
+        cl_int clError{-1};
         const auto properties = nullptr;
         const auto callback = nullptr;
         const auto userData = nullptr;
@@ -64,8 +72,10 @@ bool ComputeState::init() {
             userData,
             &clError
         );
-        std::cerr<<cl::util::Error(clError, "Failed to create OpenCL context.").what()<<"\n";
-        return false;
+        if(clError) {
+            std::cerr<<cl::util::Error(clError, "Failed to create OpenCL context.").what()<<"\n";
+            return false;
+        }
     }
 
 	// Finally, create a command queue. All the asynchronous commands to the device will be issued
@@ -73,14 +83,20 @@ bool ComputeState::init() {
 	// from that device are needed.
 
     {
-        cl_int clError{};
+        cl_int clError{-1};
         const auto properties = 0;
-        m_CLCommandQueue = cl::CommandQueue(m_CLContext, device(), properties, &clError);
-        std::cerr<<cl::util::Error(clError, "Failed to create the command queue in the context").what()<<"\n";
-        return false;
+        m_CLCommandQueue = cl::CommandQueue(
+                m_CLContext,
+                device(),
+                properties,
+                &clError
+        );
+        if(clError) {
+            std::cerr<<cl::util::Error(clError, "Failed to create the command queue in the context").what()<<"\n";
+            return false;
+        }
     }
 
 	return true;
 }
-#undef PRINT_INFO
 

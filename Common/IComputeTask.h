@@ -3,14 +3,9 @@
 
 #include "CommonDefs.h"
 
-// All OpenCL headers
-#if defined(WIN32)
-    #include <CL/opencl.h>
-#elif defined (__APPLE__) || defined(MACOSX)
-    #include <OpenCL/opencl.h>
-#else
-    #include <CL/cl.h>
-#endif
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#include <CL/opencl.hpp>
 
 #include <array>
 
@@ -20,16 +15,17 @@ public:
 	virtual ~IComputeTask() {};
 
 	//! Init any resources specific to the current task
-	virtual bool InitResources(cl_device_id Device, cl_context Context) = 0;
+	virtual bool InitResources(cl::Device Device, cl::Context Context) = 0;
 
 	//! Release everything allocated in InitResources()
 	virtual void ReleaseResources() = 0;
 
 	//! Perform calculations on the GPU
 	virtual void ComputeGPU(
-        cl_context Context,
-        cl_command_queue CommandQueue,
-        const std::array<size_t,3>& LocalWorkSize) = 0;
+        cl::Context Context,
+        cl::CommandQueue CommandQueue,
+        const std::array<size_t,3>& LocalWorkSize
+    ) = 0;
 
 	//! Compute the "golden" solution on the CPU. The GPU results must be equal to this reference
 	virtual void ComputeCPU() = 0;
