@@ -283,6 +283,7 @@ void CRadixSortTask<DataType>::CheckLocalMemory(cl_device_id Device)
     }
 	assert(localMem > sizeof(DataType) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP);
 
+    [[maybe_unused]]
 	constexpr uint32_t maxmemcache =
         std::max(
             Parameters::_NUM_HISTOSPLIT,

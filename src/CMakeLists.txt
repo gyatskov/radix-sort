@@ -7,6 +7,19 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Include Common module
 #add_subdirectory (../Common ${CMAKE_BINARY_DIR}/Common)
 
+CPMAddPackage(
+  NAME OpenCL_SDK
+  VERSION 2023.12.14
+  GITHUB_REPOSITORY "KhronosGroup/OpenCL-SDK"
+  OPTIONS
+    "BUILD_TESTING OFF"
+    "BUILD_TESTS OFF"
+    "BUILD_DOCS OFF"
+    "OPENCL_SDK_BUILD_SAMPLES OFF"
+    "OPENCL_SDK_TEST_SAMPLES OFF"
+    "OPENCL_SDK_BUILD_OPENGL_SAMPLES OFF"
+)
+
 # Define source files
 set(Sources
     RadixSortGPU.cpp
@@ -16,6 +29,7 @@ set(Sources
     HostData.cpp
 )
 #file(GLOB Headers   *.h)
+# TODO: Is this ever used?
 file(GLOB CLSources *.cl)
 
 add_library(radixsortcl
@@ -30,8 +44,16 @@ PUBLIC
 
 # Link required libraries
 target_link_libraries(radixsortcl
-PRIVATE
+PUBLIC
     GPUCommon
+PRIVATE
+    OpenCL::Headers
+    OpenCL::HeadersCpp
+    OpenCL::OpenCL
+    OpenCL::Utils
+    OpenCL::UtilsCpp
+    #OpenCL::SDK
+    #OpenCL::SDKCpp
 )
 
 string(
