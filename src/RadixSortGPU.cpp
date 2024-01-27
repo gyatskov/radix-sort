@@ -56,17 +56,7 @@ void RadixSortGPU<DataType>::Histogram(cl::CommandQueue CommandQueue, int pass)
     mRuntimesGPU.timeHisto.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-    {
-        cl_int err{CL_SUCCESS};
-        const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
-        //std::cout << err<<" , "<<CL_PROFILING_INFO_NOT_AVAILABLE<<std::endl;
-        assert(err == CL_SUCCESS);
-
-        const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
-        assert(err == CL_SUCCESS);
-
-        mRuntimesGPU.timeHisto += (float)(fin - debut) / 1e9f;
-    }
+    mRuntimesGPU.timeHisto += cl::util::get_duration<CL_PROFILING_COMMAND_QUEUED, CL_PROFILING_COMMAND_END>(event).count() / 1e9f;
 #endif
 }
 
@@ -118,17 +108,8 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
         mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-        {
-            cl_int err{CL_SUCCESS};
+        mRuntimesGPU.timeScan += cl::util::get_duration<CL_PROFILING_COMMAND_QUEUED, CL_PROFILING_COMMAND_END>(event).count() / 1e9f;
 
-            const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
-            assert(err == CL_SUCCESS);
-
-            const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
-            assert(err == CL_SUCCESS);
-
-            mRuntimesGPU.timeScan += (float)(fin - debut) / 1e9f;
-        }
 #endif
 
         // second scan for the globsum
@@ -165,18 +146,8 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
             timer.Stop();
             mRuntimesGPU.timeScan.update(timer.GetElapsedMilliseconds());
 
-
 #ifdef MORE_PROFILING
-            {
-                cl_int err{CL_SUCCESS};
-                const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
-                assert(err == CL_SUCCESS);
-
-                const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
-                assert(err == CL_SUCCESS);
-
-                mRuntimesGPU.timeScan += static_cast<float>(fin - debut) / 1e9f;
-            }
+            mRuntimesGPU.timeScan += cl::util::get_duration<CL_PROFILING_COMMAND_QUEUED, CL_PROFILING_COMMAND_END>(event).count() / 1e9f;
 #endif
         }
     }
@@ -219,16 +190,7 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
         mRuntimesGPU.timePaste.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-        {
-            cl_int err{CL_SUCCESS};
-            const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
-            assert(err == CL_SUCCESS);
-
-            const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
-            assert(err == CL_SUCCESS);
-
-            mRuntimesGPU.timePaste += (float)(fin - debut) / 1e9f;
-        }
+        mRuntimesGPU.timePaste += cl::util::get_duration<CL_PROFILING_COMMAND_QUEUED, CL_PROFILING_COMMAND_END>(event).count() / 1e9f;
 #endif
     }
 }
@@ -293,16 +255,8 @@ void RadixSortGPU<DataType>::Reorder(cl::CommandQueue CommandQueue, int pass)
     mRuntimesGPU.timeReorder.update(timer.GetElapsedMilliseconds());
 
 #ifdef MORE_PROFILING
-    {
-        cl_int err = CL_SUCCESS;
-        const auto debut = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>(&err);
-        assert(err == CL_SUCCESS);
+    mRuntimesGPU.timeReorder += cl::util::get_duration<CL_PROFILING_COMMAND_QUEUED, CL_PROFILING_COMMAND_END>(event).count() / 1e9f;
 
-        const auto fin = event.getProfilingInfo<CL_PROFILING_COMMAND_END>(&err);
-        assert(err == CL_SUCCESS);
-
-        mRuntimesGPU.timeReorder += (float)(fin - debut) / 1e9f;
-    }
 #endif
 
     // swap the old and new vectors of keys
@@ -379,8 +333,9 @@ OperationStatus RadixSortGPU<DataType>::calculate(
         + mRuntimesGPU.timePaste.avg;
 
     mRuntimesGPU.timeTotal.n = mRuntimesGPU.timeHisto.n;
+
     CopyDataFromDevice(CommandQueue);
-	CommandQueue.finish();  // wait end of read
+	CommandQueue.finish();  // wait until end of read
 
     return OperationStatus::OK;
 }
