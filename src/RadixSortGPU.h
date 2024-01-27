@@ -45,12 +45,21 @@ public:
         const HostSpans<DataType>& hostSpans
     );
 
+    /// Copies host data to device
+    /// @param CommandQueue OpenCL Command Queue
+	OperationStatus uploadData(
+        cl::CommandQueue CommandQueue
+    );
+
     /// Performs radix sort algorithm on previously provided data
-    /// 1. Copies host data to device
-    /// 2. Sorts data
-    /// 3. Copies device data back to host
     /// @param CommandQueue OpenCL Command Queue
 	OperationStatus calculate(
+        cl::CommandQueue CommandQueue
+    );
+
+    /// Copies device data to host
+    /// @param CommandQueue OpenCL Command Queue
+	OperationStatus downloadData(
         cl::CommandQueue CommandQueue
     );
 

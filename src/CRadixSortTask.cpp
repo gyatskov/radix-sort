@@ -304,8 +304,18 @@ void CRadixSortTask<DataType>::ExecuteTask(
     if (mOptions.verbose) {
         std::cout << "Sorting " << mNumberKeys << " keys..." << std::endl;
     }
-    const auto status = mRadixSortGPU.calculate(CommandQueue);
-    assert(status == OperationStatus::OK);
+    {
+        const auto status = mRadixSortGPU.uploadData(CommandQueue);
+        assert(status == OperationStatus::OK);
+    }
+    {
+        const auto status = mRadixSortGPU.calculate(CommandQueue);
+        assert(status == OperationStatus::OK);
+    }
+    {
+        const auto status = mRadixSortGPU.downloadData(CommandQueue);
+        assert(status == OperationStatus::OK);
+    }
     if (mOptions.verbose){
         std::cout << "Finished sorting." << std::endl;
     }

@@ -297,13 +297,21 @@ uint32_t RadixSortGPU<DataType>::Resize(uint32_t nn) const noexcept
 }
 
 template <typename DataType>
-OperationStatus RadixSortGPU<DataType>::calculate(
+OperationStatus RadixSortGPU<DataType>::uploadData(
     cl::CommandQueue CommandQueue
 )
 {
     CopyDataToDevice(CommandQueue);
-    CommandQueue.finish();  // wait end of read
+    const auto error = CommandQueue.finish();  // wait until end of write
+    using S = OperationStatus;
+    return error == CL_SUCCESS ? S::OK : S::DATA_UPLOAD_FAILED;
+}
 
+template <typename DataType>
+OperationStatus RadixSortGPU<DataType>::calculate(
+    cl::CommandQueue CommandQueue
+)
+{
     for (uint32_t pass = 0U; pass < Parameters::_NUM_PASSES; pass++){
         if (mOutStream) {
             *mOutStream << "Pass " << pass << ":" << std::endl;
@@ -334,10 +342,18 @@ OperationStatus RadixSortGPU<DataType>::calculate(
 
     mRuntimesGPU.timeTotal.n = mRuntimesGPU.timeHisto.n;
 
-    CopyDataFromDevice(CommandQueue);
-	CommandQueue.finish();  // wait until end of read
-
     return OperationStatus::OK;
+}
+
+template <typename DataType>
+OperationStatus RadixSortGPU<DataType>::downloadData(
+    cl::CommandQueue CommandQueue
+)
+{
+    CopyDataFromDevice(CommandQueue);
+    const auto error = CommandQueue.finish();
+    using S = OperationStatus;
+    return error == CL_SUCCESS ? S::OK : S::DATA_DOWNLOAD_FAILED;
 }
 
 template <typename DataType>
