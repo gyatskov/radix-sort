@@ -1,3 +1,4 @@
+[![CMake on a single platform](https://github.com/gyatskov/radix-sort/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/gyatskov/radix-sort/actions/workflows/cmake-single-platform.yml)
 # radix-sort #
 GPU optimized implementation of Radix Sort using OpenCL.
 
