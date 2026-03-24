@@ -15,34 +15,20 @@ C++20-enabled compilers are supported, e.g.:
  * cmake 4.0+
 
 ## Platforms ##
-Every OpenCL 1.2 compliant driver should be supported. For NVIDIA devices, CUDA drivers may be necessary.
+Every OpenCL 1.2 compliant driver should be supported. For NVIDIA devices, install CUDA drivers.
 
 # Building #
 Libraries and tests can be built as follows:
 
-Linux:
-```bash
+```shell
 git clone github.com/gyatskov/radix-sort
 cd radix-sort
 mkdir build
-cmake -DCMAKE_INSTALL_PREFIX="bin/" -H. -B build
+cmake  -H. -B build
 cmake --build build
-cmake --build build --target install
 ```
 
-Windows (PowerShell):
-```powershell
-git clone github.com/gyatskov/radix-sort
-cd radix-sort
-mkdir build
-cmake -DCMAKE_INSTALL_PREFIX="$(Get-Location)/bin" -H. -B build
-cmake --build build
-cmake --build build --target install
-```
-
-Tests will be installed to `build/tests`.
-
-Libraries (static libradixsortcl as well as dynamic libOpenCL) will be installed to `bin`.
+Tests and RadixSort.cl kernel will be installed to `build/tests`.
 
 # Unit Tests #
 Run

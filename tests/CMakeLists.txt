@@ -22,6 +22,13 @@ PRIVATE
 )
 
 enable_testing()
+# Copy the OpenCL kernel next to the test executable so it can be found at runtime
+add_custom_command(TARGET tests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/src/kernels/RadixSort.cl"
+        "$<TARGET_FILE_DIR:tests>/RadixSort.cl"
+)
+
 # Register tests for invocation via ctest
 add_test(
     NAME tests
