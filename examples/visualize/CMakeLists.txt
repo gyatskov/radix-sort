@@ -55,6 +55,12 @@ if(Vulkan_FOUND AND TARGET Vulkan::glslc)
         COMMAND Vulkan::glslc
             "${CMAKE_CURRENT_SOURCE_DIR}/shaders/visualize.frag"
             -o "$<TARGET_FILE_DIR:visualize>/visualize.frag.spv"
+        COMMAND Vulkan::glslc
+            "${CMAKE_CURRENT_SOURCE_DIR}/shaders/overlay.vert"
+            -o "$<TARGET_FILE_DIR:visualize>/overlay.vert.spv"
+        COMMAND Vulkan::glslc
+            "${CMAKE_CURRENT_SOURCE_DIR}/shaders/overlay.frag"
+            -o "$<TARGET_FILE_DIR:visualize>/overlay.frag.spv"
         COMMENT "Compiling visualize shaders to SPIR-V"
     )
 else()

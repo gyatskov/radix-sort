@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
@@ -67,6 +68,17 @@ struct PushConstants {
     float    yOffset;
     float    yScale;
 };
+
+struct OverlayPushConstants {
+    float    timeMs;
+    float    padX;
+    float    padY;
+    float    charW;
+    float    charH;
+    uint32_t numChars;
+};
+
+constexpr uint32_t OVERLAY_NUM_CHARS = 9;  // "NNN.NN ms"
 
 // =====================================================================
 // Small helpers
@@ -203,6 +215,10 @@ struct App {
     VkPipeline           pipeline       = VK_NULL_HANDLE;
     VkDescriptorPool     dsPool         = VK_NULL_HANDLE;
     VkCommandPool        cmdPool        = VK_NULL_HANDLE;
+
+    // Overlay (time display)
+    VkPipelineLayout     overlayPipeLayout = VK_NULL_HANDLE;
+    VkPipeline           overlayPipeline   = VK_NULL_HANDLE;
 
     std::vector<VkFramebuffer>   framebuffers;
     std::vector<VkCommandBuffer> cmdBufs;
@@ -432,6 +448,96 @@ static void createPipeline(App& a)
     vkDestroyShaderModule(a.dev, frag, nullptr);
 }
 
+static void createOverlayPipeline(App& a)
+{
+    VkShaderModule vert = loadShader(a.dev, "overlay.vert.spv");
+    VkShaderModule frag = loadShader(a.dev, "overlay.frag.spv");
+
+    VkPipelineShaderStageCreateInfo stages[2]{};
+    stages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+    stages[0].module = vert;
+    stages[0].pName  = "main";
+    stages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+    stages[1].module = frag;
+    stages[1].pName  = "main";
+
+    VkPipelineVertexInputStateCreateInfo vertIn{
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+
+    VkPipelineInputAssemblyStateCreateInfo ia{
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+    VkViewport vp{0, 0,
+        static_cast<float>(a.swapExt.width),
+        static_cast<float>(a.swapExt.height), 0, 1};
+    VkRect2D sc{{0,0}, a.swapExt};
+
+    VkPipelineViewportStateCreateInfo vs{
+        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+    vs.viewportCount = 1; vs.pViewports = &vp;
+    vs.scissorCount  = 1; vs.pScissors  = &sc;
+
+    VkPipelineRasterizationStateCreateInfo rs{
+        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+    rs.polygonMode = VK_POLYGON_MODE_FILL;
+    rs.lineWidth   = 1.0f;
+    rs.cullMode    = VK_CULL_MODE_NONE;
+
+    VkPipelineMultisampleStateCreateInfo ms{
+        VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+    ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkPipelineColorBlendAttachmentState cba{};
+    cba.blendEnable         = VK_TRUE;
+    cba.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    cba.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    cba.colorBlendOp        = VK_BLEND_OP_ADD;
+    cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    cba.alphaBlendOp        = VK_BLEND_OP_ADD;
+    cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    VkPipelineColorBlendStateCreateInfo cb{
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+    cb.attachmentCount = 1;
+    cb.pAttachments    = &cba;
+
+    VkPushConstantRange pcr{};
+    pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pcr.size       = sizeof(OverlayPushConstants);
+
+    VkPipelineLayoutCreateInfo plci{
+        VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+    plci.pushConstantRangeCount = 1;
+    plci.pPushConstantRanges    = &pcr;
+    if (vkCreatePipelineLayout(a.dev, &plci, nullptr, &a.overlayPipeLayout)
+        != VK_SUCCESS)
+        throw std::runtime_error("Failed to create overlay pipeline layout");
+
+    VkGraphicsPipelineCreateInfo pi{
+        VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+    pi.stageCount          = 2;
+    pi.pStages             = stages;
+    pi.pVertexInputState   = &vertIn;
+    pi.pInputAssemblyState = &ia;
+    pi.pViewportState      = &vs;
+    pi.pRasterizationState = &rs;
+    pi.pMultisampleState   = &ms;
+    pi.pColorBlendState    = &cb;
+    pi.layout              = a.overlayPipeLayout;
+    pi.renderPass          = a.renderPass;
+    if (vkCreateGraphicsPipelines(a.dev, VK_NULL_HANDLE, 1, &pi, nullptr,
+                                  &a.overlayPipeline) != VK_SUCCESS)
+        throw std::runtime_error("Failed to create overlay pipeline");
+
+    vkDestroyShaderModule(a.dev, vert, nullptr);
+    vkDestroyShaderModule(a.dev, frag, nullptr);
+}
+
 static void createFramebuffers(App& a)
 {
     a.framebuffers.resize(a.swapViews.size());
@@ -554,7 +660,7 @@ static void createSyncObjects(App& a)
 
 static void recordFrame(
     App& a, VkCommandBuffer cmd, uint32_t imgIdx,
-    uint32_t count, float maxVal)
+    uint32_t count, float maxVal, float timeMs)
 {
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(cmd, &bi);
@@ -589,11 +695,27 @@ static void recordFrame(
         vkCmdDraw(cmd, count, 1, 0, 0);
     }
 
+    // Overlay: sort time in bottom-right
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a.overlayPipeline);
+    {
+        OverlayPushConstants opc{};
+        opc.timeMs  = timeMs;
+        opc.padX    = 0.02f;
+        opc.padY    = 0.02f;
+        opc.charW   = 0.025f;
+        opc.charH   = 0.06f;
+        opc.numChars = OVERLAY_NUM_CHARS;
+        vkCmdPushConstants(cmd, a.overlayPipeLayout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0, sizeof(opc), &opc);
+        vkCmdDraw(cmd, OVERLAY_NUM_CHARS * 6, 1, 0, 0);
+    }
+
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
 }
 
-static void drawFrame(App& a, uint32_t count, float maxVal)
+static void drawFrame(App& a, uint32_t count, float maxVal, float timeMs)
 {
     vkWaitForFences(a.dev, 1, &a.fences[a.frame], VK_TRUE, UINT64_MAX);
 
@@ -604,7 +726,7 @@ static void drawFrame(App& a, uint32_t count, float maxVal)
 
     auto cmd = a.cmdBufs[a.frame];
     vkResetCommandBuffer(cmd, 0);
-    recordFrame(a, cmd, imgIdx, count, maxVal);
+    recordFrame(a, cmd, imgIdx, count, maxVal, timeMs);
 
     VkPipelineStageFlags wait = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -651,6 +773,8 @@ static void cleanup(App& a)
 
     for (auto fb : a.framebuffers) vkDestroyFramebuffer(a.dev, fb, nullptr);
 
+    if (a.overlayPipeline)   vkDestroyPipeline(a.dev, a.overlayPipeline, nullptr);
+    if (a.overlayPipeLayout) vkDestroyPipelineLayout(a.dev, a.overlayPipeLayout, nullptr);
     if (a.pipeline)   vkDestroyPipeline(a.dev, a.pipeline, nullptr);
     if (a.pipeLayout) vkDestroyPipelineLayout(a.dev, a.pipeLayout, nullptr);
     if (a.renderPass) vkDestroyRenderPass(a.dev, a.renderPass, nullptr);
@@ -742,10 +866,13 @@ int main()
     std::vector<uint32_t> unsorted, sorted;
     std::cout << "Sorting " << NUM_ELEMENTS
               << " uint32_t values on the GPU (OpenCL)...\n";
+    auto t0 = std::chrono::steady_clock::now();
     if (!sortData<uint32_t>(compute, NUM_ELEMENTS, unsorted, sorted)) {
         std::cerr << "OpenCL sort failed.\n";
         return 1;
     }
+    auto t1 = std::chrono::steady_clock::now();
+    float sortTimeMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
 
     auto maxVal = static_cast<float>(
         *std::max_element(unsorted.begin(), unsorted.end()));
@@ -759,6 +886,7 @@ int main()
         createRenderPass(app);
         createDescriptorSetLayout(app);
         createPipeline(app);
+        createOverlayPipeline(app);
         createFramebuffers(app);
         createCommandPool(app);
         createDataBuffers(app, unsorted, sorted);
@@ -771,7 +899,10 @@ int main()
             if (g_regenerate) {
                 g_regenerate = false;
                 vkDeviceWaitIdle(app.dev);
+                t0 = std::chrono::steady_clock::now();
                 if (sortData<uint32_t>(compute, NUM_ELEMENTS, unsorted, sorted)) {
+                    t1 = std::chrono::steady_clock::now();
+                    sortTimeMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
                     const VkDeviceSize sz = sizeof(uint32_t) * NUM_ELEMENTS;
                     uploadToBuffer(app.dev, app.bufUnsorted, unsorted.data(), sz);
                     uploadToBuffer(app.dev, app.bufSorted,   sorted.data(),   sz);
@@ -779,7 +910,7 @@ int main()
                         *std::max_element(unsorted.begin(), unsorted.end()));
                 }
             }
-            drawFrame(app, NUM_ELEMENTS, maxVal);
+            drawFrame(app, NUM_ELEMENTS, maxVal, sortTimeMs);
         }
 
         cleanup(app);
