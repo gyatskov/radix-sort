@@ -12,7 +12,7 @@ C++20-enabled compilers are supported, e.g.:
 
 ## Build Tool ##
  
- * cmake 3.17+
+ * cmake 4.0+
 
 ## Platforms ##
 Every OpenCL 1.2 compliant driver should be supported. For NVIDIA devices, CUDA drivers may be necessary.
