@@ -10,7 +10,7 @@ set(Sources
 # TODO: Is this ever used?
 file(GLOB CLSources *.cl)
 
-add_library(radixsortcl
+add_library(radixsortcl STATIC
 	${Sources}
 	${CLSources}
 )

@@ -20,7 +20,7 @@ CPMAddPackage(
 
 set(OPENCL_VERSION 120)
 
-add_library(GPUCommon
+add_library(GPUCommon STATIC
 	${CommonSources}
 	${CommonHeaders}
 )

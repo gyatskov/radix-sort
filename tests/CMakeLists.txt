@@ -12,6 +12,7 @@ add_executable(tests
 target_link_libraries(tests
 PRIVATE
     radixsortcl
+    GPUCommon
     Catch2::Catch2WithMain
 )
 
