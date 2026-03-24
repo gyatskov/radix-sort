@@ -7,8 +7,8 @@ FILE(GLOB CommonHeaders *.h)
 
 CPMAddPackage(
   NAME OpenCL_SDK
-  GIT_TAG fix-whereami-dep
-  GITHUB_REPOSITORY "gyatskov/OpenCL-SDK"
+  GIT_TAG aa33d56af666b7c20be71db639f27d6efab2f06a
+  GITHUB_REPOSITORY "KhronosGroup/OpenCL-SDK"
   OPTIONS
     "BUILD_TESTING OFF"
     "BUILD_TESTS OFF"
