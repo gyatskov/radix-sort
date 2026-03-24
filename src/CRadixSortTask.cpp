@@ -3,8 +3,8 @@
 #include "RadixSortOptions.h"
 
 #include <CL/Utils/Error.hpp>
-#include "../Common/CTimer.h"
-#include "../Common/CLTypeInformation.h"
+#include "Common/CTimer.h"
+#include "Common/CLTypeInformation.h"
 
 #include "Dataset.h"
 

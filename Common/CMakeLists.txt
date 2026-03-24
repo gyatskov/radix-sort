@@ -25,6 +25,12 @@ add_library(GPUCommon STATIC
 	${CommonHeaders}
 )
 
+target_include_directories(GPUCommon
+PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+    $<INSTALL_INTERFACE:include>
+)
+
 target_link_libraries(GPUCommon
 PUBLIC
     OpenCL::Headers

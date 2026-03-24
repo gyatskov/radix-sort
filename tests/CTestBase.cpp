@@ -1,6 +1,6 @@
 #include "CTestBase.h"
 
-#include "../Common/CTimer.h"
+#include "Common/CTimer.h"
 #include <array>
 #include <iostream>
 

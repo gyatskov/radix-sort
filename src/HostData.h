@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "Parameters.h"
-#include "../Common/CheapSpan.h"
+#include "Common/CheapSpan.h"
 
 template <typename DataType>
 struct Dataset;

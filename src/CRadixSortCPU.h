@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Parameters.h"
-#include "../Common/CheapSpan.h"
+#include "Common/CheapSpan.h"
 
 #include <cstdint>
 #include <vector>

@@ -17,7 +17,8 @@ add_library(radixsortcl STATIC
 
 target_include_directories(radixsortcl
 PUBLIC
-    ./
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
 )
 
 # Link required libraries

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <string>
 
-#include "../Common/CArguments.h"
+#include "Common/CArguments.h"
 
 struct RadixSortOptions
 {

@@ -8,7 +8,7 @@
 #include "CRadixSortTask.h"
 #include <exception>
 
-#include "../Common/Util.hpp"
+#include "Common/Util.hpp"
 // TODO: Move
 #include <CL/Utils/Error.hpp>
 

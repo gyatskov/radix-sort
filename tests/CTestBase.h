@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../Common/IComputeTask.h"
+#include "Common/IComputeTask.h"
 
-#include "../Common/CommonDefs.h"
-#include "../Common/CArguments.h"
-#include "../Common/ComputeState.h"
+#include "Common/CommonDefs.h"
+#include "Common/CArguments.h"
+#include "Common/ComputeState.h"
 
 #include <array>
 

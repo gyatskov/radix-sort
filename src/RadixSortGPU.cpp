@@ -2,9 +2,9 @@
 
 #include "ComputeDeviceData.h"
 
-#include "../Common/CTimer.h"
-#include "../Common/CLTypeInformation.h"
-#include "../Common/Util.hpp"
+#include "Common/CTimer.h"
+#include "Common/CLTypeInformation.h"
+#include "Common/Util.hpp"
 #include <CL/Utils/Utils.hpp>
 
 #include <sstream>
