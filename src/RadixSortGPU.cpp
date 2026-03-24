@@ -487,6 +487,10 @@ OperationStatus RadixSortGPU<DataType>::initialize(
                     foundFile = true;
                     break;
                 }
+            } catch(const cl::util::Error& err) {
+            }
+        
+            try {
                 // then folder relative to executable
                 programCode = cl::util::read_exe_relative_text_file(path.c_str());
                 if(programCode.length()) {
@@ -494,8 +498,6 @@ OperationStatus RadixSortGPU<DataType>::initialize(
                     break;
                 }
             } catch(const cl::util::Error& err) {
-                std::cerr << "Failed to open OpenCL kernel source file " << path << " : " << err.what() << "\n";
-                continue;
             }
         }
         if(!foundFile)
