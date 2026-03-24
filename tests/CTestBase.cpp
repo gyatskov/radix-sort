@@ -7,7 +7,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 // CTestBase
 
-CTestBase::CTestBase(Arguments arguments /*= Arguments()*/)
+CTestBase::CTestBase(std::vector<std::string> arguments /*= {}*/)
     : m_arguments(arguments), m_computeState{}
 {
 }

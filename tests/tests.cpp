@@ -7,6 +7,8 @@
 #include "RadixSortOptions.h"
 #include "CRadixSortTask.h"
 #include <exception>
+#include <ranges>
+#include <algorithm>
 
 #include "Common/Util.hpp"
 // TODO: Move
@@ -27,7 +29,7 @@ auto DatasetCreator(size_t num_elements)
 class CRunner : public CTestBase
 {
 public:
-    CRunner(Arguments arguments = Arguments());
+    CRunner(std::vector<std::string> arguments = {});
 	virtual ~CRunner() = default;
 
 	bool DoCompute() override;
@@ -39,7 +41,7 @@ public:
     );
 };
 
-CRunner::CRunner(Arguments arguments /*= Arguments()*/) : CTestBase(arguments)
+CRunner::CRunner(std::vector<std::string> arguments /*= {}*/) : CTestBase(arguments)
 { }
 
 template <typename DataType>
@@ -88,11 +90,7 @@ bool CRunner::DoCompute()
 TEST_CASE( "Main test", "[main]" )
 {
     // Non-interactive mode
-    constexpr auto argc = 0;
-    char* argv[] = {};
-
-    Arguments arguments(argc, argv);
-	CRunner radixSortRunner(arguments);
+	CRunner radixSortRunner;
 
     try {
         const auto initialized = radixSortRunner.InitCLContext();

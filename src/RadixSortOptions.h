@@ -2,10 +2,8 @@
 
 #include "Parameters.h"
 
-#include <cstdint>
 #include <string>
-
-#include "Common/CArguments.h"
+#include <vector>
 
 struct RadixSortOptions
 {
@@ -16,17 +14,17 @@ struct RadixSortOptions
     bool perf_csv_to_stdout;
     bool verbose;
 
-    explicit RadixSortOptions(Arguments args) :
+    explicit RadixSortOptions(std::vector<std::string> args) :
         num_elements(AlgorithmParameters<float>::_NUM_MAX_INPUT_ELEMS),
         perf_to_stdout(false),
         perf_to_csv(false),
         perf_csv_to_stdout(false),
         verbose(false)
     {
-        for (std::size_t i = 0; i < args.getArguments().size(); i++) {
-            auto arg = args.getArguments()[i];
+        for (std::size_t i = 0; i < args.size(); i++) {
+            auto arg = args[i];
             if (arg == "--num-elements") {
-                num_elements = std::stoi(args.getArguments()[i + 1]);
+                num_elements = std::stoi(args[i + 1]);
                 i++;
             } else if (arg == "--perf-to-stdout") {
                 perf_to_stdout = true;

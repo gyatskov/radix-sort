@@ -3,15 +3,16 @@
 #include "Common/IComputeTask.h"
 
 #include "Common/CommonDefs.h"
-#include "Common/CArguments.h"
 #include "Common/ComputeState.h"
 
 #include <array>
+#include <vector>
+#include <string>
 
 class CTestBase
 {
 public:
-	CTestBase(Arguments arguments = Arguments());
+	CTestBase(std::vector<std::string> arguments = {});
 
 	virtual ~CTestBase() = default;
 
@@ -28,6 +29,6 @@ public:
 protected:
     ComputeState m_computeState;
 
-    Arguments m_arguments;
+    std::vector<std::string> m_arguments;
 };
 
