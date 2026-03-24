@@ -2,6 +2,7 @@ build/
 bin/
 lib/
 .ccls-cache/
+.cache/
 
 # Latex artifacts
 *.aux
