@@ -27,10 +27,13 @@ bool ComputeState::init() {
 
         for (auto platform : m_CLPlatforms)
         {
-            decltype(m_CLDevices) devices;
-            platform.getDevices(deviceType, &devices);
-
-            std::copy(std::begin(devices), std::end(devices), std::back_inserter(m_CLDevices));
+            try {
+                decltype(m_CLDevices) devices;
+                platform.getDevices(deviceType, &devices);
+                std::copy(std::begin(devices), std::end(devices), std::back_inserter(m_CLDevices));
+            } catch (const cl::Error&) {
+                // Platform has no GPU devices — skip it.
+            }
         }
     }
 
