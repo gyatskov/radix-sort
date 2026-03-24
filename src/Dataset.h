@@ -10,6 +10,7 @@
 #include <random>
 #include <algorithm>
 #include <numeric>
+#include <chrono>
 
 
 template <typename DataType>
@@ -91,9 +92,9 @@ template <typename DataType>
 RandomDistributed<DataType>::RandomDistributed(std::size_t size)
     : Dataset<DataType>(size)
 {
-	const std::string seedStr("Random Test Seed");
-	std::seed_seq seed(seedStr.begin(), seedStr.end());
-	std::mt19937 generator(seed);
+    const auto time = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+	std::seed_seq seed({static_cast<uint32_t>(time & 0xFFFFFFFF), static_cast<uint32_t>(time >> 32)});
+    std::mt19937 generator(seed);
 
 	std::uniform_int_distribution<DataType> dis(std::numeric_limits<DataType>::min(), std::numeric_limits<DataType>::max());
 	// fill the array with some values
