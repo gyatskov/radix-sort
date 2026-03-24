@@ -1,6 +1,6 @@
 # Testing library
 include(CTest)
-CPMAddPackage("gh:catchorg/Catch2@3.4.0")
+CPMAddPackage("gh:catchorg/Catch2@3.13.0")
 
 # Tests need to be added as executables first
 add_executable(tests
