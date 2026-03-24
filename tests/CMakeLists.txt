@@ -8,11 +8,6 @@ add_executable(tests
     CTestBase.cpp
 )
 
-target_compile_features(tests
-PRIVATE
-    cxx_std_17
-)
-
 # Should be linked to the main library, as well as the Catch2 testing library
 target_link_libraries(tests
 PRIVATE

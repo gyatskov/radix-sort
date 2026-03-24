@@ -4,10 +4,10 @@ GPU optimized implementation of Radix Sort using OpenCL.
 
 # Supported compilers / platforms #
 ## Compilers ##
-C++17-enabled compilers are supported, e.g.:
+C++20-enabled compilers are supported, e.g.:
 
- * GCC 9.3
- * Clang 10
+ * GCC 14
+ * Clang 16
  * Visual Studio 2019
 
 ## Build Tool ##
