@@ -1,6 +1,11 @@
 # Testing library
 include(CTest)
-CPMAddPackage("gh:catchorg/Catch2@3.13.0")
+CPMAddPackage(
+    NAME Catch2
+    GIT_TAG v3.13.0
+    GITHUB_REPOSITORY catchorg/Catch2
+    OPTIONS "BUILD_SHARED_LIBS OFF"
+)
 
 # Tests need to be added as executables first
 add_executable(tests
@@ -16,9 +21,10 @@ PRIVATE
     Catch2::Catch2WithMain
 )
 
+enable_testing()
 # Register tests for invocation via ctest
 add_test(
     NAME tests
     COMMAND tests
-    WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}/bin"
+    WORKING_DIRECTORY "$<TARGET_FILE_DIR:tests>"
 ) # Command can be a target
