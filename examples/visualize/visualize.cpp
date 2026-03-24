@@ -56,6 +56,8 @@ constexpr uint32_t WINDOW_H          = 720;
 constexpr uint32_t NUM_ELEMENTS      = 4096;
 constexpr int      MAX_FRAMES        = 2;
 
+static bool g_regenerate = false;
+
 // =====================================================================
 // Push constants – must match the GLSL layout exactly (16 bytes)
 // =====================================================================
@@ -228,8 +230,13 @@ static void initWindow(App& a)
     glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
     a.window = glfwCreateWindow(
         WINDOW_W, WINDOW_H,
-        "Radix Sort — Top: unsorted  |  Bottom: sorted",
+        "Radix Sort — Top: unsorted  |  Bottom: sorted  (click to regenerate)",
         nullptr, nullptr);
+    glfwSetMouseButtonCallback(a.window,
+        [](GLFWwindow*, int button, int action, int) {
+            if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+                g_regenerate = true;
+        });
 }
 
 static void initVulkan(App& a)
@@ -740,7 +747,7 @@ int main()
         return 1;
     }
 
-    const auto maxVal = static_cast<float>(
+    auto maxVal = static_cast<float>(
         *std::max_element(unsorted.begin(), unsorted.end()));
     std::cout << "Sort complete.  Launching Vulkan visualisation...\n";
 
@@ -761,6 +768,17 @@ int main()
 
         while (!glfwWindowShouldClose(app.window)) {
             glfwPollEvents();
+            if (g_regenerate) {
+                g_regenerate = false;
+                vkDeviceWaitIdle(app.dev);
+                if (sortData<uint32_t>(compute, NUM_ELEMENTS, unsorted, sorted)) {
+                    const VkDeviceSize sz = sizeof(uint32_t) * NUM_ELEMENTS;
+                    uploadToBuffer(app.dev, app.bufUnsorted, unsorted.data(), sz);
+                    uploadToBuffer(app.dev, app.bufSorted,   sorted.data(),   sz);
+                    maxVal = static_cast<float>(
+                        *std::max_element(unsorted.begin(), unsorted.end()));
+                }
+            }
             drawFrame(app, NUM_ELEMENTS, maxVal);
         }
 
