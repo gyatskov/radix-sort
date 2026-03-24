@@ -523,8 +523,9 @@ static void createCommandBuffers(App& a)
 
 static void createSyncObjects(App& a)
 {
+    const auto imageCount = a.swapImages.size();
     a.semImgReady.resize(MAX_FRAMES);
-    a.semRenderDone.resize(MAX_FRAMES);
+    a.semRenderDone.resize(imageCount);   // one per swapchain image
     a.fences.resize(MAX_FRAMES);
     VkSemaphoreCreateInfo si{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     VkFenceCreateInfo     fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
@@ -532,9 +533,12 @@ static void createSyncObjects(App& a)
     for (int i = 0; i < MAX_FRAMES; ++i) {
         if (vkCreateSemaphore(a.dev, &si, nullptr, &a.semImgReady[i])
             != VK_SUCCESS ||
-            vkCreateSemaphore(a.dev, &si, nullptr, &a.semRenderDone[i])
-            != VK_SUCCESS ||
             vkCreateFence(a.dev, &fi, nullptr, &a.fences[i]) != VK_SUCCESS)
+            throw std::runtime_error("Failed to create sync objects");
+    }
+    for (size_t i = 0; i < imageCount; ++i) {
+        if (vkCreateSemaphore(a.dev, &si, nullptr, &a.semRenderDone[i])
+            != VK_SUCCESS)
             throw std::runtime_error("Failed to create sync objects");
     }
 }
@@ -603,13 +607,13 @@ static void drawFrame(App& a, uint32_t count, float maxVal)
     si.commandBufferCount   = 1;
     si.pCommandBuffers      = &cmd;
     si.signalSemaphoreCount = 1;
-    si.pSignalSemaphores    = &a.semRenderDone[a.frame];
+    si.pSignalSemaphores    = &a.semRenderDone[imgIdx];  // per swapchain image
     if (vkQueueSubmit(a.gfxQueue, 1, &si, a.fences[a.frame]) != VK_SUCCESS)
         throw std::runtime_error("Queue submit failed");
 
     VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     pi.waitSemaphoreCount = 1;
-    pi.pWaitSemaphores    = &a.semRenderDone[a.frame];
+    pi.pWaitSemaphores    = &a.semRenderDone[imgIdx];  // per swapchain image
     pi.swapchainCount     = 1;
     pi.pSwapchains        = &a.vkbSwap.swapchain;
     pi.pImageIndices      = &imgIdx;
@@ -625,10 +629,11 @@ static void cleanup(App& a)
     if (a.dev) vkDeviceWaitIdle(a.dev);
 
     for (int i = 0; i < MAX_FRAMES; ++i) {
-        if (a.semImgReady[i])   vkDestroySemaphore(a.dev, a.semImgReady[i], nullptr);
-        if (a.semRenderDone[i]) vkDestroySemaphore(a.dev, a.semRenderDone[i], nullptr);
-        if (a.fences[i])        vkDestroyFence(a.dev, a.fences[i], nullptr);
+        if (a.semImgReady[i]) vkDestroySemaphore(a.dev, a.semImgReady[i], nullptr);
+        if (a.fences[i])      vkDestroyFence(a.dev, a.fences[i], nullptr);
     }
+    for (auto s : a.semRenderDone)
+        if (s) vkDestroySemaphore(a.dev, s, nullptr);
     if (a.cmdPool)    vkDestroyCommandPool(a.dev, a.cmdPool, nullptr);
 
     destroyBuffer(a.dev, a.bufUnsorted);
@@ -715,7 +720,6 @@ bool sortData(
 
 int main()
 {
-    std::cout << "visualize: starting...\n" << std::flush;
     // ── 1. Sort with OpenCL ─────────────────────────────────────────
     ComputeState compute;
     try {
