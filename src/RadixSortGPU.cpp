@@ -8,7 +8,8 @@
 #include <CL/Utils/Utils.hpp>
 
 #include <sstream>
-#include <fstream>
+#include <filesystem>
+#include <ranges>
 #include <cassert>
 #include <cmath>
 
@@ -472,26 +473,34 @@ OperationStatus RadixSortGPU<DataType>::initialize(
     {
         const auto preamble = BuildPreamble();
         std::string programCode = "";
-        const auto checkedPaths = make_array<std::string>(
+        const auto candidates = make_array<std::string>(
             "RadixSort.cl",
             "kernels/RadixSort.cl"
         );
-        for(const auto& path : checkedPaths) {
+        bool foundFile = false;
+        for(const auto& path : candidates) {
             // Both methods could throw.
             try {
                 // First try working directory,
                 programCode = cl::util::read_text_file(path.c_str());
                 if(programCode.length()) {
+                    foundFile = true;
                     break;
                 }
                 // then folder relative to executable
                 programCode = cl::util::read_exe_relative_text_file(path.c_str());
                 if(programCode.length()) {
+                    foundFile = true;
                     break;
                 }
             } catch(const cl::util::Error& err) {
+                std::cerr << "Failed to open OpenCL kernel source file " << path << " : " << err.what() << "\n";
                 continue;
             }
+        }
+        if(!foundFile)
+        {
+            return S::NO_SOURCE_FOUND;
         }
 
         if(programCode.length() == 0)
