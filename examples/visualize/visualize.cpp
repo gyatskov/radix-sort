@@ -228,9 +228,11 @@ struct App {
     std::vector<VkSemaphore> semRenderDone;
     std::vector<VkFence>     fences;
 
-    // Data buffers + descriptor sets
+    // Data buffers + descriptor sets (persistently mapped for zero-copy)
     GpuBuffer       bufUnsorted{};
     GpuBuffer       bufSorted{};
+    void*           mappedUnsorted = nullptr;
+    void*           mappedSorted   = nullptr;
     VkDescriptorSet dsUnsorted = VK_NULL_HANDLE;
     VkDescriptorSet dsSorted   = VK_NULL_HANDLE;
 
@@ -565,21 +567,20 @@ static void createCommandPool(App& a)
         throw std::runtime_error("Failed to create command pool");
 }
 
-static void createDataBuffers(
-    App& a,
-    const std::vector<uint32_t>& unsorted,
-    const std::vector<uint32_t>& sorted)
+/// Create Vulkan storage buffers and persistently map them so that OpenCL
+/// DMA transfers can read/write directly — no intermediate host copies.
+static void createMappedDataBuffers(App& a, uint32_t numRounded)
 {
-    const VkDeviceSize sz = sizeof(uint32_t) * unsorted.size();
+    const VkDeviceSize sz = sizeof(uint32_t) * numRounded;
     constexpr auto usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     constexpr auto props  = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     a.bufUnsorted = createBuffer(a.dev, a.gpu, sz, usage, props);
-    uploadToBuffer(a.dev, a.bufUnsorted, unsorted.data(), sz);
+    vkMapMemory(a.dev, a.bufUnsorted.memory, 0, sz, 0, &a.mappedUnsorted);
 
     a.bufSorted = createBuffer(a.dev, a.gpu, sz, usage, props);
-    uploadToBuffer(a.dev, a.bufSorted, sorted.data(), sz);
+    vkMapMemory(a.dev, a.bufSorted.memory, 0, sz, 0, &a.mappedSorted);
 }
 
 static void createDescriptorSets(App& a, uint32_t count)
@@ -765,6 +766,8 @@ static void cleanup(App& a)
         if (s) vkDestroySemaphore(a.dev, s, nullptr);
     if (a.cmdPool)    vkDestroyCommandPool(a.dev, a.cmdPool, nullptr);
 
+    if (a.mappedUnsorted) { vkUnmapMemory(a.dev, a.bufUnsorted.memory); a.mappedUnsorted = nullptr; }
+    if (a.mappedSorted)   { vkUnmapMemory(a.dev, a.bufSorted.memory);   a.mappedSorted   = nullptr; }
     destroyBuffer(a.dev, a.bufUnsorted);
     destroyBuffer(a.dev, a.bufSorted);
 
@@ -793,35 +796,39 @@ static void cleanup(App& a)
 // OpenCL sorting  (same pattern as the basic_sort example)
 // =====================================================================
 
+/// Zero-copy sort: OpenCL reads input from / writes output to the
+/// persistently-mapped Vulkan buffers via DMA — no intermediate vectors.
 template <typename DataType>
-bool sortData(
+bool sortDataZeroCopy(
     ComputeState& compute, uint32_t numElements,
-    std::vector<DataType>& outUnsorted,
-    std::vector<DataType>& outSorted)
+    DataType* dstUnsorted,   // persistently mapped Vulkan buffer
+    DataType* dstSorted,     // persistently mapped Vulkan buffer
+    uint32_t  numRounded)
 {
     using Params = AlgorithmParameters<DataType>;
 
     RandomDistributed<DataType> dataset(numElements);
     RadixSortGPU<DataType> sorter;
-    const uint32_t numRounded = sorter.Resize(numElements);
+    [[maybe_unused]] const uint32_t nr = sorter.Resize(numElements);
+    assert(nr == numRounded);
 
-    std::vector<DataType>  hKeys(numRounded);
-    std::vector<DataType>  hResult(numRounded);
-    std::vector<uint32_t>  hHisto(Params::_RADIX * Params::_NUM_ITEMS);
-    std::vector<uint32_t>  hGlobsum(Params::_NUM_HISTOSPLIT);
-    std::vector<uint32_t>  hPermut(numRounded);
+    // Write random data directly into the mapped Vulkan unsorted buffer.
+    std::copy_n(dataset.dataset.begin(), numElements, dstUnsorted);
+    std::fill_n(dstUnsorted + numElements, numRounded - numElements, DataType{});
 
-    std::copy_n(dataset.dataset.begin(), numElements, hKeys.begin());
+    // Auxiliary buffers stay on the heap (not rendered, not worth mapping).
+    std::vector<uint32_t> hHisto(Params::_RADIX * Params::_NUM_ITEMS);
+    std::vector<uint32_t> hGlobsum(Params::_NUM_HISTOSPLIT);
+    std::vector<uint32_t> hPermut(numRounded);
     std::iota(hPermut.begin(), hPermut.end(), 0U);
 
-    outUnsorted.assign(hKeys.begin(), hKeys.begin() + numElements);
-
+    // CheapSpan is non-owning — point directly at the mapped Vulkan memory.
     HostSpans<DataType> spans{
-        {hKeys.data(),    hKeys.size()},
+        {dstUnsorted,     numRounded},
         {hHisto.data(),   hHisto.size()},
         {hGlobsum.data(), hGlobsum.size()},
         {hPermut.data(),  hPermut.size()},
-        {hResult.data(),  hResult.size()},
+        {dstSorted,       numRounded},
     };
 
     auto status = sorter.initialize(
@@ -833,14 +840,15 @@ bool sortData(
     if (numRounded != numElements)
         sorter.padGPUData(q, sizeof(DataType) * numElements);
 
+    // uploadData reads from dstUnsorted (mapped Vulkan buffer) via DMA.
     status = sorter.uploadData(q);
     if (status != OperationStatus::OK) return false;
     status = sorter.calculate(q);
     if (status != OperationStatus::OK) return false;
+    // downloadData writes sorted result directly into dstSorted (mapped Vulkan buffer).
     status = sorter.downloadData(q);
     if (status != OperationStatus::OK) return false;
 
-    outSorted.assign(hResult.begin(), hResult.begin() + numElements);
     sorter.release();
     return true;
 }
@@ -851,7 +859,7 @@ bool sortData(
 
 int main()
 {
-    // ── 1. Sort with OpenCL ─────────────────────────────────────────
+    // ── 1. Init OpenCL ──────────────────────────────────────────────
     ComputeState compute;
     try {
         if (!compute.init()) {
@@ -863,22 +871,7 @@ int main()
         return 1;
     }
 
-    std::vector<uint32_t> unsorted, sorted;
-    std::cout << "Sorting " << NUM_ELEMENTS
-              << " uint32_t values on the GPU (OpenCL)...\n";
-    auto t0 = std::chrono::steady_clock::now();
-    if (!sortData<uint32_t>(compute, NUM_ELEMENTS, unsorted, sorted)) {
-        std::cerr << "OpenCL sort failed.\n";
-        return 1;
-    }
-    auto t1 = std::chrono::steady_clock::now();
-    float sortTimeMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
-
-    auto maxVal = static_cast<float>(
-        *std::max_element(unsorted.begin(), unsorted.end()));
-    std::cout << "Sort complete.  Launching Vulkan visualisation...\n";
-
-    // ── 2. Visualise with Vulkan ────────────────────────────────────
+    // ── 2. Init Vulkan + create persistently-mapped buffers ─────────
     App app{};
     try {
         initWindow(app);
@@ -889,7 +882,30 @@ int main()
         createOverlayPipeline(app);
         createFramebuffers(app);
         createCommandPool(app);
-        createDataBuffers(app, unsorted, sorted);
+
+        // Determine padded size and create mapped Vulkan storage buffers.
+        const uint32_t numRounded = RadixSortGPU<uint32_t>{}.Resize(NUM_ELEMENTS);
+        createMappedDataBuffers(app, numRounded);
+        auto* unsortedPtr = static_cast<uint32_t*>(app.mappedUnsorted);
+        auto* sortedPtr   = static_cast<uint32_t*>(app.mappedSorted);
+
+        // ── 3. Sort directly into mapped Vulkan buffers (zero-copy) ─
+        std::cout << "Sorting " << NUM_ELEMENTS
+                  << " uint32_t values on the GPU (OpenCL)...\n";
+        auto t0 = std::chrono::steady_clock::now();
+        if (!sortDataZeroCopy<uint32_t>(compute, NUM_ELEMENTS,
+                                         unsortedPtr, sortedPtr, numRounded)) {
+            std::cerr << "OpenCL sort failed.\n";
+            cleanup(app);
+            return 1;
+        }
+        auto t1 = std::chrono::steady_clock::now();
+        float sortTimeMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
+
+        auto maxVal = static_cast<float>(
+            *std::max_element(unsortedPtr, unsortedPtr + NUM_ELEMENTS));
+        std::cout << "Sort complete.  Launching Vulkan visualisation...\n";
+
         createDescriptorSets(app, NUM_ELEMENTS);
         createCommandBuffers(app);
         createSyncObjects(app);
@@ -900,14 +916,13 @@ int main()
                 g_regenerate = false;
                 vkDeviceWaitIdle(app.dev);
                 t0 = std::chrono::steady_clock::now();
-                if (sortData<uint32_t>(compute, NUM_ELEMENTS, unsorted, sorted)) {
+                // Sort directly into the same mapped buffers — no copy needed.
+                if (sortDataZeroCopy<uint32_t>(compute, NUM_ELEMENTS,
+                                                unsortedPtr, sortedPtr, numRounded)) {
                     t1 = std::chrono::steady_clock::now();
                     sortTimeMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
-                    const VkDeviceSize sz = sizeof(uint32_t) * NUM_ELEMENTS;
-                    uploadToBuffer(app.dev, app.bufUnsorted, unsorted.data(), sz);
-                    uploadToBuffer(app.dev, app.bufSorted,   sorted.data(),   sz);
                     maxVal = static_cast<float>(
-                        *std::max_element(unsorted.begin(), unsorted.end()));
+                        *std::max_element(unsortedPtr, unsortedPtr + NUM_ELEMENTS));
                 }
             }
             drawFrame(app, NUM_ELEMENTS, maxVal, sortTimeMs);
