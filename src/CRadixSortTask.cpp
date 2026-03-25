@@ -120,7 +120,7 @@ template <typename DataType>
 void CRadixSortTask<DataType>::ComputeGPU(
     cl::Context Context,
     cl::CommandQueue CommandQueue,
-    const std::array<size_t,3>& LocalWorkSize)
+    const LocalWorkSize& LocalWorkSize)
 {
 	if (const auto paddingRequired = mNumberKeys != mNumberKeysRounded) {
         assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
@@ -289,7 +289,7 @@ template <typename DataType>
 void CRadixSortTask<DataType>::ExecuteTask(
         cl::Context,
         cl::CommandQueue CommandQueue,
-        const std::array<size_t,3>&
+        const LocalWorkSize&
     )
 {
 	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);

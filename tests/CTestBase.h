@@ -23,7 +23,7 @@ public:
 
 	virtual bool RunComputeTask(
         IComputeTask& Task,
-        const std::array<size_t,3>& LocalWorkSize
+        const LocalWorkSize& LocalWorkSize
     );
 
 protected:

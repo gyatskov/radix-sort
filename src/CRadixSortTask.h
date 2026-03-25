@@ -42,7 +42,7 @@ public:
 	void ComputeGPU(
         cl::Context Context,
         cl::CommandQueue CommandQueue,
-        const std::array<size_t,3>& LocalWorkSize
+        const LocalWorkSize& LocalWorkSize
     ) override;
 
     void ComputeCPU() override;
@@ -69,7 +69,7 @@ protected:
 	void ExecuteTask(
         cl::Context Context,
         cl::CommandQueue CommandQueue,
-        const std::array<size_t,3>& LocalWorkSize
+        const LocalWorkSize& LocalWorkSize
     );
 
 

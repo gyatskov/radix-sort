@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
+
 #define _STR(x)      #x
 
 // Custom pragma for msvc
@@ -15,3 +18,5 @@
 #ifndef CL_TARGET_OPENCL_VERSION
 #define CL_TARGET_OPENCL_VERSION 120
 #endif
+
+using LocalWorkSize = std::array<std::size_t, 3>;

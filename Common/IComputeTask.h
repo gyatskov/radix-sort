@@ -24,7 +24,7 @@ public:
 	virtual void ComputeGPU(
         cl::Context Context,
         cl::CommandQueue CommandQueue,
-        const std::array<size_t,3>& LocalWorkSize
+        const LocalWorkSize& LocalWorkSize
     ) = 0;
 
 	//! Compute the "golden" solution on the CPU. The GPU results must be equal to this reference

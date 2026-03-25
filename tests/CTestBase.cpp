@@ -17,7 +17,7 @@ bool CTestBase::InitCLContext()
     return m_computeState.init();
 }
 
-bool CTestBase::RunComputeTask(IComputeTask& Task, const std::array<size_t,3>& LocalWorkSize)
+bool CTestBase::RunComputeTask(IComputeTask& Task, const LocalWorkSize& LocalWorkSize)
 {
 	if(m_computeState.m_CLContext() == nullptr)
 	{
