@@ -15,7 +15,7 @@
 #include <sstream>
 #include <ctime>        // std::time_t, struct std::tm, std::localtime
 #include <chrono>       // std::chrono::system_clock
-#include <functional>
+#include <ranges>
 #include <type_traits>
 #include <cstring>      // memcmp
 #include <cassert>
@@ -30,19 +30,15 @@
 ///
 template<typename DataType>
 void SortDataSTL(
-    const CheapSpan<DataType>& input,
-    CheapSpan<DataType>& output)
+    std::span<DataType> input,
+    std::span<DataType> output)
 {
-    std::copy(
-        input.data,
-        input.data + input.length,
-        output.data
-    );
+    std::ranges::copy(input.begin(), input.end(), output.begin());
 
     // Inplace reference sorting (STL quicksort):
     std::sort(
-        output.data,
-        output.data + output.length
+        output.data(),
+        output.data() + output.size()
     );
 }
 
@@ -52,14 +48,10 @@ void SortDataSTL(
 ///
 template<typename DataType>
 void SortDataRadix(
-    const CheapSpan<DataType>& input,
-    CheapSpan<DataType>& output)
+    std::span<DataType> input,
+    std::span<DataType> output)
 {
-    std::copy(
-        input.data,
-        input.data + input.length,
-        output.data
-    );
+    std::ranges::copy(input.begin(), input.end(), output.begin());
 
     // Reference sorting implementation on CPU (radixsort):
     RadixSortCPU<DataType>::sort(output);
@@ -183,16 +175,16 @@ void CRadixSortTask<DataType>::ComputeCPU()
     auto& hostBuffers {mHostData.mHostBuffers};
     hostBuffers.m_hKeys.resize(mNumberKeysRounded);
 
-    CheapSpan<DataType> dataInput {
+    std::span<DataType> dataInput {
         hostBuffers.m_hKeys.data(),
         hostBuffers.m_hKeys.size(),
     };
     // compute STL result
     {
-        CheapSpan<DataType> dataOutput {
+        std::span<DataType> dataOutput (
             mHostData.m_resultSTLCPU.data(),
-            mHostData.m_resultSTLCPU.size(),
-        };
+            mHostData.m_resultSTLCPU.size()
+        );
         mHostData.m_resultSTLCPU.resize(mNumberKeysRounded);
         CTimer timer;
         timer.Start();
@@ -210,10 +202,10 @@ void CRadixSortTask<DataType>::ComputeCPU()
 
     // compute CPU Radix Sort result
     {
-        CheapSpan<DataType> dataOutput {
+        std::span<DataType> dataOutput (
             mHostData.m_resultRadixSortCPU.data(),
-            mHostData.m_resultRadixSortCPU.size(),
-        };
+            mHostData.m_resultRadixSortCPU.size()
+        );
         mHostData.m_resultRadixSortCPU.resize(mNumberKeysRounded);
         CTimer timer;
         timer.Start();

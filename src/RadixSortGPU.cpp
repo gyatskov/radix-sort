@@ -8,7 +8,6 @@
 #include <CL/Utils/Utils.hpp>
 
 #include <sstream>
-#include <filesystem>
 #include <ranges>
 #include <cassert>
 #include <cmath>
@@ -373,7 +372,7 @@ void RadixSortGPU<DataType>::CopyDataToDevice( cl::CommandQueue CommandQueue)
         isBlocking,
         0,
         sizeof(DataType) * mNumberKeysRounded,
-        mHostSpans.m_hKeys.data
+        mHostSpans.m_hKeys.data()
     );
     assert(error == CL_SUCCESS);
 
@@ -382,7 +381,7 @@ void RadixSortGPU<DataType>::CopyDataToDevice( cl::CommandQueue CommandQueue)
         isBlocking,
         0,
         sizeof(uint32_t) * mNumberKeysRounded,
-        mHostSpans.h_Permut.data
+        mHostSpans.h_Permut.data()
     );
     assert(error == CL_SUCCESS);
 }
@@ -397,7 +396,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
 		isBlocking,
         offset,
 		sizeof(DataType) * mNumberKeysRounded,
-        mHostSpans.m_hResultFromGPU.data
+        mHostSpans.m_hResultFromGPU.data()
     );
     assert(error == CL_SUCCESS);
 
@@ -406,7 +405,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
 		isBlocking,
         offset,
 		sizeof(uint32_t) * mNumberKeysRounded,
-        mHostSpans.h_Permut.data
+        mHostSpans.h_Permut.data()
     );
     assert(error == CL_SUCCESS);
 
@@ -415,7 +414,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
 		isBlocking,
         offset,
 		sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
-        mHostSpans.m_hHistograms.data
+        mHostSpans.m_hHistograms.data()
     );
     assert(error == CL_SUCCESS);
 
@@ -424,7 +423,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
 		isBlocking,
         offset,
 		sizeof(uint32_t)  * Parameters::_NUM_HISTOSPLIT,
-		mHostSpans.m_hGlobsum.data
+		mHostSpans.m_hGlobsum.data()
     );
     assert(error == CL_SUCCESS);
 }

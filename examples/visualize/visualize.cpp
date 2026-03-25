@@ -822,7 +822,7 @@ bool sortDataZeroCopy(
     std::vector<uint32_t> hPermut(numRounded);
     std::iota(hPermut.begin(), hPermut.end(), 0U);
 
-    // CheapSpan is non-owning — point directly at the mapped Vulkan memory.
+    // spans are non-owning — point directly at the mapped Vulkan memory.
     HostSpans<DataType> spans{
         {dstUnsorted,     numRounded},
         {hHisto.data(),   hHisto.size()},

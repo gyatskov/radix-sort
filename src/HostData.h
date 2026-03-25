@@ -1,12 +1,12 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <cstdint>
-#include <memory>
-
 #include "Parameters.h"
-#include "Common/CheapSpan.h"
+
+#include <vector>
+#include <memory>
+#include <span>
+
+#include <cstdint>
 
 template <typename DataType>
 struct Dataset;
@@ -39,8 +39,8 @@ using HostData = HostBuffers<
 
 template<typename DataType>
 using HostSpans = HostBuffers<
-    CheapSpan<DataType>,
-    CheapSpan<uint32_t>
+    std::span<DataType>,
+    std::span<uint32_t>
 >;
 
 /// @note Only used for tests

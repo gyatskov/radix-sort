@@ -1,13 +1,14 @@
 ﻿#pragma once
 
 #include "Parameters.h"
-#include "Common/CheapSpan.h"
 
-#include <cstdint>
 #include <vector>
 #include <algorithm>
+#include <span>
+#include <ranges>
 #include <cstdlib>
 #include <cmath>
+#include <cstdint>
 
 namespace {
 
@@ -33,7 +34,6 @@ public:
     static_assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
 	inline static constexpr auto NUM_BINS = Parameters::_TOTALBITS / Parameters::_NUM_BITS_PER_RADIX;
 
-
 	///
 	/// ░░░░░▄▄▄▄▀▀▀▀▀▀▀▀▄▄▄▄▄▄░░░░░░░
 	/// ░░░░░█░░░░▒▒▒▒▒▒▒▒▒▒▒▒░░▀▀▄░░░░
@@ -55,13 +55,11 @@ public:
 	/// Radix Sort
     /// @tparam ElemType Element type of vector to be sorted
 	template<typename ElemType>
-	static void sort(CheapSpan<ElemType>& arr)
+	static void sort(std::span<ElemType>& arr)
 	{
 		// Find the maximum number to know number of digits
 		// in O(nkeys)
-        auto start = arr.data;
-        auto end = start + arr.length;
-		const auto max_elem { *std::max_element(start, end) };
+		const auto max_elem = *std::ranges::max_element(arr);
 
 		// Do counting sort for every digit. Note that instead
 		// of passing digit number, exp is passed. exp is 10^i
@@ -81,12 +79,12 @@ private:
     ///
     /// @note Allocates memory
 	template <typename ElemType>
-	static void countSort(CheapSpan<ElemType>& arr, uint64_t exp)
+	static void countSort(std::span<ElemType>& arr, uint64_t exp)
 	{
 		using UnsignedElemType = typename std::make_unsigned_t<ElemType>;
 
-		const auto n = arr.length;
-        const auto inputData = arr.data;
+		const auto n = arr.size();
+        const auto inputData = arr.data();
 		std::vector<ElemType> output(n, 0); // output array
 		size_t i = 0;
 		std::vector<size_t> count(NUM_BINS, 0);
