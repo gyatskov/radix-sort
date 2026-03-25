@@ -38,9 +38,9 @@ if(Vulkan_FOUND AND TARGET Vulkan::glslc)
 
     # Copy runtime DLLs next to the executable
     add_custom_command(TARGET visualize POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:visualize>
-            $<TARGET_FILE_DIR:visualize>
+        #        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        #            $<TARGET_RUNTIME_DLLS:visualize>
+        #            $<TARGET_FILE_DIR:visualize>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:glfw>
             $<TARGET_FILE_DIR:visualize>

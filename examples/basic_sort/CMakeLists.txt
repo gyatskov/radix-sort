@@ -13,9 +13,9 @@ add_custom_command(TARGET basic_sort POST_BUILD
         "$<TARGET_FILE_DIR:basic_sort>/RadixSort.cl"
 )
 
-add_custom_command(TARGET basic_sort POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_RUNTIME_DLLS:basic_sort>
-        $<TARGET_FILE_DIR:basic_sort>
-    COMMAND_EXPAND_LISTS
-)
+#add_custom_command(TARGET basic_sort POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#        $<TARGET_RUNTIME_DLLS:basic_sort>
+#        $<TARGET_FILE_DIR:basic_sort>
+#    COMMAND_EXPAND_LISTS
+#)
