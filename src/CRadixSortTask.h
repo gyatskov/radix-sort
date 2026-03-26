@@ -5,13 +5,10 @@
 #include "HostData.h"
 #include "RadixSortGPU.h"
 #include "RadixSortOptions.h"
-#include "OperationStatus.h"
 #include "Statistics.h"
 
-#include <map>
 #include <memory>
 #include <cstdint>
-#include <array>
 
 /// Runtime statistics of CPU implementation algorithms
 struct RuntimesCPU {
@@ -93,27 +90,3 @@ protected:
     /// Options provided by user
     RadixSortOptions mOptions;
 };
-
-/** Measures task performance **/
-template<class Callable>
-void TestPerformance(
-    cl::CommandQueue CommandQueue,
-    Callable&& fun,
-    const RadixSortOptions& options,
-    const size_t numIterations,
-    size_t numberKeys,
-    const std::string& datasetName,
-    const std::string& datatype
-);
-
-/** Writes performance to stream **/
-template <typename Stream>
-void writePerformance(
-    Stream&& stream,
-    const RuntimesGPU& runtimesGPU,
-    const RuntimesCPU& runtimesCPU,
-    size_t numberKeys,
-    const std::string& datasetName,
-    const std::string& datatype
-);
-

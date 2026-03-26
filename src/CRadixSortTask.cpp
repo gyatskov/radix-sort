@@ -313,6 +313,7 @@ void CRadixSortTask<DataType>::ExecuteTask(
     }
 }
 
+/** Writes performance to stream **/
 template <typename Stream>
 void writePerformance(
     Stream&& stream,
@@ -320,8 +321,7 @@ void writePerformance(
     const RuntimesCPU& runtimesCPU,
     size_t numberKeys,
     const std::string& datasetName,
-    const std::string& datatype
-
+    std::string_view datatype
 )
 {
     const std::vector<std::string> columns {
@@ -352,6 +352,7 @@ void writePerformance(
     stream << std::endl;
 }
 
+/** Measures task performance **/
 template<class Callable>
 void TestPerformance(
         cl::CommandQueue CommandQueue,
@@ -360,7 +361,7 @@ void TestPerformance(
         const size_t numIterations,
         size_t numberKeys,
         const std::string& datasetName,
-        const std::string& datatype
+        std::string_view datatype
     )
 {
     CTimer timer;
