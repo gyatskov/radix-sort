@@ -40,39 +40,39 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
     };
 
     createBufferAndCheck(
-        m_dMemoryMap["inputKeys"],
+        m_dMemoryMap[MemoryBuffer::InputKeys],
         sizeof(DataType) * buffer_size
     );
 
 	createBufferAndCheck(
-        m_dMemoryMap["outputKeys"],
+        m_dMemoryMap[MemoryBuffer::OutputKeys],
         sizeof(DataType) * buffer_size
     );
 
 	createBufferAndCheck(
-        m_dMemoryMap["inputPermutations"],
+        m_dMemoryMap[MemoryBuffer::InputPermutations],
         sizeof(uint32_t) * buffer_size
     );
 	createBufferAndCheck(
-        m_dMemoryMap["outputPermutations"],
+        m_dMemoryMap[MemoryBuffer::OutputPermutations],
         sizeof(uint32_t) * buffer_size
     );
 
 	// allocate the histogram on the GPU
 	createBufferAndCheck(
-        m_dMemoryMap["histograms"],
+        m_dMemoryMap[MemoryBuffer::Histograms],
         sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_ITEMS
     );
 
 	// allocate the auxiliary histogram on GPU
 	createBufferAndCheck(
-        m_dMemoryMap["globsum"],
+        m_dMemoryMap[MemoryBuffer::Globsum],
         sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT
     );
 
 	// temporary vector when the sum is not needed
 	createBufferAndCheck(
-        m_dMemoryMap["temp"],
+        m_dMemoryMap[MemoryBuffer::Temp],
         sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT
     );
 }

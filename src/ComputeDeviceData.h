@@ -9,6 +9,16 @@
 #include <map>
 #include <string>
 
+enum class MemoryBuffer {
+    InputKeys,
+    OutputKeys,
+    Histograms,
+    Globsum,
+    InputPermutations,
+    OutputPermutations,
+    Temp,
+};
+
 template <typename _DataType>
 struct ComputeDeviceData
 {
@@ -24,6 +34,6 @@ struct ComputeDeviceData
 
     /// Maps kernel names to their low-level handles
     std::map<std::string, cl::Kernel> m_kernelMap;
-    std::map<std::string, cl::Buffer> m_dMemoryMap;
+    std::map<MemoryBuffer, cl::Buffer> m_dMemoryMap;
 };
 

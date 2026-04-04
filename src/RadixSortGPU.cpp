@@ -27,8 +27,8 @@ void RadixSortGPU<DataType>::Histogram(cl::CommandQueue CommandQueue, int pass)
 	{
         const auto localCacheSize = sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP;
         cl_uint argIdx = 0U;
-        histogramKernelHandle.setArg(argIdx++, mDeviceData->m_dMemoryMap["inputKeys"]);
-        histogramKernelHandle.setArg(argIdx++, mDeviceData->m_dMemoryMap["histograms"]);
+        histogramKernelHandle.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::InputKeys]);
+        histogramKernelHandle.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms]);
         histogramKernelHandle.setArg(argIdx++, pass);
         histogramKernelHandle.setArg(argIdx++, cl::Local(localCacheSize));
         histogramKernelHandle.setArg(argIdx++, mNumberKeysRounded);
@@ -82,9 +82,9 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
         {
             cl_uint argIdx = 0U;
 
-            scanHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["histograms"]);
+            scanHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms]);
             scanHistogramKernel.setArg(argIdx++, cl::Local(sizeof(uint32_t) * maxmemcache));
-            scanHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["globsum"]);
+            scanHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::Globsum]);
         }
         cl::Event event;
         CTimer timer;
@@ -115,8 +115,8 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
         // second scan for the globsum
         // Set only first and third kernel arguments
         {
-            scanHistogramKernel.setArg(0,mDeviceData->m_dMemoryMap["globsum"]);
-            scanHistogramKernel.setArg(2,mDeviceData->m_dMemoryMap["temp"]);
+            scanHistogramKernel.setArg(0,mDeviceData->m_dMemoryMap[MemoryBuffer::Globsum]);
+            scanHistogramKernel.setArg(2,mDeviceData->m_dMemoryMap[MemoryBuffer::Temp]);
         }
 
         {
@@ -163,8 +163,8 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
         // Set kernel arguments
         {
             cl_uint argIdx = 0U;
-            pasteHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["histograms"]);
-            pasteHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["globsum"]);
+            pasteHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms]);
+            pasteHistogramKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::Globsum]);
         }
 
         // Execute paste histogram kernel
@@ -222,12 +222,12 @@ void RadixSortGPU<DataType>::Reorder(cl::CommandQueue CommandQueue, int pass)
 	// set kernel arguments
 	{
         cl_uint argIdx = 0U;
-        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["inputKeys"]);
-        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["outputKeys"]);
-        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["histograms"]);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::InputKeys]);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::OutputKeys]);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms]);
         reorderKernel.setArg(argIdx++, pass);
-        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["inputPermutations"]);
-        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap["outputPermutations"]);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::InputPermutations]);
+        reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::OutputPermutations]);
         reorderKernel.setArg(argIdx++, cl::Local(sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP));
         reorderKernel.setArg(argIdx++, mNumberKeysRounded);
 	}
@@ -260,10 +260,10 @@ void RadixSortGPU<DataType>::Reorder(cl::CommandQueue CommandQueue, int pass)
 #endif
 
     // swap the old and new vectors of keys
-    std::swap(mDeviceData->m_dMemoryMap["inputKeys"], mDeviceData->m_dMemoryMap["outputKeys"]);
+    std::swap(mDeviceData->m_dMemoryMap[MemoryBuffer::InputKeys], mDeviceData->m_dMemoryMap[MemoryBuffer::OutputKeys]);
 
     // swap the old and new permutations
-    std::swap(mDeviceData->m_dMemoryMap["inputPermutations"], mDeviceData->m_dMemoryMap["outputPermutations"]);
+    std::swap(mDeviceData->m_dMemoryMap[MemoryBuffer::InputPermutations], mDeviceData->m_dMemoryMap[MemoryBuffer::OutputPermutations]);
 }
 
 template <typename DataType>
@@ -277,7 +277,7 @@ void RadixSortGPU<DataType>::padGPUData(
     const auto size_bytes = mNumberKeysRounded * sizeof(DataType) - paddingOffset;
 
     CommandQueue.enqueueFillBuffer(
-        mDeviceData->m_dMemoryMap["inputKeys"],
+        mDeviceData->m_dMemoryMap[MemoryBuffer::InputKeys],
         &pattern,
         paddingOffset,
         size_bytes
@@ -364,7 +364,7 @@ OperationStatus RadixSortGPU<DataType>::downloadKeys(
     constexpr auto isBlocking = CL_FALSE;
     constexpr auto offset = 0U;
     auto error = CommandQueue.enqueueReadBuffer(
-        mDeviceData->m_dMemoryMap["inputKeys"],
+        mDeviceData->m_dMemoryMap[MemoryBuffer::InputKeys],
         isBlocking,
         offset,
         sizeof(DataType) * mNumberKeysRounded,
@@ -388,7 +388,7 @@ void RadixSortGPU<DataType>::CopyDataToDevice( cl::CommandQueue CommandQueue)
     constexpr auto isBlocking = CL_FALSE;
     auto error = CL_SUCCESS;
     error = CommandQueue.enqueueWriteBuffer(
-        mDeviceData->m_dMemoryMap["inputKeys"],
+        mDeviceData->m_dMemoryMap[MemoryBuffer::InputKeys],
         isBlocking,
         0,
         sizeof(DataType) * mNumberKeysRounded,
@@ -397,7 +397,7 @@ void RadixSortGPU<DataType>::CopyDataToDevice( cl::CommandQueue CommandQueue)
     assert(error == CL_SUCCESS);
 
     error = CommandQueue.enqueueWriteBuffer(
-        mDeviceData->m_dMemoryMap["inputPermutations"],
+        mDeviceData->m_dMemoryMap[MemoryBuffer::InputPermutations],
         isBlocking,
         0,
         sizeof(uint32_t) * mNumberKeysRounded,
@@ -412,7 +412,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
     constexpr auto isBlocking = CL_FALSE;
     constexpr auto offset = 0U;
     auto error = CommandQueue.enqueueReadBuffer(
-        mDeviceData->m_dMemoryMap["inputKeys"],
+        mDeviceData->m_dMemoryMap[MemoryBuffer::InputKeys],
 		isBlocking,
         offset,
 		sizeof(DataType) * mNumberKeysRounded,
@@ -421,7 +421,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
     assert(error == CL_SUCCESS);
 
     error = CommandQueue.enqueueReadBuffer(
-        mDeviceData->m_dMemoryMap["inputPermutations"],
+        mDeviceData->m_dMemoryMap[MemoryBuffer::InputPermutations],
 		isBlocking,
         offset,
 		sizeof(uint32_t) * mNumberKeysRounded,
@@ -430,7 +430,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
     assert(error == CL_SUCCESS);
 
     error = CommandQueue.enqueueReadBuffer(
-        mDeviceData->m_dMemoryMap["histograms"],
+        mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms],
 		isBlocking,
         offset,
 		sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
@@ -439,7 +439,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
     assert(error == CL_SUCCESS);
 
     error = CommandQueue.enqueueReadBuffer(
-        mDeviceData->m_dMemoryMap["globsum"],
+        mDeviceData->m_dMemoryMap[MemoryBuffer::Globsum],
 		isBlocking,
         offset,
 		sizeof(uint32_t)  * Parameters::_NUM_HISTOSPLIT,
