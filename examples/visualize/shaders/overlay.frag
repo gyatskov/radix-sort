@@ -1,12 +1,13 @@
 #version 450
 
 layout(push_constant) uniform PC {
-    float timeMs;
-    float padX;
-    float padY;
+    float value;
+    float anchorX;
+    float anchorY;
     float charW;
     float charH;
     uint  numChars;
+    uint  mode;     // 0 = time, 1 = integer
 } pc;
 
 layout(location = 0) in vec2 fragUV;
@@ -35,9 +36,8 @@ const uint GLYPHS[14] = uint[14](
 
 // Decode the time value into individual character indices.
 // Format: "NNN.NN ms" (9 characters, index 0..8)
-uint getCharGlyphIndex(uint pos) {
-    // Decompose timeMs into integer + fractional
-    float t = clamp(pc.timeMs, 0.0, 999.99);
+uint getTimeGlyphIndex(uint pos) {
+    float t = clamp(pc.value, 0.0, 999.99);
     uint intPart  = uint(t);
     uint fracPart = uint(fract(t) * 100.0 + 0.5);
 
@@ -55,8 +55,18 @@ uint getCharGlyphIndex(uint pos) {
     return 13u;
 }
 
+// Decode an integer value into digit glyph indices.
+uint getIntGlyphIndex(uint pos) {
+    uint val = uint(pc.value + 0.5);
+    uint digitFromRight = pc.numChars - 1u - pos;
+    if (digitFromRight == 0u) return val % 10u;
+    if (digitFromRight == 1u) return (val / 10u) % 10u;
+    return (val / 100u) % 10u;
+}
+
 void main() {
-    uint glyphIdx = getCharGlyphIndex(charIndex);
+    uint glyphIdx = (pc.mode == 0u) ? getTimeGlyphIndex(charIndex)
+                                    : getIntGlyphIndex(charIndex);
     uint glyph    = GLYPHS[glyphIdx];
 
     // Map UV to 5x5 grid cell

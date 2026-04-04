@@ -72,12 +72,13 @@ struct PushConstants {
 };
 
 struct OverlayPushConstants {
-    float    timeMs;
-    float    padX;
-    float    padY;
+    float    value;      // display value (timeMs or pass index)
+    float    anchorX;    // NDC X of left edge of text block
+    float    anchorY;    // NDC Y of top edge of text block
     float    charW;
     float    charH;
     uint32_t numChars;
+    uint32_t mode;       // 0 = time ("NNN.NN ms"), 1 = integer digits
 };
 
 constexpr uint32_t OVERLAY_NUM_CHARS = 9;  // "NNN.NN ms"
@@ -706,17 +707,44 @@ static void recordFrame(
     // Overlay: sort time in bottom-right
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a.overlayPipeline);
     {
-        OverlayPushConstants opc{};
-        opc.timeMs  = timeMs;
-        opc.padX    = 0.02f;
-        opc.padY    = 0.02f;
-        opc.charW   = 0.025f;
-        opc.charH   = 0.06f;
-        opc.numChars = OVERLAY_NUM_CHARS;
-        vkCmdPushConstants(cmd, a.overlayPipeLayout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0, sizeof(opc), &opc);
-        vkCmdDraw(cmd, OVERLAY_NUM_CHARS * 6, 1, 0, 0);
+        constexpr float charW = 0.025f;
+        constexpr float charH = 0.06f;
+        constexpr float gap   = charW * 0.3f;
+        constexpr float stride = charW + gap;
+
+        // Timer label — bottom-right corner
+        {
+            constexpr float totalW = OVERLAY_NUM_CHARS * stride - gap;
+            OverlayPushConstants opc{};
+            opc.value    = timeMs;
+            opc.anchorX  = 1.0f - 0.02f - totalW;
+            opc.anchorY  = 1.0f - 0.02f - charH;
+            opc.charW    = charW;
+            opc.charH    = charH;
+            opc.numChars = OVERLAY_NUM_CHARS;
+            opc.mode     = 0;
+            vkCmdPushConstants(cmd, a.overlayPipeLayout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0, sizeof(opc), &opc);
+            vkCmdDraw(cmd, OVERLAY_NUM_CHARS * 6, 1, 0, 0);
+        }
+
+        // Pass index labels — left side of each pass row
+        for (uint32_t row = 1; row < TOTAL_ROWS; ++row) {
+            const float yCenter = -1.0f + 2.0f * (row + 0.5f) / TOTAL_ROWS;
+            OverlayPushConstants opc{};
+            opc.value    = static_cast<float>(row - 1);
+            opc.anchorX  = -1.0f + 0.01f;
+            opc.anchorY  = yCenter - charH * 0.5f;
+            opc.charW    = charW;
+            opc.charH    = charH;
+            opc.numChars = 1;
+            opc.mode     = 1;
+            vkCmdPushConstants(cmd, a.overlayPipeLayout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0, sizeof(opc), &opc);
+            vkCmdDraw(cmd, 6, 1, 0, 0);
+        }
     }
 
     vkCmdEndRenderPass(cmd);

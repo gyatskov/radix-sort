@@ -1,12 +1,13 @@
 #version 450
 
 layout(push_constant) uniform PC {
-    float timeMs;
-    float padX;  // right edge padding in NDC (e.g. 0.02)
-    float padY;  // bottom edge padding in NDC
-    float charW; // character width in NDC
-    float charH; // character height in NDC
+    float value;
+    float anchorX;  // NDC X of left edge of text block
+    float anchorY;  // NDC Y of top edge of text block
+    float charW;    // character width in NDC
+    float charH;    // character height in NDC
     uint  numChars;
+    uint  mode;     // 0 = time, 1 = integer
 } pc;
 
 layout(location = 0) out vec2 fragUV;
@@ -24,12 +25,10 @@ void main() {
     );
     vec2 uv = offsets[vertIdx];
 
-    // Position: bottom-right corner, right-aligned
     float gap    = pc.charW * 0.3;  // inter-character spacing
     float stride = pc.charW + gap;
-    float totalW = float(pc.numChars) * stride - gap;
-    float x = (1.0 - pc.padX - totalW) + float(charIdx) * stride + uv.x * pc.charW;
-    float y = (1.0 - pc.padY - pc.charH) + uv.y * pc.charH;
+    float x = pc.anchorX + float(charIdx) * stride + uv.x * pc.charW;
+    float y = pc.anchorY + uv.y * pc.charH;
 
     gl_Position = vec4(x, y, 0.0, 1.0);
     fragUV      = uv;
