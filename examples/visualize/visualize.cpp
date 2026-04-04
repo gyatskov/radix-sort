@@ -60,6 +60,7 @@ constexpr uint32_t TOTAL_ROWS        = NUM_PASSES + 1;  // unsorted + one per pa
 constexpr int      MAX_FRAMES        = 2;
 
 static bool g_regenerate = false;
+static bool g_framebufferResized = false;
 
 // =====================================================================
 // Push constants – must match the GLSL layout exactly
@@ -258,7 +259,7 @@ static void initWindow(App& a)
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE,  GLFW_TRUE);
     a.window = glfwCreateWindow(
         WINDOW_W, WINDOW_H,
         "Radix Sort \xe2\x80\x94 Unsorted + Pass Intermediates  (click to regenerate)",
@@ -267,6 +268,10 @@ static void initWindow(App& a)
         [](GLFWwindow*, int button, int action, int) {
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
                 g_regenerate = true;
+        });
+    glfwSetFramebufferSizeCallback(a.window,
+        [](GLFWwindow*, int, int) {
+            g_framebufferResized = true;
         });
 }
 
@@ -400,15 +405,10 @@ static void createPipeline(App& a)
         VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
     ia.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
-    VkViewport vp{0, 0,
-        static_cast<float>(a.swapExt.width),
-        static_cast<float>(a.swapExt.height), 0, 1};
-    VkRect2D sc{{0,0}, a.swapExt};
-
     VkPipelineViewportStateCreateInfo vs{
         VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
-    vs.viewportCount = 1; vs.pViewports = &vp;
-    vs.scissorCount  = 1; vs.pScissors  = &sc;
+    vs.viewportCount = 1;
+    vs.scissorCount  = 1;
 
     VkPipelineRasterizationStateCreateInfo rs{
         VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
@@ -428,6 +428,13 @@ static void createPipeline(App& a)
         VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
     cb.attachmentCount = 1;
     cb.pAttachments    = &cba;
+
+    VkDynamicState dynStates[] = {
+        VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dyn{
+        VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+    dyn.dynamicStateCount = 2;
+    dyn.pDynamicStates    = dynStates;
 
     VkPushConstantRange pcr{};
     pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -453,6 +460,7 @@ static void createPipeline(App& a)
     pi.pRasterizationState = &rs;
     pi.pMultisampleState   = &ms;
     pi.pColorBlendState    = &cb;
+    pi.pDynamicState       = &dyn;
     pi.layout              = a.pipeLayout;
     pi.renderPass          = a.renderPass;
     if (vkCreateGraphicsPipelines(a.dev, VK_NULL_HANDLE, 1, &pi, nullptr,
@@ -485,15 +493,10 @@ static void createOverlayPipeline(App& a)
         VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
     ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-    VkViewport vp{0, 0,
-        static_cast<float>(a.swapExt.width),
-        static_cast<float>(a.swapExt.height), 0, 1};
-    VkRect2D sc{{0,0}, a.swapExt};
-
     VkPipelineViewportStateCreateInfo vs{
         VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
-    vs.viewportCount = 1; vs.pViewports = &vp;
-    vs.scissorCount  = 1; vs.pScissors  = &sc;
+    vs.viewportCount = 1;
+    vs.scissorCount  = 1;
 
     VkPipelineRasterizationStateCreateInfo rs{
         VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
@@ -521,6 +524,13 @@ static void createOverlayPipeline(App& a)
     cb.attachmentCount = 1;
     cb.pAttachments    = &cba;
 
+    VkDynamicState dynStates[] = {
+        VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dyn{
+        VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+    dyn.dynamicStateCount = 2;
+    dyn.pDynamicStates    = dynStates;
+
     VkPushConstantRange pcr{};
     pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pcr.size       = sizeof(OverlayPushConstants);
@@ -543,6 +553,7 @@ static void createOverlayPipeline(App& a)
     pi.pRasterizationState = &rs;
     pi.pMultisampleState   = &ms;
     pi.pColorBlendState    = &cb;
+    pi.pDynamicState       = &dyn;
     pi.layout              = a.overlayPipeLayout;
     pi.renderPass          = a.renderPass;
     if (vkCreateGraphicsPipelines(a.dev, VK_NULL_HANDLE, 1, &pi, nullptr,
@@ -721,6 +732,14 @@ static void recordFrame(
     rp.pClearValues      = &clear;
 
     vkCmdBeginRenderPass(cmd, &rp, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport vp{0, 0,
+        static_cast<float>(a.swapExt.width),
+        static_cast<float>(a.swapExt.height), 0, 1};
+    VkRect2D sc{{0,0}, a.swapExt};
+    vkCmdSetViewport(cmd, 0, 1, &vp);
+    vkCmdSetScissor(cmd, 0, 1, &sc);
+
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a.pipeline);
 
     // Grid layout: NUM_COLS columns × TOTAL_ROWS rows.
@@ -819,13 +838,23 @@ static void recordFrame(
     vkEndCommandBuffer(cmd);
 }
 
+static void recreateSwapchain(App& a);
+
 static void drawFrame(App& a, float timeMs)
 {
     vkWaitForFences(a.dev, 1, &a.fences[a.frame], VK_TRUE, UINT64_MAX);
 
     uint32_t imgIdx = 0;
-    vkAcquireNextImageKHR(a.dev, a.vkbSwap.swapchain, UINT64_MAX,
-                          a.semImgReady[a.frame], VK_NULL_HANDLE, &imgIdx);
+    VkResult acqResult = vkAcquireNextImageKHR(
+        a.dev, a.vkbSwap.swapchain, UINT64_MAX,
+        a.semImgReady[a.frame], VK_NULL_HANDLE, &imgIdx);
+    if (acqResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapchain(a);
+        return;
+    }
+    if (acqResult != VK_SUCCESS && acqResult != VK_SUBOPTIMAL_KHR)
+        throw std::runtime_error("Failed to acquire swapchain image");
+
     vkResetFences(a.dev, 1, &a.fences[a.frame]);
 
     auto cmd = a.cmdBufs[a.frame];
@@ -850,9 +879,64 @@ static void drawFrame(App& a, float timeMs)
     pi.swapchainCount     = 1;
     pi.pSwapchains        = &a.vkbSwap.swapchain;
     pi.pImageIndices      = &imgIdx;
-    vkQueuePresentKHR(a.prsQueue, &pi);
+    VkResult prsResult = vkQueuePresentKHR(a.prsQueue, &pi);
+    if (prsResult == VK_ERROR_OUT_OF_DATE_KHR ||
+        prsResult == VK_SUBOPTIMAL_KHR || g_framebufferResized) {
+        g_framebufferResized = false;
+        recreateSwapchain(a);
+    }
 
     a.frame = (a.frame + 1) % MAX_FRAMES;
+}
+
+// ── Swapchain recreation ─────────────────────────────────────────────────
+
+static void recreateSwapchain(App& a)
+{
+    int w = 0, h = 0;
+    glfwGetFramebufferSize(a.window, &w, &h);
+    while (w == 0 || h == 0) {
+        glfwGetFramebufferSize(a.window, &w, &h);
+        glfwWaitEvents();
+    }
+    vkDeviceWaitIdle(a.dev);
+
+    // Destroy old framebuffers
+    for (auto fb : a.framebuffers) vkDestroyFramebuffer(a.dev, fb, nullptr);
+    a.framebuffers.clear();
+
+    // Destroy old render-done semaphores (one per swapchain image)
+    for (auto s : a.semRenderDone)
+        if (s) vkDestroySemaphore(a.dev, s, nullptr);
+    a.semRenderDone.clear();
+
+    // Destroy old image views and swapchain
+    a.vkbSwap.destroy_image_views(a.swapViews);
+
+    // Rebuild swapchain reusing the old one
+    auto sr = vkb::SwapchainBuilder{a.vkbDev}
+        .set_old_swapchain(a.vkbSwap)
+        .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+        .build();
+    if (!sr) throw std::runtime_error(sr.error().message());
+    vkb::destroy_swapchain(a.vkbSwap);
+    a.vkbSwap   = sr.value();
+    a.swapImages = a.vkbSwap.get_images().value();
+    a.swapViews  = a.vkbSwap.get_image_views().value();
+    a.swapFmt    = a.vkbSwap.image_format;
+    a.swapExt    = a.vkbSwap.extent;
+
+    // Recreate framebuffers and per-image semaphores
+    createFramebuffers(a);
+
+    const auto imageCount = a.swapImages.size();
+    a.semRenderDone.resize(imageCount);
+    VkSemaphoreCreateInfo si{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    for (size_t i = 0; i < imageCount; ++i) {
+        if (vkCreateSemaphore(a.dev, &si, nullptr, &a.semRenderDone[i])
+            != VK_SUCCESS)
+            throw std::runtime_error("Failed to create sync objects");
+    }
 }
 
 // ── Cleanup ─────────────────────────────────────────────────────────────
