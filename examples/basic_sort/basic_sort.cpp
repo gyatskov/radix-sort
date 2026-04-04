@@ -44,6 +44,7 @@ bool sortAndVerify(ComputeState& compute, uint32_t numElements)
     std::vector<uint32_t>  hHistograms(Parameters::_RADIX * Parameters::_NUM_ITEMS);
     std::vector<uint32_t>  hGlobsum(Parameters::_NUM_HISTOSPLIT);
     std::vector<uint32_t>  hPermut(numRounded);
+    std::vector<uint32_t>  hOutPermut(numRounded);
 
     // Copy the dataset into the key buffer
     std::copy_n(dataset.dataset.begin(), numElements, hKeys.begin());
@@ -57,6 +58,7 @@ bool sortAndVerify(ComputeState& compute, uint32_t numElements)
         { hHistograms.data(), hHistograms.size()  },
         { hGlobsum.data(),    hGlobsum.size()     },
         { hPermut.data(),     hPermut.size()      },
+        { hOutPermut.data(),  hOutPermut.size()   },
         { hResult.data(),     hResult.size()      },
     };
 

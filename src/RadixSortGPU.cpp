@@ -377,6 +377,51 @@ OperationStatus RadixSortGPU<DataType>::downloadKeys(
 }
 
 template <typename DataType>
+OperationStatus RadixSortGPU<DataType>::downloadIntermediate(
+    cl::CommandQueue CommandQueue
+)
+{
+    constexpr auto isBlocking = CL_FALSE;
+    constexpr auto offset = 0U;
+    using S = OperationStatus;
+
+    auto error = CommandQueue.enqueueReadBuffer(
+        mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms],
+        isBlocking, offset,
+        sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
+        mHostSpans.m_hHistograms.data()
+    );
+    if (error != CL_SUCCESS) return S::DATA_DOWNLOAD_FAILED;
+
+    error = CommandQueue.enqueueReadBuffer(
+        mDeviceData->m_dMemoryMap[MemoryBuffer::Globsum],
+        isBlocking, offset,
+        sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT,
+        mHostSpans.m_hGlobsum.data()
+    );
+    if (error != CL_SUCCESS) return S::DATA_DOWNLOAD_FAILED;
+
+    error = CommandQueue.enqueueReadBuffer(
+        mDeviceData->m_dMemoryMap[MemoryBuffer::InputPermutations],
+        isBlocking, offset,
+        sizeof(uint32_t) * mNumberKeysRounded,
+        mHostSpans.h_Permut.data()
+    );
+    if (error != CL_SUCCESS) return S::DATA_DOWNLOAD_FAILED;
+
+    error = CommandQueue.enqueueReadBuffer(
+        mDeviceData->m_dMemoryMap[MemoryBuffer::OutputPermutations],
+        isBlocking, offset,
+        sizeof(uint32_t) * mNumberKeysRounded,
+        mHostSpans.h_OutputPermut.data()
+    );
+    if (error != CL_SUCCESS) return S::DATA_DOWNLOAD_FAILED;
+
+    error = CommandQueue.finish();
+    return error == CL_SUCCESS ? S::OK : S::DATA_DOWNLOAD_FAILED;
+}
+
+template <typename DataType>
 void RadixSortGPU<DataType>::setLogStream(std::ostream* out) noexcept
 {
     mOutStream = out;

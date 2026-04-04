@@ -107,6 +107,10 @@ public:
     /// (writes into m_hResultFromGPU span provided at initialization).
     OperationStatus downloadKeys(cl::CommandQueue CommandQueue);
 
+    /// Downloads auxiliary buffers from device to host:
+    /// histograms, globsum, input permutations, and output permutations.
+    OperationStatus downloadIntermediate(cl::CommandQueue CommandQueue);
+
 private:
     using Parameters = AlgorithmParameters<DataType>;
 

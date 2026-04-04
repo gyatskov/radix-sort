@@ -91,6 +91,7 @@ bool CRadixSortTask<DataType>::InitResources(
         {hostBuffers.m_hHistograms.data(), hostBuffers.m_hKeys.size()},
         {hostBuffers.m_hGlobsum.data(), hostBuffers.m_hKeys.size()},
         {hostBuffers.h_Permut.data(), hostBuffers.m_hKeys.size()},
+        {hostBuffers.h_OutputPermut.data(), hostBuffers.m_hKeys.size()},
         {hostBuffers.m_hResultFromGPU.data(), hostBuffers.m_hKeys.size()},
     };
     // Initialize actual GPU algorithms and memory

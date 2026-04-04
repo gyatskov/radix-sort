@@ -27,6 +27,8 @@ struct HostBuffers
 	BufferAux m_hGlobsum;
 	/// Internal permutations
 	BufferAux h_Permut;
+	/// Output permutations (after reorder, before swap)
+	BufferAux h_OutputPermut;
     /// Output values
 	BufferData m_hResultFromGPU;
 };

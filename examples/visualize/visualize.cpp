@@ -62,13 +62,15 @@ constexpr int      MAX_FRAMES        = 2;
 static bool g_regenerate = false;
 
 // =====================================================================
-// Push constants – must match the GLSL layout exactly (16 bytes)
+// Push constants – must match the GLSL layout exactly
 // =====================================================================
 struct PushConstants {
     uint32_t count;
     float    maxValue;
     float    yOffset;
     float    yScale;
+    float    xOffset;   // horizontal center of column in NDC
+    float    xScale;    // horizontal half-width (fraction of full)
 };
 
 struct OverlayPushConstants {
@@ -236,10 +238,16 @@ struct App {
     void*           mappedUnsorted = nullptr;
     VkDescriptorSet dsUnsorted = VK_NULL_HANDLE;
 
-    // Per-pass intermediate + final sorted buffers (one per radix sort pass)
-    std::vector<GpuBuffer>       bufPasses;
-    std::vector<void*>           mappedPasses;
-    std::vector<VkDescriptorSet> dsPasses;
+    // Column types: keys, histograms, globsum, inputPermut, outputPermut
+    static constexpr uint32_t NUM_COLS = 5;
+    struct ColData {
+        std::vector<GpuBuffer>       bufs;      // [NUM_PASSES]
+        std::vector<void*>           mapped;    // [NUM_PASSES]
+        std::vector<VkDescriptorSet> ds;        // [NUM_PASSES]
+        uint32_t elemCount = 0;
+        float    maxVal    = 1.0f;
+    };
+    ColData cols[NUM_COLS];  // 0=keys, 1=histo, 2=globsum, 3=inPermut, 4=outPermut
 
     uint32_t frame = 0;
 };
@@ -576,26 +584,42 @@ static void createCommandPool(App& a)
 /// DMA transfers can read/write directly — no intermediate host copies.
 static void createMappedDataBuffers(App& a, uint32_t numRounded)
 {
-    const VkDeviceSize sz = sizeof(uint32_t) * numRounded;
+    using Params = AlgorithmParameters<uint32_t>;
     constexpr auto usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     constexpr auto props  = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    a.bufUnsorted = createBuffer(a.dev, a.gpu, sz, usage, props);
-    vkMapMemory(a.dev, a.bufUnsorted.memory, 0, sz, 0, &a.mappedUnsorted);
+    // Unsorted keys buffer
+    const VkDeviceSize szKeys = sizeof(uint32_t) * numRounded;
+    a.bufUnsorted = createBuffer(a.dev, a.gpu, szKeys, usage, props);
+    vkMapMemory(a.dev, a.bufUnsorted.memory, 0, szKeys, 0, &a.mappedUnsorted);
 
-    // One buffer per radix sort pass (intermediates + final sorted).
-    a.bufPasses.resize(NUM_PASSES);
-    a.mappedPasses.resize(NUM_PASSES, nullptr);
-    for (uint32_t i = 0; i < NUM_PASSES; ++i) {
-        a.bufPasses[i] = createBuffer(a.dev, a.gpu, sz, usage, props);
-        vkMapMemory(a.dev, a.bufPasses[i].memory, 0, sz, 0, &a.mappedPasses[i]);
+    // Per-column element counts and buffer sizes
+    const uint32_t colCounts[App::NUM_COLS] = {
+        numRounded,                                    // keys
+        Params::_RADIX * Params::_NUM_ITEMS,           // histograms
+        Params::_NUM_HISTOSPLIT,                       // globsum
+        numRounded,                                    // input permutations
+        numRounded,                                    // output permutations
+    };
+
+    for (uint32_t c = 0; c < App::NUM_COLS; ++c) {
+        auto& col = a.cols[c];
+        col.elemCount = colCounts[c];
+        col.bufs.resize(NUM_PASSES);
+        col.mapped.resize(NUM_PASSES, nullptr);
+        const VkDeviceSize sz = sizeof(uint32_t) * col.elemCount;
+        for (uint32_t p = 0; p < NUM_PASSES; ++p) {
+            col.bufs[p] = createBuffer(a.dev, a.gpu, sz, usage, props);
+            vkMapMemory(a.dev, col.bufs[p].memory, 0, sz, 0, &col.mapped[p]);
+        }
     }
 }
 
-static void createDescriptorSets(App& a, uint32_t count)
+static void createDescriptorSets(App& a)
 {
-    constexpr uint32_t totalSets = 1 + NUM_PASSES;  // unsorted + per-pass
+    // 1 for unsorted keys + NUM_COLS * NUM_PASSES for the per-column grids
+    constexpr uint32_t totalSets = 1 + App::NUM_COLS * NUM_PASSES;
 
     // Pool
     VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, totalSets};
@@ -606,7 +630,7 @@ static void createDescriptorSets(App& a, uint32_t count)
     if (vkCreateDescriptorPool(a.dev, &pci, nullptr, &a.dsPool) != VK_SUCCESS)
         throw std::runtime_error("Failed to create descriptor pool");
 
-    // Allocate
+    // Allocate all at once
     std::vector<VkDescriptorSetLayout> layouts(totalSets, a.dsLayout);
     VkDescriptorSetAllocateInfo ai{
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -616,12 +640,18 @@ static void createDescriptorSets(App& a, uint32_t count)
     std::vector<VkDescriptorSet> sets(totalSets);
     if (vkAllocateDescriptorSets(a.dev, &ai, sets.data()) != VK_SUCCESS)
         throw std::runtime_error("Failed to allocate descriptor sets");
-    a.dsUnsorted = sets[0];
-    a.dsPasses.assign(sets.begin() + 1, sets.end());
 
-    // Write
-    const VkDeviceSize bufSize = sizeof(uint32_t) * count;
-    auto writeDS = [&](VkDescriptorSet ds, VkBuffer buf) {
+    // Distribute descriptor sets
+    a.dsUnsorted = sets[0];
+    uint32_t idx = 1;
+    for (uint32_t c = 0; c < App::NUM_COLS; ++c) {
+        a.cols[c].ds.resize(NUM_PASSES);
+        for (uint32_t p = 0; p < NUM_PASSES; ++p)
+            a.cols[c].ds[p] = sets[idx++];
+    }
+
+    // Write descriptor bindings
+    auto writeDS = [&](VkDescriptorSet ds, VkBuffer buf, VkDeviceSize bufSize) {
         VkDescriptorBufferInfo bi{buf, 0, bufSize};
         VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         w.dstSet          = ds;
@@ -631,9 +661,13 @@ static void createDescriptorSets(App& a, uint32_t count)
         w.pBufferInfo     = &bi;
         vkUpdateDescriptorSets(a.dev, 1, &w, 0, nullptr);
     };
-    writeDS(a.dsUnsorted, a.bufUnsorted.buffer);
-    for (uint32_t i = 0; i < NUM_PASSES; ++i)
-        writeDS(a.dsPasses[i], a.bufPasses[i].buffer);
+    writeDS(a.dsUnsorted, a.bufUnsorted.buffer,
+            sizeof(uint32_t) * a.cols[0].elemCount);
+    for (uint32_t c = 0; c < App::NUM_COLS; ++c) {
+        const VkDeviceSize sz = sizeof(uint32_t) * a.cols[c].elemCount;
+        for (uint32_t p = 0; p < NUM_PASSES; ++p)
+            writeDS(a.cols[c].ds[p], a.cols[c].bufs[p].buffer, sz);
+    }
 }
 
 static void createCommandBuffers(App& a)
@@ -673,8 +707,7 @@ static void createSyncObjects(App& a)
 // ── Recording & presentation ────────────────────────────────────────────
 
 static void recordFrame(
-    App& a, VkCommandBuffer cmd, uint32_t imgIdx,
-    uint32_t count, float maxVal, float timeMs)
+    App& a, VkCommandBuffer cmd, uint32_t imgIdx, float timeMs)
 {
     VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(cmd, &bi);
@@ -690,18 +723,53 @@ static void recordFrame(
     vkCmdBeginRenderPass(cmd, &rp, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a.pipeline);
 
-    // Draw TOTAL_ROWS scatter-plot rows: unsorted + one per pass.
-    // Row 0 = unsorted input, rows 1..NUM_PASSES = after each radix sort pass.
-    for (uint32_t row = 0; row < TOTAL_ROWS; ++row) {
-        const float yOffset = -1.0f + 2.0f * (row + 0.5f) / TOTAL_ROWS;
-        const float yScale  = 0.9f / TOTAL_ROWS;
-        PushConstants pc{count, maxVal, yOffset, yScale};
-        vkCmdPushConstants(cmd, a.pipeLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pc), &pc);
-        VkDescriptorSet ds = (row == 0) ? a.dsUnsorted : a.dsPasses[row - 1];
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                a.pipeLayout, 0, 1, &ds, 0, nullptr);
-        vkCmdDraw(cmd, count, 1, 0, 0);
+    // Grid layout: NUM_COLS columns × TOTAL_ROWS rows.
+    // Row 0 = unsorted keys (only in column 0).
+    // Rows 1..NUM_PASSES = per-pass state for all columns.
+    constexpr float colWidth = 1.0f / App::NUM_COLS;  // in half-NDC
+
+    for (uint32_t col = 0; col < App::NUM_COLS; ++col) {
+        const auto& cd = a.cols[col];
+        const float xCenter = -1.0f + (2.0f * col + 1.0f) / App::NUM_COLS;
+
+        for (uint32_t row = 0; row < TOTAL_ROWS; ++row) {
+            const float yOffset = -1.0f + 2.0f * (row + 0.5f) / TOTAL_ROWS;
+            const float yScale  = 0.9f / TOTAL_ROWS;
+
+            // Row 0 is unsorted keys — only column 0 draws it
+            VkDescriptorSet ds;
+            uint32_t count;
+            float maxVal;
+            if (row == 0) {
+                if (col != 0) continue;
+                ds     = a.dsUnsorted;
+                count  = cd.elemCount;
+                maxVal = cd.maxVal;
+            } else {
+                ds     = cd.ds[row - 1];
+                count  = cd.elemCount;
+                maxVal = cd.maxVal;
+            }
+
+            PushConstants pc{};
+            pc.count    = count;
+            pc.maxValue = maxVal;
+            pc.yOffset  = yOffset;
+            pc.yScale   = yScale;
+            if (row == 0) {
+                // Unsorted keys span full width
+                pc.xOffset = 0.0f;
+                pc.xScale  = 1.0f;
+            } else {
+                pc.xOffset = xCenter;
+                pc.xScale  = colWidth * 0.95f;
+            }
+            vkCmdPushConstants(cmd, a.pipeLayout,
+                               VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pc), &pc);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    a.pipeLayout, 0, 1, &ds, 0, nullptr);
+            vkCmdDraw(cmd, count, 1, 0, 0);
+        }
     }
 
     // Overlay: sort time in bottom-right
@@ -751,7 +819,7 @@ static void recordFrame(
     vkEndCommandBuffer(cmd);
 }
 
-static void drawFrame(App& a, uint32_t count, float maxVal, float timeMs)
+static void drawFrame(App& a, float timeMs)
 {
     vkWaitForFences(a.dev, 1, &a.fences[a.frame], VK_TRUE, UINT64_MAX);
 
@@ -762,7 +830,7 @@ static void drawFrame(App& a, uint32_t count, float maxVal, float timeMs)
 
     auto cmd = a.cmdBufs[a.frame];
     vkResetCommandBuffer(cmd, 0);
-    recordFrame(a, cmd, imgIdx, count, maxVal, timeMs);
+    recordFrame(a, cmd, imgIdx, timeMs);
 
     VkPipelineStageFlags wait = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -802,15 +870,18 @@ static void cleanup(App& a)
     if (a.cmdPool)    vkDestroyCommandPool(a.dev, a.cmdPool, nullptr);
 
     if (a.mappedUnsorted) { vkUnmapMemory(a.dev, a.bufUnsorted.memory); a.mappedUnsorted = nullptr; }
-    for (size_t i = 0; i < a.mappedPasses.size(); ++i) {
-        if (a.mappedPasses[i]) {
-            vkUnmapMemory(a.dev, a.bufPasses[i].memory);
-            a.mappedPasses[i] = nullptr;
+    for (auto& col : a.cols) {
+        for (size_t i = 0; i < col.mapped.size(); ++i) {
+            if (col.mapped[i]) {
+                vkUnmapMemory(a.dev, col.bufs[i].memory);
+                col.mapped[i] = nullptr;
+            }
         }
     }
     destroyBuffer(a.dev, a.bufUnsorted);
-    for (auto& buf : a.bufPasses)
-        destroyBuffer(a.dev, buf);
+    for (auto& col : a.cols)
+        for (auto& buf : col.bufs)
+            destroyBuffer(a.dev, buf);
 
     if (a.dsPool)     vkDestroyDescriptorPool(a.dev, a.dsPool, nullptr);
     if (a.dsLayout)   vkDestroyDescriptorSetLayout(a.dev, a.dsLayout, nullptr);
@@ -839,14 +910,14 @@ static void cleanup(App& a)
 
 /// Zero-copy sort: OpenCL reads input from / writes output to the
 /// persistently-mapped Vulkan buffers via DMA — no intermediate vectors.
-/// Each radix sort pass result is downloaded into a separate mapped buffer
-/// so the visualizer can display intermediate states.
+/// Each radix sort pass result is downloaded into per-column Vulkan buffers
+/// so the visualizer can display intermediate states for all buffer types.
 template <typename DataType>
 bool sortDataZeroCopy(
     ComputeState& compute, uint32_t numElements,
-    DataType* dstUnsorted,               // persistently mapped Vulkan buffer
-    std::vector<void*>& passBuffers,     // one mapped Vulkan buffer per pass
-    uint32_t  numRounded)
+    DataType* dstUnsorted,   // persistently mapped Vulkan unsorted buffer
+    App& app,                // columns + mapped Vulkan buffers
+    uint32_t numRounded)
 {
     using Params = AlgorithmParameters<DataType>;
     constexpr auto numPasses = Params::_NUM_PASSES;
@@ -860,22 +931,23 @@ bool sortDataZeroCopy(
     std::copy_n(dataset.dataset.begin(), numElements, dstUnsorted);
     std::fill_n(dstUnsorted + numElements, numRounded - numElements, DataType{});
 
-    // Last pass buffer doubles as the sorted output destination.
-    auto* dstSorted = static_cast<DataType*>(passBuffers.back());
+    // Last pass buffer for keys doubles as the sorted output destination.
+    auto* dstSorted = static_cast<DataType*>(app.cols[0].mapped.back());
 
-    // Auxiliary buffers stay on the heap (not rendered, not worth mapping).
+    // Scratch buffers for auxiliary data (downloaded then copied to Vulkan).
     std::vector<uint32_t> hHisto(Params::_RADIX * Params::_NUM_ITEMS);
     std::vector<uint32_t> hGlobsum(Params::_NUM_HISTOSPLIT);
     std::vector<uint32_t> hPermut(numRounded);
+    std::vector<uint32_t> hOutPermut(numRounded);
     std::iota(hPermut.begin(), hPermut.end(), 0U);
 
-    // spans are non-owning — point directly at the mapped Vulkan memory.
     HostSpans<DataType> spans{
-        {dstUnsorted,     numRounded},
-        {hHisto.data(),   hHisto.size()},
-        {hGlobsum.data(), hGlobsum.size()},
-        {hPermut.data(),  hPermut.size()},
-        {dstSorted,       numRounded},
+        {dstUnsorted,       numRounded},
+        {hHisto.data(),     hHisto.size()},
+        {hGlobsum.data(),   hGlobsum.size()},
+        {hPermut.data(),    hPermut.size()},
+        {hOutPermut.data(), hOutPermut.size()},
+        {dstSorted,         numRounded},
     };
 
     auto status = sorter.initialize(
@@ -887,26 +959,52 @@ bool sortDataZeroCopy(
     if (numRounded != numElements)
         sorter.padGPUData(q, sizeof(DataType) * numElements);
 
-    // uploadData reads from dstUnsorted (mapped Vulkan buffer) via DMA.
     status = sorter.uploadData(q);
     if (status != OperationStatus::OK) return false;
 
-    // Run pass-by-pass, capturing intermediate key states.
+    // Run pass-by-pass, capturing all intermediate buffer states.
     for (uint32_t pass = 0; pass < numPasses; ++pass) {
         sorter.Histogram(q, pass);
         sorter.ScanHistogram(q);
         sorter.Reorder(q, pass);
 
-        // Download keys (writes to dstSorted via m_hResultFromGPU span).
+        // Download all buffers to scratch
         status = sorter.downloadKeys(q);
         if (status != OperationStatus::OK) return false;
+        status = sorter.downloadIntermediate(q);
+        if (status != OperationStatus::OK) return false;
 
-        // Copy intermediate result to the per-pass Vulkan buffer.
-        // For the last pass, dstSorted already points to passBuffers.back().
+        // Copy each buffer type to its per-pass Vulkan buffer.
+        // Col 0 = keys: for last pass, dstSorted already points there.
         if (pass < numPasses - 1) {
-            std::memcpy(passBuffers[pass], dstSorted,
+            std::memcpy(app.cols[0].mapped[pass], dstSorted,
                         sizeof(DataType) * numRounded);
         }
+        // Col 1 = histograms
+        std::memcpy(app.cols[1].mapped[pass], hHisto.data(),
+                    sizeof(uint32_t) * hHisto.size());
+        // Col 2 = globsum
+        std::memcpy(app.cols[2].mapped[pass], hGlobsum.data(),
+                    sizeof(uint32_t) * hGlobsum.size());
+        // Col 3 = input permutations
+        std::memcpy(app.cols[3].mapped[pass], hPermut.data(),
+                    sizeof(uint32_t) * numRounded);
+        // Col 4 = output permutations
+        std::memcpy(app.cols[4].mapped[pass], hOutPermut.data(),
+                    sizeof(uint32_t) * numRounded);
+    }
+
+    // Compute max values for each column (for normalization)
+    app.cols[0].maxVal = static_cast<float>(
+        *std::max_element(dstUnsorted, dstUnsorted + numElements));
+    for (uint32_t c = 1; c < App::NUM_COLS; ++c) {
+        float maxV = 1.0f;
+        for (uint32_t p = 0; p < numPasses; ++p) {
+            auto* data = static_cast<uint32_t*>(app.cols[c].mapped[p]);
+            auto m = *std::max_element(data, data + app.cols[c].elemCount);
+            if (static_cast<float>(m) > maxV) maxV = static_cast<float>(m);
+        }
+        app.cols[c].maxVal = maxV;
     }
 
     sorter.release();
@@ -953,8 +1051,7 @@ int main()
                   << " uint32_t values on the GPU (OpenCL)...\n";
         auto t0 = std::chrono::steady_clock::now();
         if (!sortDataZeroCopy<uint32_t>(compute, NUM_ELEMENTS,
-                                         unsortedPtr, app.mappedPasses,
-                                         numRounded)) {
+                                         unsortedPtr, app, numRounded)) {
             std::cerr << "OpenCL sort failed.\n";
             cleanup(app);
             return 1;
@@ -962,11 +1059,9 @@ int main()
         auto t1 = std::chrono::steady_clock::now();
         float sortTimeMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
 
-        auto maxVal = static_cast<float>(
-            *std::max_element(unsortedPtr, unsortedPtr + NUM_ELEMENTS));
         std::cout << "Sort complete.  Launching Vulkan visualisation...\n";
 
-        createDescriptorSets(app, NUM_ELEMENTS);
+        createDescriptorSets(app);
         createCommandBuffers(app);
         createSyncObjects(app);
 
@@ -976,17 +1071,13 @@ int main()
                 g_regenerate = false;
                 vkDeviceWaitIdle(app.dev);
                 t0 = std::chrono::steady_clock::now();
-                // Sort directly into the same mapped buffers — no copy needed.
                 if (sortDataZeroCopy<uint32_t>(compute, NUM_ELEMENTS,
-                                                unsortedPtr, app.mappedPasses,
-                                                numRounded)) {
+                                                unsortedPtr, app, numRounded)) {
                     t1 = std::chrono::steady_clock::now();
                     sortTimeMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
-                    maxVal = static_cast<float>(
-                        *std::max_element(unsortedPtr, unsortedPtr + NUM_ELEMENTS));
                 }
             }
-            drawFrame(app, NUM_ELEMENTS, maxVal, sortTimeMs);
+            drawFrame(app, sortTimeMs);
         }
 
         cleanup(app);
