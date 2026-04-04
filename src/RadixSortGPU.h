@@ -86,11 +86,26 @@ public:
     /// @return runtimes of individual algorithm steps
     RuntimesGPU getRuntimes() const;
 
-    /// TODO: Add methods to inspect intermediate buffers
-    ///       between runs:
-    ///        +histogram
-    ///        +scanHistogram
-    ///        +reorder
+    /// Returns the number of radix sort passes required for DataType
+    static constexpr uint32_t numPasses() noexcept { return Parameters::_NUM_PASSES; }
+
+    /// @name Per-step methods for inspecting intermediate buffers
+    /// Call these instead of calculate() to run one step at a time
+    /// and download intermediate results between steps.
+    /// @{
+
+    /// Performs histogram calculation for a single pass
+    void Histogram(cl::CommandQueue CommandQueue, int pass);
+    /// Performs histogram scan
+    void ScanHistogram(cl::CommandQueue CommandQueue);
+    /// Performs reorder step for a single pass
+    void Reorder(cl::CommandQueue CommandQueue, int pass);
+
+    /// @}
+
+    /// Downloads only the key buffer from device to host
+    /// (writes into m_hResultFromGPU span provided at initialization).
+    OperationStatus downloadKeys(cl::CommandQueue CommandQueue);
 
 private:
     using Parameters = AlgorithmParameters<DataType>;
@@ -98,12 +113,6 @@ private:
     static std::string BuildPreamble();
     /// Compiles build options for OpenCL kernel
     static std::string BuildOptions();
-    /// Performs histogram calculation
-	void Histogram(cl::CommandQueue CommandQueue, int pass);
-    /// Performs histogram scan
-	void ScanHistogram(cl::CommandQueue CommandQueue);
-    /// Performs reorder step
-	void Reorder(cl::CommandQueue CommandQueue, int pass);
 
 	void CopyDataToDevice(cl::CommandQueue CommandQueue);
 	void CopyDataFromDevice(cl::CommandQueue CommandQueue);

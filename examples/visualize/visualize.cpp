@@ -1,11 +1,12 @@
 /// @file visualize.cpp
 /// @brief Vulkan visualization of radix-sort results.
 ///
-///        Sorts random uint32_t data on the GPU with OpenCL, then renders two
-///        point-cloud scatter plots in a GLFW window using Vulkan:
+///        Sorts random uint32_t data on the GPU with OpenCL, then renders
+///        multiple point-cloud scatter plots in a GLFW window using Vulkan:
 ///
-///            Top half  — unsorted data
-///            Bottom half — sorted data
+///            Row 0       — unsorted input data
+///            Rows 1..N   — intermediate state after each radix sort pass
+///            Row N       — fully sorted data (final pass)
 ///
 ///        Each element is drawn as a coloured point whose X position is its
 ///        array index and whose Y position is its normalised value.  A heat-map
@@ -31,7 +32,6 @@
 #include "Parameters.h"
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <chrono>
 #include <cstdint>
@@ -55,6 +55,8 @@
 constexpr uint32_t WINDOW_W          = 1280;
 constexpr uint32_t WINDOW_H          = 720;
 constexpr uint32_t NUM_ELEMENTS      = 4096;
+constexpr uint32_t NUM_PASSES        = AlgorithmParameters<uint32_t>::_NUM_PASSES;
+constexpr uint32_t TOTAL_ROWS        = NUM_PASSES + 1;  // unsorted + one per pass
 constexpr int      MAX_FRAMES        = 2;
 
 static bool g_regenerate = false;
@@ -230,11 +232,13 @@ struct App {
 
     // Data buffers + descriptor sets (persistently mapped for zero-copy)
     GpuBuffer       bufUnsorted{};
-    GpuBuffer       bufSorted{};
     void*           mappedUnsorted = nullptr;
-    void*           mappedSorted   = nullptr;
     VkDescriptorSet dsUnsorted = VK_NULL_HANDLE;
-    VkDescriptorSet dsSorted   = VK_NULL_HANDLE;
+
+    // Per-pass intermediate + final sorted buffers (one per radix sort pass)
+    std::vector<GpuBuffer>       bufPasses;
+    std::vector<void*>           mappedPasses;
+    std::vector<VkDescriptorSet> dsPasses;
 
     uint32_t frame = 0;
 };
@@ -248,7 +252,7 @@ static void initWindow(App& a)
     glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
     a.window = glfwCreateWindow(
         WINDOW_W, WINDOW_H,
-        "Radix Sort — Top: unsorted  |  Bottom: sorted  (click to regenerate)",
+        "Radix Sort \xe2\x80\x94 Unsorted + Pass Intermediates  (click to regenerate)",
         nullptr, nullptr);
     glfwSetMouseButtonCallback(a.window,
         [](GLFWwindow*, int button, int action, int) {
@@ -579,33 +583,40 @@ static void createMappedDataBuffers(App& a, uint32_t numRounded)
     a.bufUnsorted = createBuffer(a.dev, a.gpu, sz, usage, props);
     vkMapMemory(a.dev, a.bufUnsorted.memory, 0, sz, 0, &a.mappedUnsorted);
 
-    a.bufSorted = createBuffer(a.dev, a.gpu, sz, usage, props);
-    vkMapMemory(a.dev, a.bufSorted.memory, 0, sz, 0, &a.mappedSorted);
+    // One buffer per radix sort pass (intermediates + final sorted).
+    a.bufPasses.resize(NUM_PASSES);
+    a.mappedPasses.resize(NUM_PASSES, nullptr);
+    for (uint32_t i = 0; i < NUM_PASSES; ++i) {
+        a.bufPasses[i] = createBuffer(a.dev, a.gpu, sz, usage, props);
+        vkMapMemory(a.dev, a.bufPasses[i].memory, 0, sz, 0, &a.mappedPasses[i]);
+    }
 }
 
 static void createDescriptorSets(App& a, uint32_t count)
 {
+    constexpr uint32_t totalSets = 1 + NUM_PASSES;  // unsorted + per-pass
+
     // Pool
-    VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2};
+    VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, totalSets};
     VkDescriptorPoolCreateInfo pci{
         VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     pci.poolSizeCount = 1;  pci.pPoolSizes = &ps;
-    pci.maxSets       = 2;
+    pci.maxSets       = totalSets;
     if (vkCreateDescriptorPool(a.dev, &pci, nullptr, &a.dsPool) != VK_SUCCESS)
         throw std::runtime_error("Failed to create descriptor pool");
 
     // Allocate
-    std::array<VkDescriptorSetLayout, 2> layouts = {a.dsLayout, a.dsLayout};
+    std::vector<VkDescriptorSetLayout> layouts(totalSets, a.dsLayout);
     VkDescriptorSetAllocateInfo ai{
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
     ai.descriptorPool     = a.dsPool;
-    ai.descriptorSetCount = 2;
+    ai.descriptorSetCount = totalSets;
     ai.pSetLayouts        = layouts.data();
-    std::array<VkDescriptorSet, 2> sets{};
+    std::vector<VkDescriptorSet> sets(totalSets);
     if (vkAllocateDescriptorSets(a.dev, &ai, sets.data()) != VK_SUCCESS)
         throw std::runtime_error("Failed to allocate descriptor sets");
     a.dsUnsorted = sets[0];
-    a.dsSorted   = sets[1];
+    a.dsPasses.assign(sets.begin() + 1, sets.end());
 
     // Write
     const VkDeviceSize bufSize = sizeof(uint32_t) * count;
@@ -620,7 +631,8 @@ static void createDescriptorSets(App& a, uint32_t count)
         vkUpdateDescriptorSets(a.dev, 1, &w, 0, nullptr);
     };
     writeDS(a.dsUnsorted, a.bufUnsorted.buffer);
-    writeDS(a.dsSorted,   a.bufSorted.buffer);
+    for (uint32_t i = 0; i < NUM_PASSES; ++i)
+        writeDS(a.dsPasses[i], a.bufPasses[i].buffer);
 }
 
 static void createCommandBuffers(App& a)
@@ -677,22 +689,17 @@ static void recordFrame(
     vkCmdBeginRenderPass(cmd, &rp, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a.pipeline);
 
-    // Top half – unsorted
-    {
-        PushConstants pc{count, maxVal, -0.5f, 0.45f};
+    // Draw TOTAL_ROWS scatter-plot rows: unsorted + one per pass.
+    // Row 0 = unsorted input, rows 1..NUM_PASSES = after each radix sort pass.
+    for (uint32_t row = 0; row < TOTAL_ROWS; ++row) {
+        const float yOffset = -1.0f + 2.0f * (row + 0.5f) / TOTAL_ROWS;
+        const float yScale  = 0.9f / TOTAL_ROWS;
+        PushConstants pc{count, maxVal, yOffset, yScale};
         vkCmdPushConstants(cmd, a.pipeLayout,
                            VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pc), &pc);
+        VkDescriptorSet ds = (row == 0) ? a.dsUnsorted : a.dsPasses[row - 1];
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                a.pipeLayout, 0, 1, &a.dsUnsorted, 0, nullptr);
-        vkCmdDraw(cmd, count, 1, 0, 0);
-    }
-    // Bottom half – sorted
-    {
-        PushConstants pc{count, maxVal, 0.5f, 0.45f};
-        vkCmdPushConstants(cmd, a.pipeLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pc), &pc);
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                a.pipeLayout, 0, 1, &a.dsSorted, 0, nullptr);
+                                a.pipeLayout, 0, 1, &ds, 0, nullptr);
         vkCmdDraw(cmd, count, 1, 0, 0);
     }
 
@@ -767,9 +774,15 @@ static void cleanup(App& a)
     if (a.cmdPool)    vkDestroyCommandPool(a.dev, a.cmdPool, nullptr);
 
     if (a.mappedUnsorted) { vkUnmapMemory(a.dev, a.bufUnsorted.memory); a.mappedUnsorted = nullptr; }
-    if (a.mappedSorted)   { vkUnmapMemory(a.dev, a.bufSorted.memory);   a.mappedSorted   = nullptr; }
+    for (size_t i = 0; i < a.mappedPasses.size(); ++i) {
+        if (a.mappedPasses[i]) {
+            vkUnmapMemory(a.dev, a.bufPasses[i].memory);
+            a.mappedPasses[i] = nullptr;
+        }
+    }
     destroyBuffer(a.dev, a.bufUnsorted);
-    destroyBuffer(a.dev, a.bufSorted);
+    for (auto& buf : a.bufPasses)
+        destroyBuffer(a.dev, buf);
 
     if (a.dsPool)     vkDestroyDescriptorPool(a.dev, a.dsPool, nullptr);
     if (a.dsLayout)   vkDestroyDescriptorSetLayout(a.dev, a.dsLayout, nullptr);
@@ -798,14 +811,17 @@ static void cleanup(App& a)
 
 /// Zero-copy sort: OpenCL reads input from / writes output to the
 /// persistently-mapped Vulkan buffers via DMA — no intermediate vectors.
+/// Each radix sort pass result is downloaded into a separate mapped buffer
+/// so the visualizer can display intermediate states.
 template <typename DataType>
 bool sortDataZeroCopy(
     ComputeState& compute, uint32_t numElements,
-    DataType* dstUnsorted,   // persistently mapped Vulkan buffer
-    DataType* dstSorted,     // persistently mapped Vulkan buffer
+    DataType* dstUnsorted,               // persistently mapped Vulkan buffer
+    std::vector<void*>& passBuffers,     // one mapped Vulkan buffer per pass
     uint32_t  numRounded)
 {
     using Params = AlgorithmParameters<DataType>;
+    constexpr auto numPasses = Params::_NUM_PASSES;
 
     RandomDistributed<DataType> dataset(numElements);
     RadixSortGPU<DataType> sorter;
@@ -815,6 +831,9 @@ bool sortDataZeroCopy(
     // Write random data directly into the mapped Vulkan unsorted buffer.
     std::copy_n(dataset.dataset.begin(), numElements, dstUnsorted);
     std::fill_n(dstUnsorted + numElements, numRounded - numElements, DataType{});
+
+    // Last pass buffer doubles as the sorted output destination.
+    auto* dstSorted = static_cast<DataType*>(passBuffers.back());
 
     // Auxiliary buffers stay on the heap (not rendered, not worth mapping).
     std::vector<uint32_t> hHisto(Params::_RADIX * Params::_NUM_ITEMS);
@@ -843,11 +862,24 @@ bool sortDataZeroCopy(
     // uploadData reads from dstUnsorted (mapped Vulkan buffer) via DMA.
     status = sorter.uploadData(q);
     if (status != OperationStatus::OK) return false;
-    status = sorter.calculate(q);
-    if (status != OperationStatus::OK) return false;
-    // downloadData writes sorted result directly into dstSorted (mapped Vulkan buffer).
-    status = sorter.downloadData(q);
-    if (status != OperationStatus::OK) return false;
+
+    // Run pass-by-pass, capturing intermediate key states.
+    for (uint32_t pass = 0; pass < numPasses; ++pass) {
+        sorter.Histogram(q, pass);
+        sorter.ScanHistogram(q);
+        sorter.Reorder(q, pass);
+
+        // Download keys (writes to dstSorted via m_hResultFromGPU span).
+        status = sorter.downloadKeys(q);
+        if (status != OperationStatus::OK) return false;
+
+        // Copy intermediate result to the per-pass Vulkan buffer.
+        // For the last pass, dstSorted already points to passBuffers.back().
+        if (pass < numPasses - 1) {
+            std::memcpy(passBuffers[pass], dstSorted,
+                        sizeof(DataType) * numRounded);
+        }
+    }
 
     sorter.release();
     return true;
@@ -887,14 +919,14 @@ int main()
         const uint32_t numRounded = RadixSortGPU<uint32_t>{}.Resize(NUM_ELEMENTS);
         createMappedDataBuffers(app, numRounded);
         auto* unsortedPtr = static_cast<uint32_t*>(app.mappedUnsorted);
-        auto* sortedPtr   = static_cast<uint32_t*>(app.mappedSorted);
 
         // ── 3. Sort directly into mapped Vulkan buffers (zero-copy) ─
         std::cout << "Sorting " << NUM_ELEMENTS
                   << " uint32_t values on the GPU (OpenCL)...\n";
         auto t0 = std::chrono::steady_clock::now();
         if (!sortDataZeroCopy<uint32_t>(compute, NUM_ELEMENTS,
-                                         unsortedPtr, sortedPtr, numRounded)) {
+                                         unsortedPtr, app.mappedPasses,
+                                         numRounded)) {
             std::cerr << "OpenCL sort failed.\n";
             cleanup(app);
             return 1;
@@ -918,7 +950,8 @@ int main()
                 t0 = std::chrono::steady_clock::now();
                 // Sort directly into the same mapped buffers — no copy needed.
                 if (sortDataZeroCopy<uint32_t>(compute, NUM_ELEMENTS,
-                                                unsortedPtr, sortedPtr, numRounded)) {
+                                                unsortedPtr, app.mappedPasses,
+                                                numRounded)) {
                     t1 = std::chrono::steady_clock::now();
                     sortTimeMs = std::chrono::duration<float, std::milli>(t1 - t0).count();
                     maxVal = static_cast<float>(

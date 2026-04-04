@@ -357,6 +357,26 @@ OperationStatus RadixSortGPU<DataType>::downloadData(
 }
 
 template <typename DataType>
+OperationStatus RadixSortGPU<DataType>::downloadKeys(
+    cl::CommandQueue CommandQueue
+)
+{
+    constexpr auto isBlocking = CL_FALSE;
+    constexpr auto offset = 0U;
+    auto error = CommandQueue.enqueueReadBuffer(
+        mDeviceData->m_dMemoryMap["inputKeys"],
+        isBlocking,
+        offset,
+        sizeof(DataType) * mNumberKeysRounded,
+        mHostSpans.m_hResultFromGPU.data()
+    );
+    if (error != CL_SUCCESS) return OperationStatus::DATA_DOWNLOAD_FAILED;
+    error = CommandQueue.finish();
+    using S = OperationStatus;
+    return error == CL_SUCCESS ? S::OK : S::DATA_DOWNLOAD_FAILED;
+}
+
+template <typename DataType>
 void RadixSortGPU<DataType>::setLogStream(std::ostream* out) noexcept
 {
     mOutStream = out;
