@@ -832,6 +832,45 @@ static void recordFrame(
                 0, sizeof(opc), &opc);
             vkCmdDraw(cmd, 6, 1, 0, 0);
         }
+
+        // Column header labels — top of each column (row 1)
+        {
+            // Pack 4 ASCII chars into a uint32 (byte 0 = first char)
+            auto packChars = [](const char s[4]) -> uint32_t {
+                return uint32_t(s[0])
+                     | (uint32_t(s[1]) << 8)
+                     | (uint32_t(s[2]) << 16)
+                     | (uint32_t(s[3]) << 24);
+            };
+            const uint32_t colLabels[App::NUM_COLS] = {
+                packChars("KEYS"),
+                packChars("HIST"),
+                packChars("GSUM"),
+                packChars("IPMT"),
+                packChars("OPMT"),
+            };
+            // Place labels at the top of the first pass row (row 1)
+            const float rowY = -1.0f + 2.0f * (1.0f + 0.5f) / TOTAL_ROWS;
+            constexpr uint32_t labelLen = 4;
+            const float labelW = labelLen * stride - gap;
+            for (uint32_t col = 0; col < App::NUM_COLS; ++col) {
+                const float xCenter = -1.0f + (2.0f * col + 1.0f) / App::NUM_COLS;
+                OverlayPushConstants opc{};
+                float packed;
+                std::memcpy(&packed, &colLabels[col], sizeof(float));
+                opc.value    = packed;
+                opc.anchorX  = xCenter - labelW * 0.5f;
+                opc.anchorY  = rowY - 0.9f / TOTAL_ROWS - charH;
+                opc.charW    = charW;
+                opc.charH    = charH;
+                opc.numChars = labelLen;
+                opc.mode     = 2;
+                vkCmdPushConstants(cmd, a.overlayPipeLayout,
+                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                    0, sizeof(opc), &opc);
+                vkCmdDraw(cmd, labelLen * 6, 1, 0, 0);
+            }
+        }
     }
 
     vkCmdEndRenderPass(cmd);

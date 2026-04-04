@@ -7,7 +7,7 @@ layout(push_constant) uniform PC {
     float charW;
     float charH;
     uint  numChars;
-    uint  mode;     // 0 = time, 1 = integer
+    uint  mode;     // 0 = time, 1 = integer, 2 = packed ASCII
 } pc;
 
 layout(location = 0) in vec2 fragUV;
@@ -147,9 +147,19 @@ uint getIntGlyphIndex(uint pos) {
     return 16u + (val / 100u) % 10u;
 }
 
+// Decode packed ASCII: value reinterpreted as uint32 with 4 bytes.
+// Byte 0 (LSB) = first character, byte 1 = second, etc.
+uint getPackedAsciiGlyphIndex(uint pos) {
+    uint packed = floatBitsToUint(pc.value);
+    uint ascii  = (packed >> (pos * 8u)) & 0xFFu;
+    return ascii - 32u;
+}
+
 void main() {
-    uint glyphIdx = (pc.mode == 0u) ? getTimeGlyphIndex(charIndex)
-                                    : getIntGlyphIndex(charIndex);
+    uint glyphIdx;
+    if      (pc.mode == 0u) glyphIdx = getTimeGlyphIndex(charIndex);
+    else if (pc.mode == 1u) glyphIdx = getIntGlyphIndex(charIndex);
+    else                    glyphIdx = getPackedAsciiGlyphIndex(charIndex);
     uint glyph    = GLYPHS[glyphIdx];
 
     // Map UV to 5x5 grid cell
