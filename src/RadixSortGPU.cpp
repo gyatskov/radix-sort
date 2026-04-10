@@ -285,7 +285,7 @@ void RadixSortGPU<DataType>::padGPUData(
 }
 
 template <typename DataType>
-uint32_t RadixSortGPU<DataType>::Resize(uint32_t nn) const noexcept
+uint32_t RadixSortGPU<DataType>::Resize(uint32_t nn) noexcept
 {
     // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
     constexpr auto NumItems

@@ -74,7 +74,7 @@ public:
 
     /// Rounds argument to next multiple of NumItems.
     /// @return Possibly rounded up number of elements
-	uint32_t Resize(uint32_t nn) const noexcept;
+	static uint32_t Resize(uint32_t nn) noexcept;
 
     /// Pads GPU data buffers
     /// @param CommandQueue OpenCL Command Queue
