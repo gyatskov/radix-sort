@@ -105,9 +105,6 @@ public:
         std::vector<DataType>& output
     );
 
-    /// Returns the number of radix sort passes required for DataType
-    static constexpr uint32_t numPasses() noexcept { return Parameters::_NUM_PASSES; }
-
     /// @name Per-step methods for inspecting intermediate buffers
     /// Call these instead of calculate() to run one step at a time
     /// and download intermediate results between steps.
