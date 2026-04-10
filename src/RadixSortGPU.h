@@ -11,7 +11,9 @@
 #include <memory>
 #include <iostream>
 #include <cstdint>
+#include <numeric>
 #include <string>
+#include <vector>
 
 /// Runtime statistics of GPU implementation algorithms
 /// @note Radix sort specific
@@ -85,6 +87,23 @@ public:
     /// Returns runtimes of individual algorithm steps
     /// @return runtimes of individual algorithm steps
     RuntimesGPU getRuntimes() const;
+
+    /// One-call convenience method: allocates all internal buffers,
+    /// initialises the GPU sorter, uploads, sorts, downloads, and cleans up.
+    ///
+    /// @param device   OpenCL device
+    /// @param context  OpenCL context
+    /// @param queue    OpenCL command queue
+    /// @param input    Data to sort (read-only)
+    /// @param[out] output  Will be resized and filled with the sorted result
+    /// @return OperationStatus::OK on success
+    OperationStatus sort(
+        cl::Device device,
+        cl::Context context,
+        cl::CommandQueue queue,
+        std::span<const DataType> input,
+        std::vector<DataType>& output
+    );
 
     /// Returns the number of radix sort passes required for DataType
     static constexpr uint32_t numPasses() noexcept { return Parameters::_NUM_PASSES; }

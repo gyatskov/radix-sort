@@ -659,6 +659,59 @@ RuntimesGPU RadixSortGPU<DataType>::getRuntimes() const
     return mRuntimesGPU;
 }
 
+template <typename DataType>
+OperationStatus RadixSortGPU<DataType>::sort(
+    cl::Device device,
+    cl::Context context,
+    cl::CommandQueue queue,
+    std::span<const DataType> input,
+    std::vector<DataType>& output
+)
+{
+    const uint32_t numElements = static_cast<uint32_t>(input.size());
+    const uint32_t numRounded  = Resize(numElements);
+
+    // Allocate all working buffers
+    std::vector<DataType>  hKeys(numRounded);
+    std::vector<DataType>  hResult(numRounded);
+    std::vector<uint32_t>  hHistograms(Parameters::_RADIX * Parameters::_NUM_ITEMS);
+    std::vector<uint32_t>  hGlobsum(Parameters::_NUM_HISTOSPLIT);
+    std::vector<uint32_t>  hPermut(numRounded);
+    std::vector<uint32_t>  hOutPermut(numRounded);
+
+    std::copy_n(input.begin(), numElements, hKeys.begin());
+    std::iota(hPermut.begin(), hPermut.end(), 0U);
+
+    HostSpans<DataType> spans {
+        { hKeys.data(),       hKeys.size()       },
+        { hHistograms.data(), hHistograms.size()  },
+        { hGlobsum.data(),    hGlobsum.size()     },
+        { hPermut.data(),     hPermut.size()      },
+        { hOutPermut.data(),  hOutPermut.size()   },
+        { hResult.data(),     hResult.size()      },
+    };
+
+    auto status = initialize(device, context, numElements, spans);
+    if (status != OperationStatus::OK) return status;
+
+    if (numRounded != numElements) {
+        padGPUData(queue, sizeof(DataType) * numElements);
+    }
+
+    status = uploadData(queue);
+    if (status != OperationStatus::OK) { release(); return status; }
+
+    status = calculate(queue);
+    if (status != OperationStatus::OK) { release(); return status; }
+
+    status = downloadData(queue);
+    if (status != OperationStatus::OK) { release(); return status; }
+
+    output.assign(hResult.begin(), hResult.begin() + numElements);
+    release();
+    return OperationStatus::OK;
+}
+
 // Specialize CRadixSortTask for the supported types.
 template class RadixSortGPU < int32_t >;
 template class RadixSortGPU < int64_t >;
