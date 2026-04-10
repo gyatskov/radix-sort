@@ -162,7 +162,6 @@ void CRadixSortTask<DataType>::ComputeGPU(
                     mRuntimesCPU);
             },
             mOptions,
-            Parameters::_NUM_PERFORMANCE_ITERATIONS,
             mNumberKeysRounded,
             m_selectedDataset->name(),
             TypeNameString<DataType>::stdint_name
@@ -189,7 +188,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
         mHostData.m_resultSTLCPU.resize(mNumberKeysRounded);
         CTimer timer;
         timer.Start();
-        for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
+        for (auto j = 0U; j < mOptions.num_iterations; j++) {
             SortDataSTL(
                 dataInput,
                 dataOutput
@@ -197,7 +196,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
         }
         timer.Stop();
         mRuntimesCPU.timeSTL.avg =
-            timer.GetElapsedMilliseconds() / Parameters::_NUM_PERFORMANCE_ITERATIONS;
+            timer.GetElapsedMilliseconds() / mOptions.num_iterations;
 
     }
 
@@ -210,7 +209,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
         mHostData.m_resultRadixSortCPU.resize(mNumberKeysRounded);
         CTimer timer;
         timer.Start();
-        for (auto j = 0U; j < Parameters::_NUM_PERFORMANCE_ITERATIONS; j++) {
+        for (auto j = 0U; j < mOptions.num_iterations; j++) {
             SortDataRadix(
                 dataInput,
                 dataOutput
@@ -218,7 +217,7 @@ void CRadixSortTask<DataType>::ComputeCPU()
         }
         timer.Stop();
         mRuntimesCPU.timeRadix.avg =
-            timer.GetElapsedMilliseconds() / Parameters::_NUM_PERFORMANCE_ITERATIONS;
+            timer.GetElapsedMilliseconds() / mOptions.num_iterations;
     }
 }
 
@@ -359,7 +358,6 @@ void TestPerformance(
         cl::CommandQueue CommandQueue,
         Callable&& fun,
         const RadixSortOptions& options,
-        const size_t numIterations,
         size_t numberKeys,
         const std::string& datasetName,
         std::string_view datatype
@@ -370,7 +368,7 @@ void TestPerformance(
 
     decltype(fun()) lastMeasurements;
 
-	for (auto i { 0U }; i < numIterations; i++) {
+	for (auto i { 0U }; i < options.num_iterations; i++) {
         lastMeasurements = fun();
     }
 
@@ -378,7 +376,7 @@ void TestPerformance(
     CommandQueue.finish();
 
     timer.Stop();
-	const double averageTimeTotal_ms = timer.GetElapsedMilliseconds() / double(numIterations);
+	const double averageTimeTotal_ms = timer.GetElapsedMilliseconds() / double(options.num_iterations);
     if (options.perf_to_stdout) {
         const auto& t{lastMeasurements.first};
 

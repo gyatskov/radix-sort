@@ -9,6 +9,8 @@ struct RadixSortOptions
 {
     /// Number of actual elements
     std::size_t num_elements;
+    /// Number of iterations for performance testing
+    std::size_t num_iterations;
     bool perf_to_stdout;
     bool perf_to_csv;
     bool perf_csv_to_stdout;
@@ -16,6 +18,7 @@ struct RadixSortOptions
 
     explicit RadixSortOptions(std::vector<std::string> args) :
         num_elements(AlgorithmParameters<float>::_NUM_MAX_INPUT_ELEMS),
+        num_iterations(5),
         perf_to_stdout(false),
         perf_to_csv(false),
         perf_csv_to_stdout(false),
