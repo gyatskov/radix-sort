@@ -1047,7 +1047,7 @@ bool sortDataZeroCopy(
 
     RandomDistributed<DataType> dataset(numElements);
     RadixSortGPU<DataType> sorter;
-    [[maybe_unused]] const uint32_t nr = sorter.Resize(numElements);
+    [[maybe_unused]] const uint32_t nr = RadixSortGPU<DataType>::Resize(numElements);
     assert(nr == numRounded);
 
     // Write random data directly into the mapped Vulkan unsorted buffer.

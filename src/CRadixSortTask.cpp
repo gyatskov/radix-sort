@@ -79,7 +79,10 @@ bool CRadixSortTask<DataType>::InitResources(
 {
     // CPU resources
     CheckLocalMemory(Device);
-	mNumberKeysRounded = Resize(mNumberKeys);
+    if(mOptions.verbose) {
+        std::cout << "Resizing to  " << mNumberKeys << std::endl;
+    }
+	mNumberKeysRounded = RadixSortGPU<DataType>::Resize(mNumberKeys);
     auto& hostBuffers {mHostData.mHostBuffers};
     hostBuffers.m_hResultFromGPU.resize(
         mNumberKeysRounded
@@ -269,19 +272,6 @@ void CRadixSortTask<DataType>::CheckLocalMemory(cl::Device Device)
 		    Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT
         );
 	assert(localMem > sizeof(DataType)*maxmemcache);
-}
-
-/// resize the sorted vector
-template <typename DataType>
-uint32_t CRadixSortTask<DataType>::Resize(uint32_t nn)
-{
-	assert(nn <= Parameters::_NUM_MAX_INPUT_ELEMS);
-
-    if (mOptions.verbose){
-        std::cout << "Resizing to  " << nn << std::endl;
-    }
-    mNumberKeys = nn;
-    return mRadixSortGPU.Resize(nn);
 }
 
 

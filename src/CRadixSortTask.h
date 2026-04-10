@@ -53,7 +53,6 @@ protected:
 
 	// Helper methods
 	void CheckLocalMemory(cl::Device Device);
-	uint32_t Resize(uint32_t nn);
 
     /// Performs reorder step
 	void Reorder(
