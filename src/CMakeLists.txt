@@ -1,7 +1,6 @@
 # Define source files
 set(Sources
     RadixSortGPU.cpp
-    CRadixSortTask.cpp
     ComputeDeviceData.cpp
     Dataset.cpp
     HostData.cpp

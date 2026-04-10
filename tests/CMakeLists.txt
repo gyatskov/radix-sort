@@ -11,6 +11,7 @@ CPMAddPackage(
 add_executable(tests
     tests.cpp
     CTestBase.cpp
+    CRadixSortTask.cpp
 )
 
 # Should be linked to the main library, as well as the Catch2 testing library
