@@ -383,11 +383,12 @@ void TestPerformance(
 
     using std::chrono::system_clock;
     std::time_t tt = system_clock::to_time_t(system_clock::now());
-    struct std::tm * ptm = std::localtime(&tt);
+    struct std::tm ptm;
+    localtime_s(&ptm, &tt);
     const std::string dateFormat = "%H-%M-%S";
     std::stringstream fileNameBuilder;
 
-    fileNameBuilder << "radix_" << std::put_time(ptm, dateFormat.c_str()) << ".csv";
+    fileNameBuilder << "radix_" << std::put_time(&ptm, dateFormat.c_str()) << ".csv";
 
     if (options.perf_to_csv) {
         const auto filename = fileNameBuilder.str();
