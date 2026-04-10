@@ -710,7 +710,7 @@ OperationStatus RadixSortGPU<DataType>::sort(
     return OperationStatus::OK;
 }
 
-// Specialize CRadixSortTask for the supported types.
+// Specialize RadixSortGPU for the supported types.
 template class RadixSortGPU < int32_t >;
 template class RadixSortGPU < int64_t >;
 template class RadixSortGPU < uint32_t >;
