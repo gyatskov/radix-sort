@@ -77,7 +77,6 @@ bool CRunner::DoCompute()
 
     // LocalWorkSize does not mean anything right here
 	const LocalWorkSize LocalWorkSize { 1, 1, 1 };
-	const auto problemSize = options.num_elements;
 
     // TODO: Use type list
     return runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(
@@ -89,8 +88,14 @@ bool CRunner::DoCompute()
 
 TEST_CASE( "Main test", "[main]" )
 {
+    constexpr auto NUM_ELEMENTS = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS;
     // Non-interactive mode
-	CRunner radixSortRunner;
+	CRunner radixSortRunner(
+        {
+            "--num-elements", std::to_string(NUM_ELEMENTS),
+            "--num-iterations", "1",
+        }
+    );
 
     try {
         const auto initialized = radixSortRunner.InitCLContext();
