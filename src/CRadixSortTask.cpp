@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <filesystem>
 #include <iomanip>
 #include <fstream>
 #include <sstream>
@@ -390,15 +391,8 @@ void TestPerformance(
 
     if (options.perf_to_csv) {
         const auto filename = fileNameBuilder.str();
-        bool file_exists = false;
-
-        {
-            struct stat buffer;
-            file_exists = (stat(filename.c_str(), &buffer) == 0);
-        }
-
         // Print columns
-        if (file_exists)
+        if (std::filesystem::exists(filename))
         {
             std::cout << "File " << filename << " already exists, not overwriting!" << std::endl;
         } else {
