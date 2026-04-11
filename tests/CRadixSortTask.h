@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/IComputeTask.h"
+#include "IComputeTask.h"
 #include "Parameters.h"
 #include "HostData.h"
 #include "RadixSortGPU.h"

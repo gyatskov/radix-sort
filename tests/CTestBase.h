@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/IComputeTask.h"
+#include "IComputeTask.h"
 
 #include "Common/CommonDefs.h"
 #include "Common/ComputeState.h"
