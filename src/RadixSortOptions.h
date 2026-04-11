@@ -7,37 +7,33 @@
 
 struct RadixSortOptions
 {
-    /// Number of actual elements
-    std::size_t num_elements;
+    /// Number of actual elements. NOTE: Type doesn't matter here. TODO: Refactor Parameters struct.
+    std::size_t num_elements = AlgorithmParameters<int32_t>::_NUM_MAX_INPUT_ELEMS;
     /// Number of iterations for performance testing
-    std::size_t num_iterations;
-    bool perf_to_stdout;
-    bool perf_to_csv;
-    bool perf_csv_to_stdout;
-    bool verbose;
+    std::size_t num_iterations = 5;
+    bool perf_to_stdout = false;
+    bool perf_to_csv = false;
+    bool perf_csv_to_stdout = false;
+    bool verbose = false;
+};
 
-    explicit RadixSortOptions(std::vector<std::string> args) :
-        num_elements(AlgorithmParameters<float>::_NUM_MAX_INPUT_ELEMS),
-        num_iterations(5),
-        perf_to_stdout(false),
-        perf_to_csv(false),
-        perf_csv_to_stdout(false),
-        verbose(false)
-    {
-        for (std::size_t i = 0; i < args.size(); i++) {
-            auto arg = args[i];
-            if (arg == "--num-elements") {
-                num_elements = std::stoi(args[i + 1]);
-                i++;
-            } else if (arg == "--perf-to-stdout") {
-                perf_to_stdout = true;
-            } else if (arg == "--perf-to-csv") {
-                perf_to_csv = true;
-            } else if (arg == "--perf-csv-to-stdout") {
-                perf_csv_to_stdout = true;
-            } else if (arg == "-v" || arg == "--verbose") {
-                verbose = true;
-            }
+inline RadixSortOptions ParseArgs(std::vector<std::string> args)
+{
+    RadixSortOptions  result;
+    for (std::size_t i = 0; i < args.size(); i++) {
+        auto arg = args[i];
+        if (arg == "--num-elements") {
+            result.num_elements = std::stoi(args[i + 1]);
+            i++;
+        } else if (arg == "--perf-to-stdout") {
+            result.perf_to_stdout = true;
+        } else if (arg == "--perf-to-csv") {
+            result.perf_to_csv = true;
+        } else if (arg == "--perf-csv-to-stdout") {
+            result.perf_csv_to_stdout = true;
+        } else if (arg == "-v" || arg == "--verbose") {
+            result.verbose = true;
         }
     }
-};
+    return result;
+}

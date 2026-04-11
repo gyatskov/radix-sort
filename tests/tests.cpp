@@ -73,7 +73,7 @@ bool runAllTypes(CRunner& runner, const RadixSortOptions& options, const LocalWo
 
 bool CRunner::DoCompute()
 {
-    const auto options = RadixSortOptions(m_arguments);
+    const auto options = ParseArgs(m_arguments);
 
     // LocalWorkSize does not mean anything right here
 	const LocalWorkSize LocalWorkSize { 1, 1, 1 };
