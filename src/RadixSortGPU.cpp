@@ -15,17 +15,17 @@
 template<typename DataType>
 void RadixSortGPU<DataType>::Histogram(cl::CommandQueue CommandQueue, int pass)
 {
-    const size_t nbitems = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
-    const size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
+    const size_t nbitems = AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP * AlgorithmConfiguration::_NUM_GROUPS;
+    const size_t nblocitems = AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP;
 
-	assert(mNumberKeysRounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
-	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+	assert(mNumberKeysRounded % (AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP) == 0);
+	assert(mNumberKeysRounded <= AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
 
 	auto histogramKernelHandle = mDeviceData->m_kernelMap["histogram"];
 
 	// Set kernel arguments
 	{
-        const auto localCacheSize = sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP;
+        const auto localCacheSize = sizeof(cl_int) * AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP;
         cl_uint argIdx = 0U;
         histogramKernelHandle.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::InputKeys]);
         histogramKernelHandle.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms]);
@@ -67,12 +67,12 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
         // numbers of processors for the local scan
         // = half the size of the local histograms
         // global work size
-        size_t nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+        size_t nbitems    = AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP / 2;
         // local work size
-        size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
+        size_t nblocitems = nbitems / AlgorithmConfiguration::_NUM_HISTOSPLIT;
 
-        const uint32_t maxmemcache = std::max(Parameters::_NUM_HISTOSPLIT,
-            Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT);
+        const uint32_t maxmemcache = std::max(AlgorithmConfiguration::_NUM_HISTOSPLIT,
+            AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP * AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_RADIX / AlgorithmConfiguration::_NUM_HISTOSPLIT);
 
         // scan locally the histogram (the histogram is split into several
         // parts that fit into the local memory)
@@ -121,7 +121,7 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
 
         {
             // global work size
-            const size_t nbitems    = Parameters::_NUM_HISTOSPLIT / 2;
+            const size_t nbitems    = AlgorithmConfiguration::_NUM_HISTOSPLIT / 2;
             // local work size
             const size_t nblocitems = nbitems;
 
@@ -155,9 +155,9 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
     {
         // loops again in order to paste together the local histograms
         // global
-        size_t nbitems    = Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP / 2;
+        size_t nbitems    = AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP / 2;
         // local work size
-        size_t nblocitems = nbitems / Parameters::_NUM_HISTOSPLIT;
+        size_t nblocitems = nbitems / AlgorithmConfiguration::_NUM_HISTOSPLIT;
 
         auto pasteHistogramKernel = mDeviceData->m_kernelMap["pastehistograms"];
         // Set kernel arguments
@@ -198,14 +198,14 @@ void RadixSortGPU<DataType>::ScanHistogram(cl::CommandQueue CommandQueue)
 template <typename DataType>
 void RadixSortGPU<DataType>::Reorder(cl::CommandQueue CommandQueue, int pass)
 {
-	constexpr size_t nblocitems = Parameters::_NUM_ITEMS_PER_GROUP;
-    constexpr size_t nbitems    = Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS;
+	constexpr size_t nblocitems = AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP;
+    constexpr size_t nbitems    = AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP * AlgorithmConfiguration::_NUM_GROUPS;
 
-	assert(mNumberKeysRounded % (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP) == 0);
+	assert(mNumberKeysRounded % (AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP) == 0);
 
     CommandQueue.finish();
     auto reorderKernel = mDeviceData->m_kernelMap["reorder"];
-	assert(Parameters::_RADIX == pow(2, Parameters::_NUM_BITS_PER_RADIX));
+	assert(AlgorithmConfiguration::_RADIX == pow(2, AlgorithmConfiguration::_NUM_BITS_PER_RADIX));
 
     // TODO: Use
 	struct ReorderKernelParams {
@@ -228,7 +228,7 @@ void RadixSortGPU<DataType>::Reorder(cl::CommandQueue CommandQueue, int pass)
         reorderKernel.setArg(argIdx++, pass);
         reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::InputPermutations]);
         reorderKernel.setArg(argIdx++, mDeviceData->m_dMemoryMap[MemoryBuffer::OutputPermutations]);
-        reorderKernel.setArg(argIdx++, cl::Local(sizeof(cl_int) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP));
+        reorderKernel.setArg(argIdx++, cl::Local(sizeof(cl_int) * AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP));
         reorderKernel.setArg(argIdx++, mNumberKeysRounded);
 	}
 
@@ -287,10 +287,10 @@ void RadixSortGPU<DataType>::padGPUData(
 template <typename DataType>
 uint32_t RadixSortGPU<DataType>::Resize(uint32_t nn) noexcept
 {
-    // length of the vector has to be divisible by (Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP)
-    const int32_t rest = nn % Parameters::_NUM_ITEMS;
+    // length of the vector has to be divisible by (AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP)
+    const int32_t rest = nn % AlgorithmConfiguration::_NUM_ITEMS;
 
-    const int32_t delta = (rest != 0) * (- rest + Parameters::_NUM_ITEMS);
+    const int32_t delta = (rest != 0) * (- rest + AlgorithmConfiguration::_NUM_ITEMS);
     return nn + delta;
 }
 
@@ -386,7 +386,7 @@ OperationStatus RadixSortGPU<DataType>::downloadIntermediate(
     auto error = CommandQueue.enqueueReadBuffer(
         mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms],
         isBlocking, offset,
-        sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
+        sizeof(uint32_t) * AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP,
         mHostSpans.m_hHistograms.data()
     );
     if (error != CL_SUCCESS) return S::DATA_DOWNLOAD_FAILED;
@@ -394,7 +394,7 @@ OperationStatus RadixSortGPU<DataType>::downloadIntermediate(
     error = CommandQueue.enqueueReadBuffer(
         mDeviceData->m_dMemoryMap[MemoryBuffer::Globsum],
         isBlocking, offset,
-        sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT,
+        sizeof(uint32_t) * AlgorithmConfiguration::_NUM_HISTOSPLIT,
         mHostSpans.m_hGlobsum.data()
     );
     if (error != CL_SUCCESS) return S::DATA_DOWNLOAD_FAILED;
@@ -476,7 +476,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
         mDeviceData->m_dMemoryMap[MemoryBuffer::Histograms],
 		isBlocking,
         offset,
-		sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_GROUPS * Parameters::_NUM_ITEMS_PER_GROUP,
+		sizeof(uint32_t) * AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP,
         mHostSpans.m_hHistograms.data()
     );
     assert(error == CL_SUCCESS);
@@ -485,7 +485,7 @@ void RadixSortGPU<DataType>::CopyDataFromDevice(cl::CommandQueue CommandQueue)
         mDeviceData->m_dMemoryMap[MemoryBuffer::Globsum],
 		isBlocking,
         offset,
-		sizeof(uint32_t)  * Parameters::_NUM_HISTOSPLIT,
+		sizeof(uint32_t)  * AlgorithmConfiguration::_NUM_HISTOSPLIT,
 		mHostSpans.m_hGlobsum.data()
     );
     assert(error == CL_SUCCESS);
@@ -629,22 +629,22 @@ std::string RadixSortGPU<DataType>::BuildOptions()
     {
         ///////////////////////////////////////////////////////
         // these parameters can be changed
-        appendToOptions(options, "_ITEMS", Parameters::_NUM_ITEMS_PER_GROUP); // number of items in a group
-        appendToOptions(options, "_GROUPS", Parameters::_NUM_GROUPS); // the number of virtual processors is Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
-        appendToOptions(options, "_HISTOSPLIT", Parameters::_NUM_HISTOSPLIT); // number of splits of the histogram
+        appendToOptions(options, "_ITEMS", AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP); // number of items in a group
+        appendToOptions(options, "_GROUPS", AlgorithmConfiguration::_NUM_GROUPS); // the number of virtual processors is AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP * AlgorithmConfiguration::_NUM_GROUPS
+        appendToOptions(options, "_HISTOSPLIT", AlgorithmConfiguration::_NUM_HISTOSPLIT); // number of splits of the histogram
         appendToOptions(options, "_TOTALBITS", Parameters::_TOTALBITS);  // number of bits for the integer in the list (max=32)
-        appendToOptions(options, "_BITS", Parameters::_NUM_BITS_PER_RADIX);  // number of bits in the radix
+        appendToOptions(options, "_BITS", AlgorithmConfiguration::_NUM_BITS_PER_RADIX);  // number of bits in the radix
         // max size of the sorted vector
-        // it has to be divisible by  Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS
+        // it has to be divisible by  AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP * AlgorithmConfiguration::_NUM_GROUPS
         // (for other sizes, pad the list with big values)
-        appendToOptions(options, "_N", Parameters::_NUM_MAX_INPUT_ELEMS);// maximal size of the list
+        appendToOptions(options, "_N", AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);// maximal size of the list
         //#define PERMUT  // store the final permutation
         ////////////////////////////////////////////////////////
 
         // the following parameters are computed from the previous
-        appendToOptions(options, "_RADIX", Parameters::_RADIX);//  radix  = 2^_BITS
+        appendToOptions(options, "_RADIX", AlgorithmConfiguration::_RADIX);//  radix  = 2^_BITS
         appendToOptions(options, "_PASS", Parameters::_NUM_PASSES); // number of needed passes to sort the list
-        appendToOptions(options, "_HISTOSIZE", Parameters::_HISTOSIZE);// size of the histogram
+        appendToOptions(options, "_HISTOSIZE", AlgorithmConfiguration::_HISTOSIZE);// size of the histogram
         // maximal value of integers for the sort to be correct
         //appendToOptions(options, "_MAXINT", Parameters::_MAXINT);
     }
@@ -672,8 +672,8 @@ OperationStatus RadixSortGPU<DataType>::sort(
     // Allocate all working buffers
     std::vector<DataType>  hKeys(numRounded);
     std::vector<DataType>  hResult(numRounded);
-    std::vector<uint32_t>  hHistograms(Parameters::_RADIX * Parameters::_NUM_ITEMS);
-    std::vector<uint32_t>  hGlobsum(Parameters::_NUM_HISTOSPLIT);
+    std::vector<uint32_t>  hHistograms(AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS);
+    std::vector<uint32_t>  hGlobsum(AlgorithmConfiguration::_NUM_HISTOSPLIT);
     std::vector<uint32_t>  hPermut(numRounded);
     std::vector<uint32_t>  hOutPermut(numRounded);
 

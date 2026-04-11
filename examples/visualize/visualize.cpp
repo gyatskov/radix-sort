@@ -608,8 +608,8 @@ static void createMappedDataBuffers(App& a, uint32_t numRounded)
     // Per-column element counts and buffer sizes
     const uint32_t colCounts[App::NUM_COLS] = {
         numRounded,                                    // keys
-        Params::_RADIX * Params::_NUM_ITEMS,           // histograms
-        Params::_NUM_HISTOSPLIT,                       // globsum
+        AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS,           // histograms
+        AlgorithmConfiguration::_NUM_HISTOSPLIT,                       // globsum
         numRounded,                                    // input permutations
         numRounded,                                    // output permutations
     };
@@ -1058,8 +1058,8 @@ bool sortDataZeroCopy(
     auto* dstSorted = static_cast<DataType*>(app.cols[0].mapped.back());
 
     // Scratch buffers for auxiliary data (downloaded then copied to Vulkan).
-    std::vector<uint32_t> hHisto(Params::_RADIX * Params::_NUM_ITEMS);
-    std::vector<uint32_t> hGlobsum(Params::_NUM_HISTOSPLIT);
+    std::vector<uint32_t> hHisto(AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS);
+    std::vector<uint32_t> hGlobsum(AlgorithmConfiguration::_NUM_HISTOSPLIT);
     std::vector<uint32_t> hPermut(numRounded);
     std::vector<uint32_t> hOutPermut(numRounded);
     std::iota(hPermut.begin(), hPermut.end(), 0U);

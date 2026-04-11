@@ -7,8 +7,8 @@
 
 struct RadixSortOptions
 {
-    /// Number of actual elements. NOTE: Type doesn't matter here. TODO: Refactor Parameters struct.
-    std::size_t num_elements = AlgorithmParameters<int32_t>::_NUM_MAX_INPUT_ELEMS;
+    /// Number of keys.
+    std::size_t num_elements = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS;
     /// Number of iterations for performance testing
     std::size_t num_iterations = 5;
     bool perf_to_stdout = false;

@@ -66,7 +66,7 @@ CRadixSortTask<DataType>::CRadixSortTask(
 	:
     mNumberKeys(static_cast<decltype(mNumberKeys)>(options.num_elements)),
     // TODO: Check value for initialization
-	mNumberKeysRounded(Parameters::_NUM_MAX_INPUT_ELEMS),
+	mNumberKeysRounded(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS),
 	mHostData(dataset),
     m_selectedDataset(dataset),
     mOptions(options)
@@ -128,7 +128,7 @@ void CRadixSortTask<DataType>::ComputeGPU(
     const LocalWorkSize& LocalWorkSize)
 {
 	if (const auto paddingRequired = mNumberKeys != mNumberKeysRounded) {
-        assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+        assert(mNumberKeysRounded <= AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
         const auto paddingOffset = sizeof(DataType) * mNumberKeys;
         mRadixSortGPU.padGPUData(CommandQueue, paddingOffset);
     }
@@ -262,15 +262,15 @@ void CRadixSortTask<DataType>::CheckLocalMemory(cl::Device Device)
     localMem = Device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>();
     if (mOptions.verbose) {
         std::cout << "Cache size   = " << localMem << " Bytes." << std::endl;
-		std::cout << "Needed cache = " << sizeof(cl_uint) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP << " Bytes." << std::endl;
+		std::cout << "Needed cache = " << sizeof(cl_uint) * AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP << " Bytes." << std::endl;
     }
-	assert(localMem > sizeof(DataType) * Parameters::_RADIX * Parameters::_NUM_ITEMS_PER_GROUP);
+	assert(localMem > sizeof(DataType) * AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP);
 
     [[maybe_unused]]
 	constexpr uint32_t maxmemcache =
         std::max(
-            Parameters::_NUM_HISTOSPLIT,
-		    Parameters::_NUM_ITEMS_PER_GROUP * Parameters::_NUM_GROUPS * Parameters::_RADIX / Parameters::_NUM_HISTOSPLIT
+            AlgorithmConfiguration::_NUM_HISTOSPLIT,
+		    AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP * AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_RADIX / AlgorithmConfiguration::_NUM_HISTOSPLIT
         );
 	assert(localMem > sizeof(DataType)*maxmemcache);
 }
@@ -283,7 +283,7 @@ void CRadixSortTask<DataType>::ExecuteTask(
         const LocalWorkSize&
     )
 {
-	assert(mNumberKeysRounded <= Parameters::_NUM_MAX_INPUT_ELEMS);
+	assert(mNumberKeysRounded <= AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
     if (mOptions.verbose) {
         std::cout << "Sorting " << mNumberKeys << " keys..." << std::endl;
     }

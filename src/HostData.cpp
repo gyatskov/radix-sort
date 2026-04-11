@@ -7,16 +7,16 @@
 
 template <typename DataType>
 HostDataWithReference<DataType>::HostDataWithReference(std::shared_ptr<Dataset<DataType>> dataset) :
-	m_resultSTLCPU(Parameters::_NUM_MAX_INPUT_ELEMS),
-	m_resultRadixSortCPU(Parameters::_NUM_MAX_INPUT_ELEMS),
+	m_resultSTLCPU(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS),
+	m_resultRadixSortCPU(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS),
     mHostBuffers{ }
 {
     {
-        mHostBuffers.m_hKeys.resize(Parameters::_NUM_MAX_INPUT_ELEMS);
-        mHostBuffers.m_hHistograms.resize(Parameters::_RADIX * Parameters::_NUM_ITEMS);
-        mHostBuffers.m_hGlobsum.resize(Parameters::_NUM_HISTOSPLIT);
-        mHostBuffers.h_Permut.resize(Parameters::_NUM_MAX_INPUT_ELEMS);
-        mHostBuffers.h_OutputPermut.resize(Parameters::_NUM_MAX_INPUT_ELEMS);
+        mHostBuffers.m_hKeys.resize(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
+        mHostBuffers.m_hHistograms.resize(AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS);
+        mHostBuffers.m_hGlobsum.resize(AlgorithmConfiguration::_NUM_HISTOSPLIT);
+        mHostBuffers.h_Permut.resize(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
+        mHostBuffers.h_OutputPermut.resize(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
 
         std::iota(mHostBuffers.h_Permut.begin(), mHostBuffers.h_Permut.end(), 0);
     }

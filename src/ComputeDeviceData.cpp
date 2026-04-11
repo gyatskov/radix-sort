@@ -61,19 +61,19 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
 	// allocate the histogram on the GPU
 	createBufferAndCheck(
         m_dMemoryMap[MemoryBuffer::Histograms],
-        sizeof(uint32_t) * Parameters::_RADIX * Parameters::_NUM_ITEMS
+        sizeof(uint32_t) * AlgorithmConfiguration::_RADIX * AlgorithmConfiguration::_NUM_ITEMS
     );
 
 	// allocate the auxiliary histogram on GPU
 	createBufferAndCheck(
         m_dMemoryMap[MemoryBuffer::Globsum],
-        sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT
+        sizeof(uint32_t) * AlgorithmConfiguration::_NUM_HISTOSPLIT
     );
 
 	// temporary vector when the sum is not needed
 	createBufferAndCheck(
         m_dMemoryMap[MemoryBuffer::Temp],
-        sizeof(uint32_t) * Parameters::_NUM_HISTOSPLIT
+        sizeof(uint32_t) * AlgorithmConfiguration::_NUM_HISTOSPLIT
     );
 }
 

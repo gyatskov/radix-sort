@@ -3,12 +3,7 @@
 #include <cstdint>
 #include <limits>
 
-/// Collection of compile-time parameters.
-///
-/// @tparam _DataType Type of data to be sorted
-template <typename _DataType>
-struct AlgorithmParameters
-{
+namespace AlgorithmConfiguration {
 	////////////////////////////////////////////////////////
 	// Configurable parameters
 	////////////////////////////////////////////////////////
@@ -35,7 +30,19 @@ struct AlgorithmParameters
 	inline static constexpr auto _RADIX = (1U << _NUM_BITS_PER_RADIX);
     /// Size of histogram
 	inline static constexpr auto _HISTOSIZE = (_NUM_ITEMS_PER_GROUP * _NUM_GROUPS * _RADIX);
+	///
+    /// Check divisibility of works to assign correct amounts of work to groups/work-items.
+    static_assert(AlgorithmConfiguration::_RADIX == 1 << AlgorithmConfiguration::_NUM_BITS_PER_RADIX);
+    static_assert(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS % (AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP) == 0);
+    static_assert((AlgorithmConfiguration::_NUM_GROUPS * AlgorithmConfiguration::_NUM_ITEMS_PER_GROUP * AlgorithmConfiguration::_RADIX) % AlgorithmConfiguration::_NUM_HISTOSPLIT == 0);
+}
 
+/// Collection of compile-time parameters.
+///
+/// @tparam _DataType Type of data to be sorted
+template <typename _DataType>
+struct AlgorithmParameters
+{
 	////////////////////////////////////////////////////////
 	// Datatype dependent parameters
 	////////////////////////////////////////////////////////
@@ -43,15 +50,11 @@ struct AlgorithmParameters
     /// number of bits for the processed integer  type
 	inline static constexpr uint32_t _TOTALBITS = sizeof(DataType) << 3U;
     /// Number of needed passes to sort the list
-	inline static constexpr auto _NUM_PASSES = (_TOTALBITS / _NUM_BITS_PER_RADIX);
+	inline static constexpr auto _NUM_PASSES = (_TOTALBITS / AlgorithmConfiguration::_NUM_BITS_PER_RADIX);
 	/// maximum value of integers for the sort to be correct
 	inline static constexpr DataType _MAXINT = std::numeric_limits<DataType>::max();
 	////////////////////////////////////////////////////////
 
-    /// Check divisibility of works to assign correct amounts of work to groups/work-items.
-    static_assert(_RADIX == 1 << _NUM_BITS_PER_RADIX);
-    static_assert(_TOTALBITS % _NUM_BITS_PER_RADIX == 0);
-    static_assert(_NUM_MAX_INPUT_ELEMS % (_NUM_GROUPS * _NUM_ITEMS_PER_GROUP) == 0);
-    static_assert((_NUM_GROUPS * _NUM_ITEMS_PER_GROUP * _RADIX) % _NUM_HISTOSPLIT == 0);
+    static_assert(_TOTALBITS % AlgorithmConfiguration::_NUM_BITS_PER_RADIX == 0);
 };
 

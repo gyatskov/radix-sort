@@ -31,8 +31,8 @@ class RadixSortCPU {
 public:
 	using Parameters = AlgorithmParameters<DataType>;
 
-    static_assert(Parameters::_TOTALBITS % Parameters::_NUM_BITS_PER_RADIX == 0);
-	inline static constexpr auto NUM_BINS = Parameters::_TOTALBITS / Parameters::_NUM_BITS_PER_RADIX;
+    static_assert(Parameters::_TOTALBITS % AlgorithmConfiguration::_NUM_BITS_PER_RADIX == 0);
+	inline static constexpr auto NUM_BINS = Parameters::_TOTALBITS / AlgorithmConfiguration::_NUM_BITS_PER_RADIX;
 
 	///
 	/// ░░░░░▄▄▄▄▀▀▀▀▀▀▀▀▄▄▄▄▄▄░░░░░░░
