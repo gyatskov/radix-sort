@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <memory>
 
 enum class MemoryBuffer {
     InputKeys,
