@@ -2,7 +2,7 @@
 include(CTest)
 CPMAddPackage(
     NAME Catch2
-    GIT_TAG v3.13.0
+    GIT_TAG v3.14.0
     GITHUB_REPOSITORY catchorg/Catch2
     OPTIONS "BUILD_SHARED_LIBS OFF"
 )
