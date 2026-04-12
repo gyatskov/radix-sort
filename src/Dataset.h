@@ -25,7 +25,7 @@ struct Dataset
 
 	virtual const char* name() const {return "UNKNOWN";}
 
-    Dataset(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS) : dataset(size)
+    Dataset(std::size_t size = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS) : dataset(size)
 	{}
 
     virtual ~Dataset() = default;
@@ -39,7 +39,7 @@ struct Zeros : Dataset<DataType>
 {
 	virtual const char* name() const override {return "Zeros";}
 
-    Zeros(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
+    Zeros(std::size_t size = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
     virtual ~Zeros() = default;
 };
 
@@ -48,7 +48,7 @@ struct RandomDistributed : Dataset < DataType >
 {
 	virtual const char* name() const override {return "Random Uniform";}
 
-    RandomDistributed(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
+    RandomDistributed(std::size_t size = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
     virtual ~RandomDistributed() = default;
 };
 
@@ -57,7 +57,7 @@ struct Random : Dataset < DataType >
 {
 	virtual const char* name() const override {return "Random Random";}
 
-    Random(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
+    Random(std::size_t size = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
     virtual ~Random() = default;
 };
 
@@ -66,7 +66,7 @@ struct Range : Dataset < DataType >
 {
 	virtual const char* name() const override {return "Range";}
 
-    Range(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
+    Range(std::size_t size = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
     virtual ~Range() = default;
 };
 
@@ -75,7 +75,7 @@ struct InvertedRange : Dataset < DataType >
 {
 	virtual const char* name() const override {return "Inverted Range";}
 
-    InvertedRange(std::size_t size = Parameters<DataType>::_NUM_MAX_INPUT_ELEMS);
+    InvertedRange(std::size_t size = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
     virtual ~InvertedRange() = default;
 };
 
