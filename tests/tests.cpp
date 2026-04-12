@@ -7,8 +7,7 @@
 #include "RadixSortOptions.h"
 #include "CRadixSortTask.h"
 #include <exception>
-#include <ranges>
-#include <algorithm>
+#include <cstdlib> // getenv
 
 #include "Common/Util.hpp"
 // TODO: Move
@@ -88,12 +87,32 @@ bool CRunner::DoCompute()
 
 TEST_CASE( "Main test", "[main]" )
 {
-    constexpr auto NUM_ELEMENTS = AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS;
     // Non-interactive mode
+    const auto numElements = [&]{
+        if(const char* numElements = std::getenv("RADIXSORT_INPUT_ELEMENTS"))
+        {
+            return std::string(numElements);
+
+        } else {
+            return std::to_string(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
+        }
+    }();
+
+    const auto numIterations = [&]{
+        if(const char* numIterations = std::getenv("RADIXSORT_ITERATIONS"))
+        {
+            return std::string(numIterations);
+
+        } else {
+            return std::to_string(1U);
+        }
+    }();
+
+
 	CRunner radixSortRunner(
         {
-            "--num-elements", std::to_string(NUM_ELEMENTS),
-            "--num-iterations", "1",
+            "--num-elements", numElements,
+            "--num-iterations", numIterations,
         }
     );
 
