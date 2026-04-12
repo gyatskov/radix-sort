@@ -1,7 +1,9 @@
 #include "ComputeState.h"
+
+#include <CL/Utils/Error.hpp>
+
 #include <iostream>
 #include <algorithm>
-#include <CL/Utils/Error.hpp>
 
 cl::Platform ComputeState::platform() {
     return cl::Platform(device().getInfo<CL_DEVICE_PLATFORM>());
@@ -37,7 +39,7 @@ bool ComputeState::init() {
         }
     }
 
-	if (m_CLDevices.size() == 0)
+	if (m_CLDevices.empty())
 	{
 		std::cerr << "No device of the selected type with OpenCL support was found.\n";
 		return false;

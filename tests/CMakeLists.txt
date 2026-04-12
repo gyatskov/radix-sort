@@ -10,7 +10,6 @@ CPMAddPackage(
 # Tests need to be added as executables first
 add_executable(tests
     tests.cpp
-    CTestBase.cpp
     CRadixSortTask.cpp
 )
 
