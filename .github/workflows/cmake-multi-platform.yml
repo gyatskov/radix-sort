@@ -51,6 +51,12 @@ jobs:
       with:
         cmakeVersion: 4.1.1
 
+    - name: Set up GCC 14 (Ubuntu)
+      uses: egor-tensin/setup-gcc@v2
+      with:
+        version: 14
+        platform: x64
+
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
