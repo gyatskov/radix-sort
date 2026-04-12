@@ -47,7 +47,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: lukka/get-cmake@latest
+    - name: CMake 4.1.1 (Ubuntu)
+      uses: lukka/get-cmake@latest
+      if: runner.os == 'Linux'
       with:
         cmakeVersion: 4.1.1
         
