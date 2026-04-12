@@ -23,11 +23,11 @@ jobs:
       #
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-2025-vs2026]
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         include:
-          - os: windows-latest
+          - os: windows-2025-vs2026
             c_compiler: cl
             cpp_compiler: cl
           - os: ubuntu-latest
@@ -50,8 +50,9 @@ jobs:
     - uses: lukka/get-cmake@latest
       with:
         cmakeVersion: 4.1.1
-
+        
     - name: Set up GCC 14 (Ubuntu)
+      if: runner.os == 'Linux'
       uses: egor-tensin/setup-gcc@v2
       with:
         version: 14
