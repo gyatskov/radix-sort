@@ -9,14 +9,10 @@
 #include "Dataset.h"
 
 #include <algorithm>
-#include <numeric>
 #include <filesystem>
-#include <iomanip>
 #include <fstream>
-#include <sstream>
-#include <ctime>        // std::time_t, struct std::tm, std::localtime
 #include <chrono>       // std::chrono::system_clock
-#include <ranges>
+#include <format>
 #include <type_traits>
 #include <cstring>      // memcmp
 #include <cassert>
@@ -382,16 +378,12 @@ void TestPerformance(
     }
 
     using std::chrono::system_clock;
-    std::time_t tt = system_clock::to_time_t(system_clock::now());
-    struct std::tm ptm;
-    localtime_s(&ptm, &tt);
-    const std::string dateFormat = "%H-%M-%S";
-    std::stringstream fileNameBuilder;
-
-    fileNameBuilder << "radix_" << std::put_time(&ptm, dateFormat.c_str()) << ".csv";
+    using std::chrono::time_point_cast;
+    using std::chrono::seconds;
 
     if (options.perf_to_csv) {
-        const auto filename = fileNameBuilder.str();
+        const auto now = time_point_cast<seconds>(system_clock::now());
+        const auto filename = std::format("radix_{:%T}.csv", now);
         // Print columns
         if (std::filesystem::exists(filename))
         {
