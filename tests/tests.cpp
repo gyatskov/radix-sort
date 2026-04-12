@@ -36,7 +36,7 @@ public:
     template <typename DataType>
     bool runTask(
         const RadixSortOptions& options,
-        const LocalWorkSize& LocalWorkSize
+        const LocalWorkSize& localWorkSize
     );
 };
 
@@ -44,14 +44,14 @@ CRunner::CRunner(std::vector<std::string> arguments /*= {}*/) : CTestBase(argume
 { }
 
 template <typename DataType>
-bool CRunner::runTask(const RadixSortOptions& options, const LocalWorkSize& LocalWorkSize)
+bool CRunner::runTask(const RadixSortOptions& options, const LocalWorkSize& localWorkSize)
 {
     const auto datasets = DatasetCreator<DataType>(options.num_elements);
     bool success = true;
     for (const auto& dataset : datasets)
     {
         CRadixSortTask<DataType> radixSort(options, dataset);
-        success = success && RunComputeTask(radixSort, LocalWorkSize);
+        success = success && RunComputeTask(radixSort, localWorkSize);
         REQUIRE(success);
     }
     return success;
@@ -75,13 +75,13 @@ bool CRunner::DoCompute()
     const auto options = ParseArgs(m_arguments);
 
     // LocalWorkSize does not mean anything right here
-	const LocalWorkSize LocalWorkSize { 1, 1, 1 };
+	const LocalWorkSize localWorkSize { 1, 1, 1 };
 
     // TODO: Use type list
     return runAllTypes<uint32_t, int32_t, uint64_t, int64_t>(
         *this,
         options,
-        LocalWorkSize
+        localWorkSize
     );
 }
 

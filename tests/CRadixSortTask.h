@@ -1,11 +1,12 @@
 #pragma once
 
-#include "IComputeTask.h"
 #include "Parameters.h"
 #include "HostData.h"
 #include "RadixSortGPU.h"
 #include "RadixSortOptions.h"
 #include "Statistics.h"
+
+#include "Common/CommonDefs.h"
 
 #include <memory>
 #include <cstdint>
@@ -20,7 +21,7 @@ struct RuntimesCPU {
 /// @tparam T Type of data to be sorted
 /// @TODO: Turn into a test class
 template <typename T>
-class CRadixSortTask : public IComputeTask
+class CRadixSortTask 
 {
 public:
 	using DataType = T;
@@ -33,19 +34,18 @@ public:
 	virtual ~CRadixSortTask() = default;
 
     ///////////////////////////////////////////////////////////////
-	// IComputeTask realization
-	bool InitResources(cl::Device Device, cl::Context Context) override;
-	void ReleaseResources() override;
+	bool InitResources(cl::Device Device, cl::Context Context);
+	void ReleaseResources();
 	void ComputeGPU(
         cl::Context Context,
         cl::CommandQueue CommandQueue,
         const LocalWorkSize& LocalWorkSize
-    ) override;
+    );
 
-    void ComputeCPU() override;
+    void ComputeCPU();
 
     /** Tests results validity **/
-	bool ValidateResults() override;
+	bool ValidateResults();
     ///////////////////////////////////////////////////////////////
 
 protected:
@@ -65,7 +65,7 @@ protected:
 	void ExecuteTask(
         cl::Context Context,
         cl::CommandQueue CommandQueue,
-        const LocalWorkSize& LocalWorkSize
+        const LocalWorkSize& localWorkSize
     );
 
 
