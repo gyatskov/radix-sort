@@ -17,7 +17,7 @@ struct RadixSortOptions
     bool verbose = false;
 };
 
-inline RadixSortOptions ParseArgs(std::vector<std::string> args)
+inline RadixSortOptions ParseArgs(const std::vector<std::string>& args)
 {
     RadixSortOptions  result;
     for (std::size_t i = 0; i < args.size(); i++) {

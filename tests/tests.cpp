@@ -53,10 +53,8 @@ public:
     CRunner() = default;
 	virtual ~CRunner() = default;
 
-    bool DoCompute(std::vector<std::string> arguments /*= {}*/)
+    bool DoCompute(const RadixSortOptions& options)
     {
-        const auto options = ParseArgs(arguments);
-
         // LocalWorkSize does not mean anything right here
         const LocalWorkSize localWorkSize { 1, 1, 1 };
 
@@ -147,20 +145,20 @@ TEST_CASE( "Main test", "[main]" )
     const auto numElements = [&]{
         if(const char* numElements = std::getenv("RADIXSORT_INPUT_ELEMENTS"))
         {
-            return std::string(numElements);
+            return std::stoi(numElements) * 1U;
 
         } else {
-            return std::to_string(AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
+            return AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS;
         }
     }();
 
     const auto numIterations = [&]{
         if(const char* numIterations = std::getenv("RADIXSORT_ITERATIONS"))
         {
-            return std::string(numIterations);
+            return std::stoi(numIterations) * 1U;
 
         } else {
-            return std::to_string(1U);
+            return 1U;
         }
     }();
 
@@ -170,13 +168,13 @@ TEST_CASE( "Main test", "[main]" )
     try {
         const auto initialized = radixSortRunner.InitCLContext();
         REQUIRE(initialized);
-        const auto status = radixSortRunner.DoCompute(
+        const auto successful = radixSortRunner.DoCompute(
             {
-                "--num-elements", numElements,
-                "--num-iterations", numIterations,
+                .num_elements = numElements,
+                .num_iterations = numIterations,
             }
         );
-        REQUIRE(status == true);
+        REQUIRE(successful);
     } catch(const cl::Error& exc) {
         INFO("CL Error: " << std::string(exc.what()));
         INFO(exc.err() << "(" << std::hex << exc.err() << ")");
