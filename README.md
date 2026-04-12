@@ -1,4 +1,5 @@
-[![CMake on a single platform](https://github.com/gyatskov/radix-sort/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/gyatskov/radix-sort/actions/workflows/cmake-single-platform.yml)
+[![CMake on Windows and Ubuntu](https://github.com/gyatskov/radix-sort/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/gyatskov/radix-sort/actions/workflows/cmake-multi-platform.yml)
+
 # radix-sort #
 GPU optimized implementation of Radix Sort using OpenCL.
 
