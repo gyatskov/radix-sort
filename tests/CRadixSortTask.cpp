@@ -79,7 +79,7 @@ bool CRadixSortTask<DataType>::InitResources(
     if(mOptions.verbose) {
         std::cout << "Resizing to  " << mNumberKeys << std::endl;
     }
-	mNumberKeysRounded = RadixSortGPU<DataType>::Resize(mNumberKeys);
+	mNumberKeysRounded = RadixSortGPU::Resize(mNumberKeys);
     auto& hostBuffers {mHostData.mHostBuffers};
     hostBuffers.m_hResultFromGPU.resize(
         mNumberKeysRounded
@@ -126,7 +126,7 @@ void CRadixSortTask<DataType>::ComputeGPU(
 	if (const auto paddingRequired = mNumberKeys != mNumberKeysRounded) {
         assert(mNumberKeysRounded <= AlgorithmConfiguration::_NUM_MAX_INPUT_ELEMS);
         const auto paddingOffset = sizeof(DataType) * mNumberKeys;
-        mRadixSortGPU.padGPUData(CommandQueue, paddingOffset);
+        mRadixSortGPU.padGPUData<DataType>(CommandQueue, paddingOffset);
     }
 	ExecuteTask(Context, CommandQueue, LocalWorkSize);
 
@@ -284,15 +284,15 @@ void CRadixSortTask<DataType>::ExecuteTask(
         std::cout << "Sorting " << mNumberKeys << " keys..." << std::endl;
     }
     {
-        const auto status = mRadixSortGPU.uploadData(CommandQueue);
+        const auto status = mRadixSortGPU.uploadData<DataType>(CommandQueue);
         assert(status == OperationStatus::OK);
     }
     {
-        const auto status = mRadixSortGPU.calculate(CommandQueue);
+        const auto status = mRadixSortGPU.calculate<DataType>(CommandQueue);
         assert(status == OperationStatus::OK);
     }
     {
-        const auto status = mRadixSortGPU.downloadData(CommandQueue);
+        const auto status = mRadixSortGPU.downloadData<DataType>(CommandQueue);
         assert(status == OperationStatus::OK);
     }
     if (mOptions.verbose){

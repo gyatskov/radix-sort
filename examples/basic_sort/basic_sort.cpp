@@ -29,7 +29,7 @@ bool sortAndVerify(ComputeState& compute, uint32_t numElements)
     // ------------------------------------------------------------------
     // 2. Sort on the GPU with a single call
     // ------------------------------------------------------------------
-    RadixSortGPU<DataType> sorter;
+    RadixSortGPU sorter;
     sorter.setLogStream(&std::cout);
 
     std::vector<DataType> result;

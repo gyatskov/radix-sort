@@ -1046,8 +1046,8 @@ bool sortDataZeroCopy(
     constexpr auto numPasses = Params::_NUM_PASSES;
 
     RandomDistributed<DataType> dataset(numElements);
-    RadixSortGPU<DataType> sorter;
-    [[maybe_unused]] const uint32_t nr = RadixSortGPU<DataType>::Resize(numElements);
+    RadixSortGPU sorter;
+    [[maybe_unused]] const uint32_t nr = RadixSortGPU::Resize(numElements);
     assert(nr == numRounded);
 
     // Write random data directly into the mapped Vulkan unsorted buffer.
@@ -1073,16 +1073,16 @@ bool sortDataZeroCopy(
         {dstSorted,         numRounded},
     };
 
-    auto status = sorter.initialize(
+    auto status = sorter.initialize<DataType>(
         compute.device(), compute.m_CLContext,
         numElements, spans);
     if (status != OperationStatus::OK) return false;
 
     auto& q = compute.m_CLCommandQueue;
     if (numRounded != numElements)
-        sorter.padGPUData(q, sizeof(DataType) * numElements);
+        sorter.padGPUData<DataType>(q, sizeof(DataType) * numElements);
 
-    status = sorter.uploadData(q);
+    status = sorter.uploadData<DataType>(q);
     if (status != OperationStatus::OK) return false;
 
     // Run pass-by-pass, capturing all intermediate buffer states.
@@ -1092,7 +1092,7 @@ bool sortDataZeroCopy(
         sorter.Reorder(q, pass);
 
         // Download all buffers to scratch
-        status = sorter.downloadKeys(q);
+        status = sorter.downloadKeys<DataType>(q);
         if (status != OperationStatus::OK) return false;
         status = sorter.downloadIntermediate(q);
         if (status != OperationStatus::OK) return false;
@@ -1165,7 +1165,7 @@ int main()
         createCommandPool(app);
 
         // Determine padded size and create mapped Vulkan storage buffers.
-        const uint32_t numRounded = RadixSortGPU<uint32_t>{}.Resize(NUM_ELEMENTS);
+        const uint32_t numRounded = RadixSortGPU::Resize(NUM_ELEMENTS);
         createMappedDataBuffers(app, numRounded);
         auto* unsortedPtr = static_cast<uint32_t*>(app.mappedUnsorted);
 

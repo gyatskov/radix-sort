@@ -85,7 +85,7 @@ protected:
     RuntimesCPU mRuntimesCPU{};
 
     /// Main GPU Radix Sort algorithm
-    RadixSortGPU<DataType> mRadixSortGPU;
+    RadixSortGPU mRadixSortGPU;
     /// Options provided by user
     RadixSortOptions mOptions;
 };

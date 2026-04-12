@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <span>
+#include <functional>
 
 #include <cstdint>
 
@@ -44,6 +45,27 @@ using HostSpans = HostBuffers<
     std::span<DataType>,
     std::span<uint32_t>
 >;
+
+struct HostSpansProxy {
+    std::function<void*()> hKeysData;
+    std::function<void*()> hHistogramsData;
+    std::function<void*()> hGlobsumData;
+    std::function<void*()> hPermutData;
+    std::function<void*()> hOutputPermutData;
+    std::function<void*()> hResultFromGPUData;
+    
+    template <typename DataType>
+    static HostSpansProxy FromHostSpans(HostSpans<DataType>& hostSpans) {
+        return HostSpansProxy {
+            [hostSpans]{ return static_cast<DataType*>(hostSpans.m_hKeys.data()); },
+            [hostSpans]{ return static_cast<uint32_t*>(hostSpans.m_hHistograms.data()); },
+            [hostSpans]{ return static_cast<uint32_t*>(hostSpans.m_hGlobsum.data()); },
+            [hostSpans]{ return static_cast<uint32_t*>(hostSpans.h_Permut.data()); },
+            [hostSpans]{ return static_cast<uint32_t*>(hostSpans.h_OutputPermut.data()); },
+            [hostSpans]{ return static_cast<DataType*>(hostSpans.m_hResultFromGPU.data()); }
+        };
+    }
+};
 
 /// @note Only used for tests
 template <typename T>
