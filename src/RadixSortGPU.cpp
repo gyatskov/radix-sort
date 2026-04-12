@@ -525,10 +525,10 @@ OperationStatus RadixSortGPU<DataType>::initialize(
     {
         mNumberKeysRounded = Resize(nn);
         mHostSpans = hostSpans;
-        mDeviceData =
-            std::make_shared<ComputeDeviceData<DataType>>(
-                    Context,
-                    mNumberKeysRounded);
+        mDeviceData = ComputeDeviceData::Create<DataType>(
+            Context,
+            mNumberKeysRounded
+        );
     }
 
     // compile and build program

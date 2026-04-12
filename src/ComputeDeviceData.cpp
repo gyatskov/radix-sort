@@ -1,4 +1,5 @@
 #include "ComputeDeviceData.h"
+#include "Parameters.h"
 
 #include <CL/Utils/Error.hpp>
 
@@ -6,10 +7,10 @@
 #include <iostream>
 #include <string>
 
-template <typename DataType>
-ComputeDeviceData<DataType>::ComputeDeviceData(
+ComputeDeviceData::ComputeDeviceData(
     cl::Context Context,
-    size_t buffer_size
+    size_t buffer_size,
+    std::size_t element_size
 )
 {
     kernelNames.emplace_back("histogram");
@@ -41,12 +42,12 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
 
     createBufferAndCheck(
         m_dMemoryMap[MemoryBuffer::InputKeys],
-        sizeof(DataType) * buffer_size
+        element_size * buffer_size
     );
 
 	createBufferAndCheck(
         m_dMemoryMap[MemoryBuffer::OutputKeys],
-        sizeof(DataType) * buffer_size
+        element_size * buffer_size
     );
 
 	createBufferAndCheck(
@@ -77,8 +78,3 @@ ComputeDeviceData<DataType>::ComputeDeviceData(
     );
 }
 
-// Specialize ComputeDeviceData for exactly these four types.
-template struct ComputeDeviceData < int32_t >;
-template struct ComputeDeviceData < int64_t >;
-template struct ComputeDeviceData < uint32_t >;
-template struct ComputeDeviceData < uint64_t >;

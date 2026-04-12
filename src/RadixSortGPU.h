@@ -7,6 +7,7 @@
 #include "HostData.h"
 #include "Statistics.h"
 #include "OperationStatus.h"
+#include "ComputeDeviceData.h"
 
 #include <memory>
 #include <iostream>
@@ -24,9 +25,6 @@ struct RuntimesGPU {
     Statistics timePaste{};
     Statistics timeTotal{};
 };
-
-template <typename DataType>
-struct ComputeDeviceData;
 
 /// TODO: Avoid clFinish calls
 ///       For profiling use clGetEventProfilingInfo api
@@ -138,7 +136,7 @@ private:
 	void CopyDataFromDevice(cl::CommandQueue CommandQueue);
 
     /// Device program, kernels and buffers
-    std::shared_ptr<ComputeDeviceData<DataType>> mDeviceData;
+    std::shared_ptr<ComputeDeviceData> mDeviceData;
     /// Pointers to host memory buffers
     HostSpans<DataType> mHostSpans;
 
