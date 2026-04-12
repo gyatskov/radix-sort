@@ -28,10 +28,10 @@ auto DatasetCreator(size_t num_elements)
 class CRunner : public CTestBase
 {
 public:
-    CRunner(std::vector<std::string> arguments = {});
+    CRunner() = default;
 	virtual ~CRunner() = default;
 
-	bool DoCompute() override;
+	bool DoCompute(std::vector<std::string> arguments = {}) override;
 
     template <typename DataType>
     bool runTask(
@@ -39,9 +39,6 @@ public:
         const LocalWorkSize& localWorkSize
     );
 };
-
-CRunner::CRunner(std::vector<std::string> arguments /*= {}*/) : CTestBase(arguments)
-{ }
 
 template <typename DataType>
 bool CRunner::runTask(const RadixSortOptions& options, const LocalWorkSize& localWorkSize)
@@ -70,9 +67,9 @@ bool runAllTypes(CRunner& runner, const RadixSortOptions& options, const LocalWo
 }
 } // namespace
 
-bool CRunner::DoCompute()
+bool CRunner::DoCompute(std::vector<std::string> arguments /*= {}*/)
 {
-    const auto options = ParseArgs(m_arguments);
+    const auto options = ParseArgs(arguments);
 
     // LocalWorkSize does not mean anything right here
 	const LocalWorkSize localWorkSize { 1, 1, 1 };
@@ -109,17 +106,17 @@ TEST_CASE( "Main test", "[main]" )
     }();
 
 
-	CRunner radixSortRunner(
-        {
-            "--num-elements", numElements,
-            "--num-iterations", numIterations,
-        }
-    );
+	CRunner radixSortRunner;
 
     try {
         const auto initialized = radixSortRunner.InitCLContext();
         REQUIRE(initialized);
-        const auto status = radixSortRunner.DoCompute();
+        const auto status = radixSortRunner.DoCompute(
+            {
+                "--num-elements", numElements,
+                "--num-iterations", numIterations,
+            }
+        );
         REQUIRE(status == true);
     } catch(const cl::Error& exc) {
         INFO("CL Error: " << std::string(exc.what()));

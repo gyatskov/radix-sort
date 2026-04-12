@@ -18,14 +18,14 @@ concept ComputeTask = requires(Task t, cl::Device dev, cl::Context ctx){
 class CTestBase
 {
 public:
-    CTestBase(std::vector<std::string> arguments = {})
-        : m_arguments(arguments), m_computeState{}
+    CTestBase()
+        : m_computeState{}
     { }
 
 	virtual ~CTestBase() = default;
 
 	//! To be overridden
-	virtual bool DoCompute() = 0;
+	virtual bool DoCompute(std::vector<std::string> arguments = {}) = 0;
 
 	virtual bool InitCLContext() {
         return m_computeState.init();
@@ -82,7 +82,5 @@ public:
 
 protected:
     ComputeState m_computeState;
-
-    std::vector<std::string> m_arguments;
 };
 
