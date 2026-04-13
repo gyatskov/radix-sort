@@ -6,6 +6,7 @@ project (radixsort
 )
 
 include(CTest)
+option(RADIXSORT_BUILD_EXAMPLES "Build examples" ON)
 
 # Add custom modules to the path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -30,7 +31,10 @@ include(cmake/CPM.cmake)
 
 add_subdirectory(src)
 add_subdirectory(Common ${CMAKE_BINARY_DIR}/Common)
-add_subdirectory(examples)
+if (RADIXSORT_BUILD_EXAMPLES)
+    message(STATUS "Building examples")
+    add_subdirectory(examples)
+endif()
 if (BUILD_TESTING)
     message(STATUS "Building tests")
     add_subdirectory(tests)
