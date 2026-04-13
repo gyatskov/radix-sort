@@ -35,12 +35,21 @@ PUBLIC
 )
 
 target_link_libraries(GPUCommon
+# OpenCL::Headers and OpenCL::HeadersCpp are Khronos SDK-specific targets
+# that provide <CL/opencl.hpp>.  Wrap them in BUILD_INTERFACE so they are
+# only required when building from source (FetchContent / CPMAddPackage).
+# When installed, the consumer's own OpenCL installation (found via
+# FindOpenCL → OpenCL::OpenCL) provides the necessary include paths.
 PUBLIC
-    OpenCL::Headers
-    OpenCL::HeadersCpp
+    $<BUILD_INTERFACE:OpenCL::Headers>
+    $<BUILD_INTERFACE:OpenCL::HeadersCpp>
     OpenCL::OpenCL
-    OpenCL::Utils
-    OpenCL::UtilsCpp
+# OpenCL::Utils / OpenCL::UtilsCpp are only used inside GPUCommon's own .cpp
+# files and do not appear in any public header.  BUILD_INTERFACE prevents
+# them from leaking into the installed export set.
+# They are used by tests.cpp
+    $<BUILD_INTERFACE:OpenCL::Utils>
+    $<BUILD_INTERFACE:OpenCL::UtilsCpp>
 )
 
 target_compile_definitions(GPUCommon
@@ -57,5 +66,23 @@ set_source_files_properties("${CommonSources}"
             "$<IF:$<CXX_COMPILER_ID:MSVC>,\
             /W4;$<$<CONFIG:RELEASE>:/O2>,\
             -Wall;-Wextra;-Werror;-pedantic;>"
+)
+
+# ---------------------------------------------------------------------------
+# Install rules — GPUCommon must be in the same export set as radixsortcl
+# because it is a PUBLIC link dependency.
+# ---------------------------------------------------------------------------
+install(
+    TARGETS GPUCommon
+    EXPORT  radixsortclTargets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+install(
+    DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/"
+    DESTINATION include/Common
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
 

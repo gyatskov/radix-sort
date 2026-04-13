@@ -1,0 +1,29 @@
+@PACKAGE_INIT@
+
+# ---------------------------------------------------------------------------
+# radixsortclConfig.cmake
+#
+# Provides the radixsortcl::radixsortcl target and the CompileOpenCLKernel
+# module for consumers using find_package(radixsortcl).
+#
+# After find_package(radixsortcl) callers can:
+#   target_link_libraries(myapp PRIVATE radixsortcl::radixsortcl)
+#   include(CompileOpenCLKernel)
+#   compile_opencl_kernels(TARGET myapp KERNEL_SOURCE ...)
+# ---------------------------------------------------------------------------
+
+include(CMakeFindDependencyMacro)
+
+# OpenCL is a public transitive dependency: the exported targets reference
+# OpenCL::OpenCL, OpenCL::Headers, and OpenCL::HeadersCpp.  Resolve them so
+# those imported targets are defined before the exported file is included.
+find_dependency(OpenCL)
+
+# Re-expose CompileOpenCLKernel so downstream callers can include() it.
+# The module is installed alongside this config file.
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+
+# Bring in the exported targets (radixsortcl::radixsortcl, radixsortcl::GPUCommon)
+include("${CMAKE_CURRENT_LIST_DIR}/radixsortclTargets.cmake")
+
+check_required_components(radixsortcl)
