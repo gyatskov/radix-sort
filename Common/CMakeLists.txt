@@ -47,7 +47,7 @@ PUBLIC
 # OpenCL::Utils / OpenCL::UtilsCpp are only used inside GPUCommon's own .cpp
 # files and do not appear in any public header.  BUILD_INTERFACE prevents
 # them from leaking into the installed export set.
-PRIVATE
+# They are used by tests.cpp
     $<BUILD_INTERFACE:OpenCL::Utils>
     $<BUILD_INTERFACE:OpenCL::UtilsCpp>
 )
