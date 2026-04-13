@@ -5,13 +5,9 @@ set(Sources
     Dataset.cpp
     HostData.cpp
 )
-#file(GLOB Headers   *.h)
-# TODO: Is this ever used?
-file(GLOB CLSources *.cl)
 
 add_library(radixsortcl STATIC
-	${Sources}
-	${CLSources}
+    ${Sources}
 )
 
 target_include_directories(radixsortcl
@@ -34,17 +30,54 @@ set_source_files_properties("${Sources}"
             -Wall;-Wextra;-Werror;-pedantic;>"
 )
 
+# ---------------------------------------------------------------------------
+# Pre-compile RadixSort.cl for each supported data type.
+#
+# The compile_opencl_kernels() function (from cmake/CompileOpenCLKernel.cmake)
+# will:
+#   1. Detect available offline OpenCL tools (clang -target spir64 / clspv /
+#      clang+llvm-spirv for SPIR-V; clang for native binary).
+#   2. Emit add_custom_command rules that produce per-type kernel files
+#      in ${CMAKE_CURRENT_BINARY_DIR}/kernels/.
+#   3. Create a radixsortcl_kernels aggregate target that radixsortcl depends on.
+#   4. Set RADIXSORTCL_KERNEL_DIR / RADIXSORTCL_KERNEL_EXT compile definitions
+#      so RadixSortGPU.cpp knows where to look at runtime.
+#
+# If no offline compiler is found the function emits a warning and returns
+# without adding any rules; the library will fall back to runtime source
+# compilation as before.
+# ---------------------------------------------------------------------------
+include(CompileOpenCLKernel)
 
-install(
-TARGETS
-    radixsortcl
-RUNTIME
-DESTINATION
-    bin
+compile_opencl_kernels(
+    TARGET        radixsortcl
+    KERNEL_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/kernels/RadixSort.cl"
+    OUTPUT_DIR    "${CMAKE_CURRENT_BINARY_DIR}/kernels"
+    DATA_TYPES    int32 uint32 int64 uint64
 )
+
+# ---------------------------------------------------------------------------
+# Install rules
+# ---------------------------------------------------------------------------
+
+# Static library and headers
 install(
-FILES
-    kernels/RadixSort.cl
-DESTINATION
-    bin
+    TARGETS radixsortcl
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
 )
+
+# OpenCL source kernel (always installed as a final fallback for runtime JIT)
+install(
+    FILES kernels/RadixSort.cl
+    DESTINATION share/radixsortcl/kernels
+)
+
+# Pre-compiled kernel binaries (installed when offline compilation succeeded)
+if(DEFINED RADIXSORTCL_COMPILED_KERNELS AND RADIXSORTCL_COMPILED_KERNELS)
+    install(
+        FILES ${RADIXSORTCL_COMPILED_KERNELS}
+        DESTINATION share/radixsortcl/kernels
+    )
+endif()

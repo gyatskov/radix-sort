@@ -11,6 +11,8 @@
 #include <ranges>
 #include <cassert>
 #include <cmath>
+#include <fstream>
+#include <filesystem>
 
 template<typename DataType>
 void RadixSortGPU<DataType>::Histogram(cl::CommandQueue CommandQueue, int pass)
@@ -504,6 +506,203 @@ std::string RadixSortGPU<DataType>::BuildPreamble()
     return ss.str();
 }
 
+// ---------------------------------------------------------------------------
+// Returns the short type suffix used in the pre-compiled kernel file names,
+// e.g. "int32" for int32_t, "uint64" for uint64_t.
+// ---------------------------------------------------------------------------
+template <typename DataType>
+std::string_view RadixSortGPU<DataType>::KernelTypeSuffix() noexcept
+{
+    return TypeNameString<DataType>::stdint_name;
+}
+
+// ---------------------------------------------------------------------------
+// Returns true when the given device advertises support for loading SPIR-V IL
+// programs via clCreateProgramWithIL / cl_khr_il_program / cl_khr_spir.
+// ---------------------------------------------------------------------------
+template <typename DataType>
+bool RadixSortGPU<DataType>::DeviceSupportsSPIRV(const cl::Device& device) noexcept
+{
+    // OpenCL 2.1+ exposes CL_DEVICE_IL_VERSION as a non-empty string when IL
+    // (SPIR-V) is supported.
+    try {
+        // CL_DEVICE_IL_VERSION is defined in CL/cl.h for OpenCL >= 2.1
+        // cl.hpp / opencl.hpp wraps it as Device::getInfo<CL_DEVICE_IL_VERSION>()
+        // but the constant may not be available when targeting CL 1.2 headers.
+        // We fall back to extension string inspection in that case.
+#if CL_TARGET_OPENCL_VERSION >= 210
+        const std::string ilVersion = device.getInfo<CL_DEVICE_IL_VERSION>();
+        if (!ilVersion.empty() && ilVersion != "")
+            return true;
+#endif
+    } catch (...) {}
+
+    // Extension-string check works for any OpenCL version
+    try {
+        const std::string exts = device.getInfo<CL_DEVICE_EXTENSIONS>();
+        if (exts.find("cl_khr_il_program") != std::string::npos)
+            return true;
+        if (exts.find("cl_khr_spir") != std::string::npos)
+            return true;
+    } catch (...) {}
+
+    return false;
+}
+
+// ---------------------------------------------------------------------------
+// Reads a binary file from disk into a byte vector.
+// Returns an empty vector on failure.
+// ---------------------------------------------------------------------------
+static std::vector<unsigned char> ReadBinaryFile(const std::filesystem::path& path)
+{
+    std::ifstream f(path, std::ios::binary | std::ios::ate);
+    if (!f.is_open())
+        return {};
+    const auto size = static_cast<std::streamsize>(f.tellg());
+    if (size <= 0)
+        return {};
+    f.seekg(0, std::ios::beg);
+    std::vector<unsigned char> buf(static_cast<std::size_t>(size));
+    if (!f.read(reinterpret_cast<char*>(buf.data()), size))
+        return {};
+    return buf;
+}
+
+// ---------------------------------------------------------------------------
+// Searches a list of directories for a kernel binary file named
+//   RadixSort_<suffix>.<ext>
+// Returns the first one found, or an empty path.
+// ---------------------------------------------------------------------------
+static std::filesystem::path FindKernelBinary(
+    const std::string_view typeSuffix,
+    const std::string_view ext)
+{
+    // Build the filename
+    const std::string filename =
+        "RadixSort_" + std::string(typeSuffix) + "." + std::string(ext);
+
+    // Candidate directories, in order of preference:
+    //   1. Directory injected by CMake at compile time (build-tree or install-tree)
+    //   2. Relative paths from the current working directory
+    //   3. Relative paths from the executable directory
+    std::vector<std::filesystem::path> searchDirs;
+
+#ifdef RADIXSORTCL_KERNEL_DIR
+    searchDirs.emplace_back(RADIXSORTCL_KERNEL_DIR);
+#endif
+    searchDirs.emplace_back("kernels");
+    searchDirs.emplace_back(".");
+
+    // Also try relative to the executable using the OpenCL utils helper
+    try {
+        const std::string exeDir = cl::util::executable_folder();
+        searchDirs.emplace_back(std::filesystem::path(exeDir) / "kernels");
+        searchDirs.emplace_back(std::filesystem::path(exeDir));
+        // Also check share/radixsortcl/kernels relative to the exe's prefix
+        searchDirs.emplace_back(
+            std::filesystem::path(exeDir).parent_path() / "share" / "radixsortcl" / "kernels");
+    } catch (...) {}
+
+    for (const auto& dir : searchDirs) {
+        const auto candidate = dir / filename;
+        std::error_code ec;
+        if (std::filesystem::exists(candidate, ec) && !ec)
+            return candidate;
+    }
+    return {};
+}
+
+// ---------------------------------------------------------------------------
+// Tries to build a cl::Program from a pre-compiled binary (SPIR-V or SPIR).
+// Returns {program, OK} on success.
+// Returns {empty, NO_SOURCE_FOUND} when no binary file exists at all.
+// Returns {empty, error_status} when a file was found but could not be used.
+// ---------------------------------------------------------------------------
+template <typename DataType>
+std::pair<cl::Program, OperationStatus>
+RadixSortGPU<DataType>::TryLoadPrecompiledProgram(
+    const cl::Device&  device,
+    const cl::Context& context)
+{
+    using S = OperationStatus;
+    const std::string_view suffix  = KernelTypeSuffix();
+    const std::string      options = BuildOptions();
+
+    // ---- 1. Try SPIR-V (.spv) when device supports it ----
+    if (DeviceSupportsSPIRV(device)) {
+        const auto spirvPath = FindKernelBinary(suffix, "spv");
+        if (!spirvPath.empty()) {
+            const auto bytes = ReadBinaryFile(spirvPath);
+            if (bytes.empty())
+                return { cl::Program{}, S::LOADING_SPIRV_FAILED };
+
+            // clCreateProgramWithILKHR is an extension function: load its
+            // address via the platform before calling it.
+            cl::Platform platform;
+            device.getInfo(CL_DEVICE_PLATFORM, &platform);
+
+            using Fn = cl_program(CL_API_CALL*)(
+                cl_context, const void*, size_t, cl_int*);
+            auto fn = reinterpret_cast<Fn>(
+                clGetExtensionFunctionAddressForPlatform(
+                    platform(), "clCreateProgramWithILKHR"));
+            if (!fn)
+                return { cl::Program{}, S::PROGRAM_IL_CREATION_FAILED };
+
+            cl_int err = CL_SUCCESS;
+            const cl_program rawProg = fn(
+                context(), bytes.data(), bytes.size(), &err);
+            if (err != CL_SUCCESS || rawProg == nullptr)
+                return { cl::Program{}, S::PROGRAM_IL_CREATION_FAILED };
+
+            cl::Program prog(rawProg, /* retain = */ false);
+            const cl_int buildErr = prog.build(device, options.c_str());
+            if (buildErr != CL_SUCCESS || prog() == nullptr)
+                return { cl::Program{}, S::PROGRAM_IL_CREATION_FAILED };
+            return { std::move(prog), S::OK };
+        }
+    }
+
+    // ---- 2. Try SPIR LLVM bitcode (.bc) via cl_khr_spir ----
+    //
+    // The .bc file is produced by:  clang -target spir64 -emit-llvm -c
+    // and is loaded via clCreateProgramWithBinary (cl_khr_spir extension).
+    {
+        const auto bcPath = FindKernelBinary(suffix, "bc");
+        if (!bcPath.empty()) {
+            const auto bytes = ReadBinaryFile(bcPath);
+            if (bytes.empty())
+                return { cl::Program{}, S::LOADING_BINARY_FAILED };
+
+            // clCreateProgramWithBinary takes parallel device/size/ptr arrays
+            const cl_device_id   devId       = device();
+            const size_t         binSize     = bytes.size();
+            const unsigned char* binPtr      = bytes.data();
+            cl_int               binStatus   = CL_SUCCESS;
+            cl_int               err         = CL_SUCCESS;
+            const cl_program rawProg = clCreateProgramWithBinary(
+                context(),
+                1,
+                &devId,
+                &binSize,
+                &binPtr,
+                &binStatus,
+                &err);
+            if (err != CL_SUCCESS || binStatus != CL_SUCCESS || rawProg == nullptr)
+                return { cl::Program{}, S::PROGRAM_BINARY_CREATION_FAILED };
+
+            cl::Program prog(rawProg, /* retain = */ false);
+            const cl_int buildErr = prog.build(device, options.c_str());
+            if (buildErr != CL_SUCCESS || prog() == nullptr)
+                return { cl::Program{}, S::PROGRAM_BINARY_CREATION_FAILED };
+            return { std::move(prog), S::OK };
+        }
+    }
+
+    // No pre-compiled binary found — signal caller to fall back to source JIT
+    return { cl::Program{}, S::NO_SOURCE_FOUND };
+}
+
 template <typename DataType>
 OperationStatus RadixSortGPU<DataType>::release()
 {
@@ -533,52 +732,75 @@ OperationStatus RadixSortGPU<DataType>::initialize(
 
     // compile and build program
     {
-        const auto preamble = BuildPreamble();
-        std::string programCode = "";
-        const auto candidates = make_array<std::string>(
-            "RadixSort.cl",
-            "kernels/RadixSort.cl"
-        );
-        bool foundFile = false;
-        for(const auto& path : candidates) {
-            // Both methods could throw.
-            try {
-                // First try working directory,
-                programCode = cl::util::read_text_file(path.c_str());
-                if(programCode.length()) {
-                    foundFile = true;
-                    break;
-                }
-            } catch(const cl::util::Error& err) {
-            }
-        
-            try {
-                // then folder relative to executable
-                programCode = cl::util::read_exe_relative_text_file(path.c_str());
-                if(programCode.length()) {
-                    foundFile = true;
-                    break;
-                }
-            } catch(const cl::util::Error& err) {
-            }
-        }
-        if(!foundFile)
+        // ----------------------------------------------------------------
+        // 1. Try pre-compiled binary (SPIR-V or native) first.
+        //    TryLoadPrecompiledProgram() returns NO_SOURCE_FOUND when no
+        //    binary file is present at all, which is the expected case when
+        //    the library was built without an offline OpenCL compiler.
+        // ----------------------------------------------------------------
         {
-            return S::NO_SOURCE_FOUND;
+            auto [prog, status] = TryLoadPrecompiledProgram(Device, Context);
+            if (status == S::OK) {
+                mDeviceData->m_Program = std::move(prog);
+            } else if (status != S::NO_SOURCE_FOUND) {
+                // A binary was found but could not be loaded/built — report it.
+                return status;
+            }
+            // status == NO_SOURCE_FOUND => fall through to source compilation
         }
 
-        if(programCode.length() == 0)
-        {
-            return S::LOADING_SOURCE_FAILED;
-        }
-        const auto completeCode = preamble + programCode;
-
-        const auto options { BuildOptions() };
-        mDeviceData->m_Program = cl::Program(Context, completeCode);
-        mDeviceData->m_Program.build(Device, options.c_str());
-
+        // ----------------------------------------------------------------
+        // 2. Fall back to runtime source compilation when no binary was
+        //    found or produced at build time.
+        // ----------------------------------------------------------------
         if (mDeviceData->m_Program() == nullptr) {
-            return S::PROGRAM_CREATION_FAILED;
+            const auto preamble = BuildPreamble();
+            std::string programCode;
+            const auto candidates = make_array<std::string>(
+                "RadixSort.cl",
+                "kernels/RadixSort.cl"
+            );
+            bool foundFile = false;
+            for(const auto& path : candidates) {
+                // Both methods could throw.
+                try {
+                    // First try working directory,
+                    programCode = cl::util::read_text_file(path.c_str());
+                    if(programCode.length()) {
+                        foundFile = true;
+                        break;
+                    }
+                } catch(const cl::util::Error&) {
+                }
+
+                try {
+                    // then folder relative to executable
+                    programCode = cl::util::read_exe_relative_text_file(path.c_str());
+                    if(programCode.length()) {
+                        foundFile = true;
+                        break;
+                    }
+                } catch(const cl::util::Error&) {
+                }
+            }
+            if(!foundFile)
+            {
+                return S::NO_SOURCE_FOUND;
+            }
+
+            if(programCode.length() == 0)
+            {
+                return S::LOADING_SOURCE_FAILED;
+            }
+            const auto completeCode = preamble + programCode;
+
+            const auto options { BuildOptions() };
+            mDeviceData->m_Program = cl::Program(Context, completeCode);
+            mDeviceData->m_Program.build(Device, options.c_str());
+
+            if (mDeviceData->m_Program() == nullptr) {
+                return S::PROGRAM_CREATION_FAILED;
+            }
         }
     }
 

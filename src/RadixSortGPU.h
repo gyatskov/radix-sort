@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <numeric>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 /// Runtime statistics of GPU implementation algorithms
@@ -133,6 +135,19 @@ private:
     static std::string BuildPreamble();
     /// Compiles build options for OpenCL kernel
     static std::string BuildOptions();
+
+    /// Returns the short type suffix used in pre-compiled kernel filenames,
+    /// e.g. "int32" for int32_t, "uint64" for uint64_t.
+    static std::string_view KernelTypeSuffix() noexcept;
+
+    /// Returns true when the given device supports loading SPIR-V IL programs.
+    static bool DeviceSupportsSPIRV(const cl::Device& device) noexcept;
+
+    /// Tries to load and build a pre-compiled kernel binary (SPIR-V or native).
+    /// Returns {program, OK} on success, or {empty_program, error_status}
+    /// when no binary is found or loading fails.
+    static std::pair<cl::Program, OperationStatus>
+    TryLoadPrecompiledProgram(const cl::Device& device, const cl::Context& context);
 
 	void CopyDataToDevice(cl::CommandQueue CommandQueue);
 	void CopyDataFromDevice(cl::CommandQueue CommandQueue);
