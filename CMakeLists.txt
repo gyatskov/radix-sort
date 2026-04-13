@@ -5,8 +5,7 @@ project (radixsort
     LANGUAGES CXX
 )
 
-# Disable std=g++xx, use standard
-set(CMAKE_CXX_EXTENSIONS OFF)
+include(CTest)
 
 # Add custom modules to the path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
@@ -14,6 +13,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 # Enable C++23
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Disable std=g++xx, use standard
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(cmake/CPM.cmake)
@@ -21,5 +22,8 @@ include(cmake/CPM.cmake)
 add_subdirectory(src)
 add_subdirectory(Common ${CMAKE_BINARY_DIR}/Common)
 add_subdirectory(examples)
-add_subdirectory(tests)
+if (BUILD_TESTING)
+    message(STATUS "Building tests")
+    add_subdirectory(tests)
+endif()
 
