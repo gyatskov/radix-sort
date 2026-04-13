@@ -1,2 +1,1 @@
 add_subdirectory(basic_sort)
-add_subdirectory(visualize)
