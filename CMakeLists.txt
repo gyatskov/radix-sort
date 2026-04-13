@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 4.0)
 project (radixsort
-    VERSION 0.2
+    VERSION 0.3
     DESCRIPTION "OpenCL 1.2 optimized radix sort implementation"
     LANGUAGES CXX
 )
