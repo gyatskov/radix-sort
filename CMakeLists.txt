@@ -8,7 +8,16 @@ project (radixsort
 include(CTest)
 
 # Add custom modules to the path
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# When consumed via FetchContent / CPMAddPackage the parent project needs
+# CompileOpenCLKernel.cmake too.  Propagate the cmake/ directory up so that
+# after FetchContent_MakeAvailable(radixsort) the parent can
+#   include(CompileOpenCLKernel)
+# without knowing where the sources were cloned.
+if(NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)
+endif()
 
 # Enable C++23
 set(CMAKE_CXX_STANDARD 23)
